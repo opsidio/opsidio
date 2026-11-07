@@ -51,21 +51,31 @@ OSM polygons can be approximate, incomplete or stale. This pack is a coordinate 
 
 ## Arrival routing
 
-[Arrival origin sources](arrival-origins.json) refer to the existing pinned OSM extract. MRT Istora Mandiri Exit B and the mapped parking entrance are shared network nodes; the latter is a **proposed** taxi and ride-hailing drop-off. Parkir Timur uses the centre of its mapped parking polygon. Its **82.6 m proposed walking connector** to the public network needs on-site confirmation. No vehicles are simulated.
+MRT Istora Mandiri Exit B and the mapped parking entrance are shared network nodes. The demo uses the latter as a proposed taxi and ride-hailing drop-off. Parkir Timur uses the centre of its mapped parking polygon and an **82.6 m proposed walking connector** to the public network. [Pinned arrival origin sources](arrival-origins.json)
 
-V1 joins the shortest walking routes from all three origins to the five entrance forecourts. The graph uses visible footways, pedestrian paths, steps, living streets and allowed service roads. Adjacency comes from shared OSM nodes. Restricted ways and gates, polygon outlines and off-map segments are excluded. Mapped approaches avoid the modeled pens except for one flagged East/Festival access leg, `approach_417744527_417744522` (OSM way 496569523). It remains connected for the demo and needs site review. Event access, closures and accessible routing remain unverified.
+The baseline routes pedestrians from all three origins to all five forecourts. Mapped public legs use shared OSM nodes and avoid the admission corridors. Each approach joins its forecourt upstream of the help desk and queue. The new corridors separate CAT 4 arrivals from Plaza Tenggara admission traffic and remove the previous Festival barrier overlap.
 
-North and West use mapped pedestrian corridors. The East, Southeast and Yellow four-lane layouts use separate sections of Jalan Lingkar Stadion: the original approaches there are too narrow for the illustrated lane spacing. `proposed_anchor_m` retains the original scenario marker, while `operational_anchor_m` is the illustrated security location. These positions are for the demo and do not identify confirmed gates. The tests sample all admission route legs against the 7.5 m rendered corridors and check all four security/scan sequences, barrier/table/detector footprints and operator positions. The illustrated 10 m shelters overhang the rendered corridor and require site review before equipment placement.
+The three marked layouts use the following centerlines. North and West retain their previous centerlines. The widths are proposed operating envelopes for the demo. The mapped path widths shown in the scene are class-based render values. Paving, clearances, access and equipment placement require site review.
 
-CAT 4 visitors assigned to Pintu Kuning join the ring at the Jalan Plaza Selatan junction and share part of the road with Plaza Tenggara visitors who have already passed security. The junction lies 27.5 m beyond the Tenggara security tent centre and 19.5 m before its scan tent centre along the demo route. All Tenggara journeys use their own forecourt and security checkpoint. Closing the shared ring segment disconnects Pintu Kuning from all three origins in the current mapped graph, so the shared section still needs event review. [Mapped junction](https://www.openstreetmap.org/node/309878212)
+| Entrance | Mapped centerline and direction | Proposed width | Staffed lanes | Spine length |
+| --- | --- | ---: | ---: | ---: |
+| Plaza Tenggara | Jalan Plaza Selatan northwest from the Istora side, OSM 403720975 | 15 m | 8 | 143 m |
+| Plaza Barat | West pedestrian approach, OSM 555901298 | 7.5 m | 4 | 141 m |
+| Pintu Kuning | Marked northwest boulevard toward the stadium, OSM 403721028 | 10 m | 5 | 99 m |
+| Plaza Utara | North pedestrian approach, OSM 28212629 | 9 m | 5 | 141 m |
+| Plaza Timur · Festival | Jalan Plaza Timur west toward the stadium, OSM 555901293 | 15 m | 8 | 182 m |
+
+Pintu Kuning uses one **13.84 m event access connector** from public OSM node 4060512460 along mapped private ways 403721006 and 403721028. That one-way approach is reserved for Pintu Kuning and requires event permission. The public network excludes these private ways. The Festival and Tenggara handovers end along their own corridors before the inner stadium links.
+
+`proposed_anchor_m` retains the sketch reference for the three moved gates. `operational_anchor_m` marks the simulated security location. The geometry tests check all 30 one-way lanes, their queue pens and service equipment, and the 15 origin-to-forecourt routes against the pinned map.
 
 | Origin | Approach walk to entrance forecourt |
 | --- | ---: |
-| MRT Istora Mandiri Exit B | 1,245–2,576 m |
-| Parkir Timur | 581–1,911 m |
-| Proposed passenger drop-off | 1,311–2,641 m |
+| MRT Istora Mandiri Exit B | 658–2,576 m |
+| Parkir Timur | 363–1,911 m |
+| Proposed passenger drop-off | 724–2,641 m |
 
-Each entrance adds about 141 m of walking across its admission layout. For Doni's API, `demand.time_reference: origin_spawn` means arrivals are released at the selected origin; `venue.layout.walking_paths` contains the 15 origin-to-queue approach distances. Apply that walk once. The category × behavior rows remain at 76; local playback assigns the origin split while preserving all 70,000 visitors.
+The approach walk ends at the forecourt. Admission adds the route along the entrance’s spine. In the API snapshot, `demand.time_reference: origin_spawn` means arrivals are released at the selected origin. Apply the matching distance in `venue.layout.walking_paths` once. Local playback assigns origin shares to the 76 category × behavior rows and preserves all 70,000 visitors.
 
 ## Rebuild and checks
 

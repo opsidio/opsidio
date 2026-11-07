@@ -27,6 +27,9 @@ export type SimulationMapControlsProps = {
   onToggleOperations: () => void
   showLabels: boolean
   onToggleLabels: () => void
+  onFollowPerson?: () => void
+  followDisabled?: boolean
+  following?: boolean
 }
 
 export type SimulationControlsProps = {
@@ -50,6 +53,7 @@ const iconPaths = {
   play: 'm8 5 11 7-11 7V5Z',
   routes: 'M7 5a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm14 14a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM7 5h9a3 3 0 0 1 0 6H8a4 4 0 0 0 0 8h9',
   operations: 'M3 10 12 3l9 7H3Zm2 0v11m14-11v11m-8-5h2m-1 0v5',
+  eye: 'M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12Zm13 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z',
   labels: 'M20 14 10 4H4v6l10 10 6-6ZM7 7h.01',
 } as const
 
@@ -68,11 +72,13 @@ type MapButtonProps = {
   label: string
   icon: ControlIconName
   pressed?: boolean
+  disabled?: boolean
+  title?: string
   onClick: () => void
 }
 
-function MapButton({ label, icon, pressed, onClick }: MapButtonProps) {
-  return <button type="button" className="sim-map-button" aria-label={label} title={label} aria-pressed={pressed} onClick={onClick}>
+function MapButton({ label, icon, pressed, disabled, title, onClick }: MapButtonProps) {
+  return <button type="button" className="sim-map-button" aria-label={label} title={title ?? label} aria-pressed={pressed} disabled={disabled} onClick={onClick}>
     <ControlIcon name={icon} /><span>{label}</span>
   </button>
 }
@@ -80,15 +86,17 @@ function MapButton({ label, icon, pressed, onClick }: MapButtonProps) {
 export function SimulationMapControls({
   view, cameraViews, onViewChange, autoRotate, onToggleAutoRotate, panMode, onTogglePan,
   showRoutes, onToggleRoutes, showOperations, onToggleOperations, showLabels, onToggleLabels,
+  onFollowPerson, followDisabled, following = false,
 }: SimulationMapControlsProps) {
   return (
     <div className="sim-map-controls" role="group" aria-label="Map controls">
       <div className="sim-map-control-group sim-map-control-group-camera" role="group" aria-label="Camera view">
-        {cameraViews.map(({ id, label }) => <MapButton key={id} label={label} icon={cameraIcons[id]} pressed={view === id} onClick={() => onViewChange(id)} />)}
+        {cameraViews.map(({ id, label }) => <MapButton key={id} label={label} icon={cameraIcons[id]} pressed={!following && view === id} onClick={() => onViewChange(id)} />)}
+        {onFollowPerson && <MapButton label="First person" icon="eye" pressed={following} disabled={followDisabled} title={followDisabled ? 'Run the simulation to follow an attendee' : 'First person'} onClick={onFollowPerson} />}
       </div>
       <div className="sim-map-control-group sim-map-control-group-navigation" role="group" aria-label="Map navigation">
-        <MapButton label="Pan" icon="pan" pressed={panMode} onClick={onTogglePan} />
-        {view === 'orbit' && <MapButton label={autoRotate ? 'Pause rotation' : 'Auto rotate'} icon={autoRotate ? 'pause' : 'play'} onClick={onToggleAutoRotate} />}
+        <MapButton label="Pan" icon="pan" pressed={panMode && !following} disabled={following} onClick={onTogglePan} />
+        {view === 'orbit' && !following && <MapButton label={autoRotate ? 'Pause rotation' : 'Auto rotate'} icon={autoRotate ? 'pause' : 'play'} onClick={onToggleAutoRotate} />}
       </div>
       <div className="sim-map-control-group sim-map-control-group-layers" role="group" aria-label="Map layers">
         <MapButton label="Routes" icon="routes" pressed={showRoutes} onClick={onToggleRoutes} />

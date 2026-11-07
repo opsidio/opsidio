@@ -66,7 +66,9 @@
   flex: none;
 }
 
-.sim-map-button:hover {
+.sim-map-button:disabled { opacity: .5; cursor: default; }
+
+.sim-map-button:not(:disabled):hover {
   background: var(--sim-raised, #f5f6f8);
 }
 
