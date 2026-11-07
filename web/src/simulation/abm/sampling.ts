@@ -1,6 +1,7 @@
 import type { AgentJourney, ServiceStop } from '../runtime-types'
 
 type PreparedQueue = {
+  stationId: string; operatorId: string
   arrivals: Float64Array; starts: Float64Array; ends: Float64Array; indices: Uint32Array
   sampledAt: number; started: number
 }
@@ -17,12 +18,21 @@ export type JourneySampler = {
   count: number
   stops?: readonly ServiceStop[][]
   queues?: Map<string, PreparedQueue>
+  operatorQueues?: Map<string, PreparedQueue>
   motions?: PreparedMotions
   completed?: Float64Array
 }
 export type PositionTarget = { [index: number]: number; length: number }
 export type JourneyPhase = 'not-arrived' | 'walking' | 'waiting' | 'processing' | 'arrived'
 export type CrowdSampleStats = { visibleCount: number; walkingCount: number; waitingCount?: number; processingCount?: number; completedCount?: number }
+export type OperatorQueueState = {
+  operatorId: string
+  /** Null means this operator has no authored service queue in this result. */
+  stationId: string | null
+  queuedCount: number
+  oldestWaitSeconds: number
+  processing: boolean
+}
 
 /** Compile once per result. Shared route geometry is stored only once. */
 export function prepareJourneySampler(journeys: readonly AgentJourney[]): JourneySampler {
@@ -107,8 +117,9 @@ function prepareAdmission(sampler: JourneySampler, journeys: readonly AgentJourn
   }
   sampler.queues = new Map([...grouped].map(([id, entries]) => {
     entries.sort((a, b) => a.stop.queueIndex - b.stop.queueIndex)
-    return [id, { arrivals: Float64Array.from(entries, item => item.stop.arrivalSeconds), starts: Float64Array.from(entries, item => item.stop.startSeconds ?? Infinity), ends: Float64Array.from(entries, item => item.stop.endSeconds ?? Infinity), indices: Uint32Array.from(entries, item => item.index), sampledAt: NaN, started: 0 }]
+    return [id, { stationId: id, operatorId: entries[0].stop.operatorId, arrivals: Float64Array.from(entries, item => item.stop.arrivalSeconds), starts: Float64Array.from(entries, item => item.stop.startSeconds ?? Infinity), ends: Float64Array.from(entries, item => item.stop.endSeconds ?? Infinity), indices: Uint32Array.from(entries, item => item.index), sampledAt: NaN, started: 0 }]
   }))
+  sampler.operatorQueues = new Map([...sampler.queues.values()].map(queue => [queue.operatorId, queue]))
   const order = Uint32Array.from(motionStarts, (_, index) => index)
   order.sort((a, b) => motionStarts[a] - motionStarts[b] || motionIndices[a] - motionIndices[b])
   sampler.motions = { starts: Float64Array.from(order, index => motionStarts[index]), ends: Float64Array.from(order, index => motionEnds[index]), indices: Uint32Array.from(order, index => motionIndices[index]), maxDuration }
@@ -124,6 +135,46 @@ function upperBound(values: Float64Array, value: number): number {
     else high = mid
   }
   return low
+}
+
+/** Allocate once, including explicitly requested idle operators. Reuse with sampleOperatorQueueStates. */
+export function createOperatorQueueStates(sampler: JourneySampler, operatorIds?: readonly string[]): OperatorQueueState[] {
+  return [...(operatorIds ?? sampler.operatorQueues?.keys() ?? [])].map(operatorId => ({
+    operatorId, stationId: sampler.operatorQueues?.get(operatorId)?.stationId ?? null,
+    queuedCount: 0, oldestWaitSeconds: 0, processing: false,
+  }))
+}
+
+/** Full FIFO queue counts, independent of the bounded crowd display. O(operators × log queue length). */
+export function sampleOperatorQueueStates(
+  sampler: JourneySampler, seconds: number, output: OperatorQueueState[],
+): OperatorQueueState[] {
+  if (!Number.isFinite(seconds)) throw new RangeError('Sample time must be finite.')
+  for (const state of output) {
+    const queue = sampler.operatorQueues?.get(state.operatorId)
+    if (!queue) {
+      state.stationId = null; state.queuedCount = 0; state.oldestWaitSeconds = 0; state.processing = false
+      continue
+    }
+    const arrived = upperBound(queue.arrivals, seconds), started = upperBound(queue.starts, seconds)
+    queue.started = started; queue.sampledAt = seconds
+    state.stationId = queue.stationId
+    state.queuedCount = Math.max(0, arrived - started)
+    state.oldestWaitSeconds = state.queuedCount > 0 ? Math.max(0, seconds - queue.arrivals[started]) : 0
+    state.processing = started > 0 && queue.ends[started - 1] > seconds
+  }
+  return output
+}
+
+/** Current uninterrupted wait only; returns zero before arrival, while processing, or after service. */
+export function sampleJourneyWaitSeconds(sampler: JourneySampler, journeyIndex: number, seconds: number): number {
+  if (!Number.isInteger(journeyIndex) || journeyIndex < 0 || journeyIndex >= sampler.count) throw new RangeError('Journey index is out of range.')
+  if (!Number.isFinite(seconds)) throw new RangeError('Sample time must be finite.')
+  for (const stop of sampler.stops?.[journeyIndex] ?? []) {
+    if (seconds < stop.arrivalSeconds) break
+    if (stop.startSeconds === null || seconds < stop.startSeconds) return Math.max(0, seconds - stop.arrivalSeconds)
+  }
+  return 0
 }
 
 function writePosition(sampler: JourneySampler, index: number, seconds: number, output: PositionTarget, offset: number): JourneyPhase {

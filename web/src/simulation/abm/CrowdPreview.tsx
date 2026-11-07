@@ -3,11 +3,14 @@ import { useFrame } from '@react-three/fiber'
 import { Color, DynamicDrawUsage, Matrix4 } from 'three'
 import type { InstancedMesh } from 'three'
 import type { AbmResult } from '../runtime-types'
-import { prepareJourneySampler, sampleJourneyPosition, sampleWalkingCrowd } from './sampling'
-import type { CrowdSampleStats } from './sampling'
+import { prepareJourneySampler, sampleJourneyPosition, sampleJourneyWaitSeconds, sampleWalkingCrowd } from './sampling'
+import type { CrowdSampleStats, JourneySampler } from './sampling'
+import { writeWaitColor } from './wait-visuals'
 
 export type CrowdPreviewProps = {
   result: AbmResult
+  /** Share the prepared timeline with queue annotations to avoid a second population buffer. */
+  sampler?: JourneySampler
   timeSeconds?: number
   /** Caller-owned simulation clock, read directly each frame for smooth playback. */
   clockRef?: { current: number }
@@ -21,9 +24,9 @@ export type CrowdPreviewProps = {
 
 /** Illustrative walking, waiting and processing from the authored journey timeline. */
 export function CrowdPreview({
-  result, timeSeconds = 0, clockRef, maxVisible = 5000, color = '#f4c66b', visualSpreadM = 0.65, onSampleStats,
+  result, sampler: suppliedSampler, timeSeconds = 0, clockRef, maxVisible = 5000, color = '#f4c66b', visualSpreadM = 0.65, onSampleStats,
 }: CrowdPreviewProps) {
-  const sampler = useMemo(() => prepareJourneySampler(result.journeys), [result])
+  const sampler = useMemo(() => suppliedSampler ?? prepareJourneySampler(result.journeys), [result, suppliedSampler])
   const capacity = Math.max(0, Math.min(sampler.count, Number.isFinite(maxVisible) ? Math.floor(maxVisible) : 5000))
   const buffers = useMemo(() => ({
     positions: new Float32Array(capacity * 3), indices: new Uint32Array(capacity),
@@ -60,13 +63,15 @@ export function CrowdPreview({
       for (let slot = 0; slot < buffers.stats.visibleCount; slot++) {
         const index = buffers.indices[slot]
         const phase = sampleJourneyPosition(sampler, index, seconds, buffers.positions, slot * 3)
-        bodies.current.setColorAt(slot, buffers.color.set(phase === 'waiting' ? '#e59838' : phase === 'processing' ? '#359c9b' : color))
+        if (phase === 'waiting') writeWaitColor(sampleJourneyWaitSeconds(sampler, index, seconds), buffers.color)
+        else buffers.color.set(phase === 'processing' ? '#359c9b' : color)
+        bodies.current.setColorAt(slot, buffers.color)
         const x = buffers.positions[slot * 3] + offsets[index * 2] * spread
         const y = buffers.positions[slot * 3 + 1]
         const z = buffers.positions[slot * 3 + 2] + offsets[index * 2 + 1] * spread
         buffers.matrix.makeTranslation(x, y + 0.8, z)
         bodies.current.setMatrixAt(slot, buffers.matrix)
-        buffers.matrix.makeTranslation(x, y + 1.55, z)
+        buffers.matrix.makeTranslation(x, y + 1.5, z)
         heads.current.setMatrixAt(slot, buffers.matrix)
       }
       bodies.current.count = buffers.stats.visibleCount
@@ -95,7 +100,7 @@ export function CrowdPreview({
       <meshStandardMaterial color="#ffffff" roughness={0.9} />
     </instancedMesh>
     <instancedMesh ref={heads} args={[undefined, undefined, Math.max(1, capacity)]} frustumCulled={false}>
-      <sphereGeometry args={[0.22, 5, 3]} />
+      <sphereGeometry args={[0.2, 5, 3]} />
       <meshStandardMaterial color="#e7b890" roughness={0.9} />
     </instancedMesh>
   </group>
