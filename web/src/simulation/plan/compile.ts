@@ -72,6 +72,8 @@ export function compileSimulationPlan(input: unknown): CompiledSimulationPlan {
   if (plan.schema_version !== '0.1') throw new Error('Use Doni PlanDocument schema_version 0.1.')
   const spatial = object(plan.spatial_context, 'spatial_context')
   if (spatial.schema_version !== 'opsidio-layout/0.1' || spatial.venue_id !== 'gbk-osm-local') throw new Error('This viewer needs GBK spatial_context opsidio-layout/0.1.')
+  const oneWay = spatial.one_way_admission === true
+  if (spatial.one_way_admission !== undefined && typeof spatial.one_way_admission !== 'boolean') throw new Error('one_way_admission must be a boolean.')
   const frame = object(spatial.coordinate_frame, 'coordinate_frame')
   const axes = object(frame.axes, 'coordinate_frame.axes')
   const origin = object(frame.origin_wgs84, 'coordinate_frame.origin_wgs84')
@@ -125,13 +127,32 @@ export function compileSimulationPlan(input: unknown): CompiledSimulationPlan {
     outgoing.get(edge.from)!.push(edge.to)
   }
   const reachable = new Map<string, Set<string>>()
-  const canReach = (from: string, to: string): boolean => {
-    if (!reachable.has(from)) {
+  const canReach = (from: string, to: string, blocked?: readonly string[]): boolean => {
+    const key = JSON.stringify([from, blocked])
+    if (!reachable.has(key)) {
+      const excluded = new Set(blocked)
+      if (excluded.has(from)) return false
       const seen = new Set([from]), pending = [from]
-      for (let index = 0; index < pending.length; index++) for (const next of outgoing.get(pending[index]) ?? []) if (!seen.has(next)) { seen.add(next); pending.push(next) }
-      reachable.set(from, seen)
+      for (let index = 0; index < pending.length; index++) for (const next of outgoing.get(pending[index]) ?? []) {
+        if (!seen.has(next) && !excluded.has(next)) { seen.add(next); pending.push(next) }
+      }
+      reachable.set(key, seen)
     }
-    return reachable.get(from)!.has(to)
+    return reachable.get(key)!.has(to)
+  }
+  const entryAreaRows = list(spatial.entry_areas, 'entry_areas')
+  const helpRoutes = new Map<string, Omit<NonNullable<CohortDemand['helpDesk']>, 'visitPercent'>>()
+  if (oneWay) for (const area of entryAreaRows) {
+    const areaId = name(area.id, 'area.id')
+    const passNodeId = name(area.help_pass_node_id, 'area.help_pass_node_id')
+    const checkpointNodeId = name(area.help_checkpoint_node_id, 'area.help_checkpoint_node_id')
+    const pass = nodeMap.get(passNodeId), checkpoint = nodeMap.get(checkpointNodeId)
+    if (pass?.role !== 'waypoint' || checkpoint?.role !== 'checkpoint'
+      || pass.entryAreaId !== areaId || checkpoint.entryAreaId !== areaId
+      || !canReach(passNodeId, checkpointNodeId)) {
+      throw new Error(`Entry ${areaId} needs a help passage and optional help desk checkpoint.`)
+    }
+    helpRoutes.set(areaId, { passNodeId, checkpointNodeId })
   }
   const event = object(plan.event, 'event')
   const noShow = number(object(event.capacity, 'event.capacity').no_show_percent_estimate, 'no_show_percent_estimate')
@@ -169,7 +190,8 @@ export function compileSimulationPlan(input: unknown): CompiledSimulationPlan {
       return { startSeconds, endSeconds, sharePercent: number(share, `${id}.${window}`) }
     })
     if (Math.abs(windows.reduce((sum, window) => sum + window.sharePercent, 0) - 100) > 1e-6) throw new Error(`${id} arrival shares must sum to 100%.`)
-    return { id, categoryId: id, count: counts[index], arrivalNodeId, destinationNodeId, windows, ...(Array.isArray(route.lane_checkpoint_ids) ? { laneCheckpointIds: route.lane_checkpoint_ids.map(value => name(value, 'lane checkpoint')) } : {}), groupSize: number(playback.group_size, 'group_size', 1) }
+    const help = helpRoutes.get(String(category.entry_area_id))
+    return { id, categoryId: id, count: counts[index], arrivalNodeId, destinationNodeId, windows, ...(Array.isArray(route.lane_checkpoint_ids) ? { laneCheckpointIds: route.lane_checkpoint_ids.map(value => name(value, 'lane checkpoint')) } : {}), groupSize: number(playback.group_size, 'group_size', 1), ...(help ? { helpDesk: { ...help, visitPercent: 0 } } : {}) }
   })
   let cohorts = categoryCohortDefaults
   const segments: CompiledSimulationPlan['segments'] = []
@@ -178,7 +200,14 @@ export function compileSimulationPlan(input: unknown): CompiledSimulationPlan {
     if (behavior.schema_version !== 'opsidio-behavior/0.1') throw new Error('Use behavior_context opsidio-behavior/0.1.')
     const profiles = unique<JsonObject & { id: string }>(list(behavior.profiles, 'behavior profiles').map(profile => ({ ...profile, id: name(profile.id, 'profile.id') })), 'profiles')
     const profileOrigins = new Map<string, { id: string; share: number }[]>()
+    const profileHelpVisits = new Map<string, number>()
     for (const profile of profiles.values()) {
+      if (profile.help_desk_visit_percent !== undefined) {
+        if (!oneWay) throw new Error('Profile help desk visits require one_way_admission.')
+        const percent = number(profile.help_desk_visit_percent, 'profile.help_desk_visit_percent')
+        if (percent > 100) throw new Error('Profile help desk visits must be 0–100%.')
+        profileHelpVisits.set(profile.id, percent)
+      }
       if (!arrivalOrigins.length) {
         if (profile.origin_share_percent !== undefined) throw new Error('Profile origin shares require spatial arrival_origins.')
         continue
@@ -217,7 +246,8 @@ export function compileSimulationPlan(input: unknown): CompiledSimulationPlan {
         if (Math.abs(windows.reduce((sum, window) => sum + window.sharePercent, 0) - 100) > 1e-6) throw new Error('Profile arrival windows must sum to 100%.')
         const groupSize = number(profile.group_size, 'profile.group_size', 1)
         if (!Number.isSafeInteger(groupSize)) throw new Error('Profile group_size must be a whole number.')
-        return { id: name(item.id, 'cohort.id'), categoryId: String(category.id), segmentId: profile.id, count: allocated[position], arrivalNodeId, destinationNodeId, ...(categoryRoute.laneCheckpointIds ? { laneCheckpointIds: categoryRoute.laneCheckpointIds } : {}), groupSize, walkSpeedMps: number(profile.walk_speed_mps, 'profile.walk_speed_mps', 0.01), windows }
+        const helpDesk = categoryRoute.helpDesk ? { ...categoryRoute.helpDesk, visitPercent: profileHelpVisits.get(profile.id) ?? 0 } : undefined
+        return { id: name(item.id, 'cohort.id'), categoryId: String(category.id), segmentId: profile.id, count: allocated[position], arrivalNodeId, destinationNodeId, ...(categoryRoute.laneCheckpointIds ? { laneCheckpointIds: categoryRoute.laneCheckpointIds } : {}), groupSize, walkSpeedMps: number(profile.walk_speed_mps, 'profile.walk_speed_mps', 0.01), windows, ...(helpDesk ? { helpDesk } : {}) }
       })
       const nativeShares = object(demand[String(category.id)], 'native arrival windows')
       for (const [key, share] of Object.entries(nativeShares).filter(([key]) => key !== 'basis')) {
@@ -251,7 +281,6 @@ export function compileSimulationPlan(input: unknown): CompiledSimulationPlan {
   })
   unique(operators, 'operators')
   for (const role of roles.values()) if (number(role.count, `${role.id}.count`) !== operators.filter(operator => operator.roleId === role.id).length) throw new Error(`${role.id} staff count differs from its spatial operator positions. Update the layout bindings.`)
-  const entryAreaRows = list(spatial.entry_areas, 'entry_areas')
   if (categories.some(category => !entryAreaRows.some(area => area.id === category.entry_area_id && area.gate_id === category.entry_gate))) throw new Error('Category entry area and gate must match a spatial entry area.')
   const entryAreas: EntryAreaMarker[] = entryAreaRows.map(area => ({ id: name(area.id, 'area.id'), label: name(area.label, 'area.label'), position: point(area.position_m, 'area.position_m'), color: name(area.color, 'area.color'), attendees: categories.reduce((sum, category, index) => sum + (category.entry_gate === area.gate_id ? counts[index] : 0), 0) }))
   unique(entryAreas, 'entry_areas')
@@ -263,7 +292,9 @@ export function compileSimulationPlan(input: unknown): CompiledSimulationPlan {
   if (!Number.isSafeInteger(revision)) throw new Error('Layout revision must be a whole number.')
   const stepRows = list(object(plan.process_steps, 'process_steps').steps, 'process_steps.steps')
   const stepMap = new Map(stepRows.map(step => [step.id, step]))
-  const gates = list(object(object(plan.venue, 'venue').layout, 'venue.layout').gates, 'gates')
+  const venueLayout = object(object(plan.venue, 'venue').layout, 'venue.layout')
+  const gates = list(venueLayout.gates, 'gates')
+  const servicePoints = venueLayout.service_points === undefined ? [] : list(venueLayout.service_points, 'service_points')
   const stationRows = spatial.service_stations === undefined ? [] : list(spatial.service_stations, 'service_stations')
   for (const category of categories) {
     const gate = gates.find(gate => gate.id === category.entry_gate)
@@ -279,7 +310,8 @@ export function compileSimulationPlan(input: unknown): CompiledSimulationPlan {
     const operator = operators.find(item => item.id === operatorId)
     const nodeId = name(row.node_id, 'station.node_id')
     const gate = gates.find(gate => gate.id === row.point_id)
-    if (!operator || nodeMap.get(nodeId)?.role !== 'checkpoint' || !gate || operator.pointId !== row.point_id || nodeMap.get(nodeId)?.entryAreaId !== operator.entryAreaId) throw new Error('Service station needs a bound operator, checkpoint and matching entry gate/area.')
+    const servicePoint = gate ?? servicePoints.find(point => point.id === row.point_id)
+    if (!operator || nodeMap.get(nodeId)?.role !== 'checkpoint' || !servicePoint || operator.pointId !== row.point_id || nodeMap.get(nodeId)?.entryAreaId !== operator.entryAreaId) throw new Error('Service station needs a bound operator, checkpoint and matching service point/area.')
     if (!Array.isArray(row.step_ids) || !row.step_ids.length) throw new Error('Service station needs process step IDs.')
     const role = roles.get(operator.roleId)!
     if (!Array.isArray(role.can_do) || row.step_ids.some(id => !(role.can_do as unknown[]).includes(id))) throw new Error('An operator is assigned a process outside its role skills.')
@@ -288,11 +320,72 @@ export function compileSimulationPlan(input: unknown): CompiledSimulationPlan {
       if (!step) throw new Error(`Missing process step ${String(id)}.`)
       return sum + number(object(step.time_per_person_seconds, 'step timing').typical, 'typical service seconds', .01)
     }, 0)
-    return { id: name(row.id, 'station.id'), nodeId, operatorId, serviceSeconds, opensSeconds: seconds(name(gate.opens, 'gate.opens')) - originSeconds, closesSeconds: seconds(name(gate.closes, 'gate.closes')) - originSeconds }
+    const station: ServiceStation = {
+      id: name(row.id, 'station.id'), nodeId, operatorId, serviceSeconds,
+      opensSeconds: seconds(name(servicePoint.opens, 'service point.opens')) - originSeconds,
+      closesSeconds: seconds(name(servicePoint.closes, 'service point.closes')) - originSeconds,
+    }
+    if (oneWay) {
+      const [first, second] = row.step_ids
+      if (!gate && row.step_ids.length === 1 && first === 'help_desk_resolution' && helpRoutes.get(operator.entryAreaId)?.checkpointNodeId === nodeId) station.admissionStage = 'help'
+      else if (gate && row.step_ids.length === 1 && first === 'security_inspection') station.admissionStage = 'security'
+      else if (gate && row.step_ids.length === 2 && first === 'eticket_scan' && second === 'wristband_fit') station.admissionStage = 'scan'
+      else throw new Error(`Service station ${station.id} needs a valid help, security, or ticket scan binding.`)
+    }
+    if (row.queue_start_node_id === undefined && row.queue_end_node_id === undefined) return station
+    const queueStartNodeId = name(row.queue_start_node_id, 'station.queue_start_node_id')
+    const queueEndNodeId = name(row.queue_end_node_id, 'station.queue_end_node_id')
+    const start = nodeMap.get(queueStartNodeId), end = nodeMap.get(queueEndNodeId)
+    if (start?.role !== 'waypoint' || end?.role !== 'waypoint'
+      || start.entryAreaId !== operator.entryAreaId || end.entryAreaId !== operator.entryAreaId
+      || start.id === end.id || !canReach(start.id, end.id) || !canReach(end.id, nodeId)) {
+      throw new Error(`Service station ${station.id} needs distinct queue entrance and end waypoints before its checkpoint.`)
+    }
+    return { ...station, queueStartNodeId, queueEndNodeId }
   })
   unique(serviceStations, 'service_stations')
   if (new Set(serviceStations.map(station => station.operatorId)).size !== serviceStations.length || new Set(serviceStations.map(station => station.nodeId)).size !== serviceStations.length) throw new Error('Service stations need one operator and one checkpoint each; capacity cannot be double counted.')
   if (serviceStations.length && cohorts.some(cohort => cohort.laneCheckpointIds?.some(id => !serviceStations.some(station => station.nodeId === id)))) throw new Error('Each lane checkpoint needs a bound service station.')
+  if (oneWay) {
+    const stationByNode = new Map(serviceStations.map(station => [station.nodeId, station]))
+    const scans = serviceStations.filter(station => station.admissionStage === 'scan')
+    for (const scan of scans) {
+      const areaId = nodeMap.get(scan.nodeId)!.entryAreaId
+      const reentry = nodes.some(node => node.id !== scan.nodeId && canReach(scan.nodeId, node.id)
+        && (node.role === 'arrival' || node.entryAreaId !== areaId || stationByNode.has(node.id) || canReach(node.id, scan.nodeId)))
+      if (reentry || outgoing.get(scan.nodeId)!.includes(scan.nodeId)) throw new Error(`Ticket scan ${scan.nodeId} must not lead back to pre-entry routes.`)
+    }
+    for (const { passNodeId, checkpointNodeId } of helpRoutes.values()) {
+      if (stationByNode.get(checkpointNodeId)?.admissionStage !== 'help' || canReach(checkpointNodeId, passNodeId)) {
+        throw new Error(`Help desk ${checkpointNodeId} needs a service station and a one-way exit toward security.`)
+      }
+    }
+    for (const cohort of categoryCohortDefaults) {
+      const { arrivalNodeId, destinationNodeId, helpDesk, laneCheckpointIds } = cohort
+      if (!helpDesk || !laneCheckpointIds?.length || !canReach(arrivalNodeId, helpDesk.passNodeId) || outgoing.get(destinationNodeId)!.length) {
+        throw new Error(`Category ${cohort.id} needs a help passage, security lanes and a terminal handover.`)
+      }
+      for (const security of laneCheckpointIds) {
+        const laneScans = scans.filter(scan => canReach(security, scan.nodeId))
+        if (stationByNode.get(security)?.admissionStage !== 'security'
+          || !canReach(helpDesk.passNodeId, security, [helpDesk.checkpointNodeId]) || !canReach(helpDesk.checkpointNodeId, security)
+          || laneScans.length !== 1 || !canReach(laneScans[0].nodeId, destinationNodeId)
+          || canReach(helpDesk.passNodeId, laneScans[0].nodeId, [security]) || canReach(security, destinationNodeId, [laneScans[0].nodeId])) {
+          throw new Error(`Lane ${security} must lead from the help passage through security and one ticket scan to ${destinationNodeId}.`)
+        }
+      }
+    }
+    const securityNodes = serviceStations.filter(station => station.admissionStage === 'security').map(station => station.nodeId)
+    const scanNodes = scans.map(station => station.nodeId)
+    for (const { id, arrivalNodeId, destinationNodeId, helpDesk } of cohorts) {
+      if (!helpDesk || !canReach(arrivalNodeId, helpDesk.passNodeId)
+        || canReach(arrivalNodeId, destinationNodeId, [helpDesk.passNodeId])
+        || canReach(arrivalNodeId, destinationNodeId, securityNodes)
+        || canReach(arrivalNodeId, destinationNodeId, scanNodes)) {
+        throw new Error(`Cohort ${id} has a route that bypasses the help passage, security or ticket scan.`)
+      }
+    }
+  }
   const config: AbmConfig = { seed: number(playback.seed, 'seed'), timeOrigin, horizonSeconds: number(playback.horizon_seconds, 'horizon_seconds', 1), walkSpeedMps: number(playback.walk_speed_mps, 'walk_speed_mps', 0.01), nodes, edges, cohorts, ...(serviceStations.length ? { serviceStations } : {}) }
   return { config, placements, nodes, edges, operators, entryAreas, segments, arrivalOrigins, layoutId: name(spatial.layout_id, 'layout_id'), layoutRevision: revision, northLayout: { schemaVersion: 'opsidio-editor/0.1', id: `${String(spatial.layout_id)}-north`, revision, placements: placements.filter(item => northIds.has(item.id)), nodes: northNodes, edges: edges.filter(edge => northNodeIds.has(edge.from) && northNodeIds.has(edge.to)) } }
 }

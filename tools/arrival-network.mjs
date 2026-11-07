@@ -1,4 +1,6 @@
 import { readFileSync } from 'node:fs'
+import { validateLayout } from '../web/src/simulation/layout/core.ts'
+import { catalogue } from '../web/src/simulation/model.ts'
 
 const root = new URL('../', import.meta.url)
 export const venue = JSON.parse(readFileSync(new URL('web/src/simulation/venue/gbk.json', root)))
@@ -109,32 +111,98 @@ export function admissionSpine(areaId) {
   }
 }
 
-function shortest(start, end) {
-  const distances = new Map([[start, 0]]), previous = new Map(), remaining = new Set(publicGraph.keys())
+function shortest(graph, start, end) {
+  const distances = new Map([[start, 0]]), previous = new Map(), remaining = new Set(graph.keys())
   while (remaining.size) {
     let current, minimum = Infinity
     for (const id of remaining) if ((distances.get(id) ?? Infinity) < minimum) { current = id; minimum = distances.get(id) }
     if (!current) throw new Error(`No mapped walking route ${start} → ${end}`)
     if (current === end) break
     remaining.delete(current)
-    for (const [next, edge] of publicGraph.get(current)) if (minimum + edge.length < (distances.get(next) ?? Infinity)) { distances.set(next, minimum + edge.length); previous.set(next, current) }
+    for (const [next, edge] of graph.get(current)) if (minimum + edge.length < (distances.get(next) ?? Infinity)) { distances.set(next, minimum + edge.length); previous.set(next, current) }
   }
   const result = [end]
   while (result[0] !== start) result.unshift(previous.get(result[0]))
   return { ids: result, distance: distances.get(end) }
 }
+
+function reachable(graph, start) {
+  const queue = [start]
+  const seen = new Set(queue)
+  for (let i = 0; i < queue.length; i++) {
+    for (const next of graph.get(queue[i]).keys()) if (!seen.has(next)) {
+      seen.add(next)
+      queue.push(next)
+    }
+  }
+  return seen
+}
+
+function clearApproaches(spatial) {
+  const mapNodes = [...publicGraph.keys()].map(id => ({ id, role: 'waypoint', position: project(nodes.get(id)) }))
+  const candidateEdges = [...publicGraph].flatMap(([from, links]) => [...links.keys()].map(to => ({ id: `approach_${from}_${to}`, from, to })))
+  const arrivals = spatial.entry_areas.map(area => {
+    const id = area.id === 'plaza_utara' ? 'arrival' : `${area.id}_arrival`
+    const arrival = spatial.navigation.nodes.find(node => node.id === id)
+    for (const node of mapNodes) {
+      if (area.corridor.osm_way_ids.some(wayId => isRendered(wayId, node.position, arrival.position_m))) {
+        candidateEdges.push({ id: `approach_${node.id}_${id}`, from: node.id, to: id })
+      }
+    }
+    return { id, role: 'destination', position: arrival.position_m, areaId: area.id }
+  })
+  const checked = validateLayout({
+    schemaVersion: 'opsidio-editor/0.1', id: 'public-approach-clearance', revision: spatial.revision,
+    placements: spatial.placements.map(item => ({ id: item.id, label: item.label, presetId: item.preset_id, position: item.position_m, yawDeg: item.yaw_deg, bays: item.parameters?.bays })),
+    nodes: [...mapNodes, ...arrivals], edges: candidateEdges,
+  }, { bounds: { minX: -900, maxX: 900, minZ: -900, maxZ: 900 }, catalogue })
+  const graph = new Map(mapNodes.map(node => [node.id, new Map()]))
+  const joins = new Map(arrivals.map(arrival => [arrival.id, []]))
+  for (const edge of checked.graph.edges) {
+    if (joins.has(edge.to)) joins.get(edge.to).push(edge)
+    else graph.get(edge.from).set(edge.to, publicGraph.get(edge.from).get(edge.to))
+  }
+  const clearComponent = reachable(graph, '10121357658')
+  const reviewOverlaps = []
+  const east = arrivals.find(arrival => arrival.areaId === 'plaza_timur')
+  if (!joins.get(east.id).some(edge => clearComponent.has(edge.from))) {
+    // The East forecourt's ring-road segment is isolated by the temporary pens.
+    // Keep one inbound mapped leg for East only. This is a visible review exception.
+    const from = '417744527', to = '417744522', id = `approach_${from}_${to}`
+    const mappedEdge = publicGraph.get(from)?.get(to)
+    const blocker = checked.issues.find(issue => issue.code === 'blocked_edge' && issue.relatedIds[0] === id)
+    if (!mappedEdge || !blocker || !clearComponent.has(from) || clearComponent.has(to)) throw new Error('East forecourt needs a new mapped approach review')
+    graph.get(from).set(to, mappedEdge)
+    reviewOverlaps.push({ edge_id: id, entry_area_id: east.areaId, osm_way_id: mappedEdge.wayId, placement_ids: blocker.relatedIds.slice(1), basis: 'proposed_admission_overlap_site_review_required' })
+  }
+  const eastComponent = reachable(graph, '10121357658')
+  const targets = new Map(arrivals.map(arrival => {
+    const available = arrival.areaId === east.areaId ? eastComponent : clearComponent
+    const join = joins.get(arrival.id).filter(edge => available.has(edge.from)).sort((a, b) => a.distanceM - b.distanceM)[0]
+    if (!join) throw new Error(`No clear mapped forecourt link for ${arrival.areaId}`)
+    return [arrival.areaId, { nodeId: arrival.id, anchor: join.from, length: round(join.distanceM) }]
+  }))
+  return { graph, targets, clearComponent, reviewOverlaps }
+}
+
 export function addArrivalNetwork(spatial, layout) {
   spatial.arrival_origins = originSources.map(item => {
     const parking = item.osm_way_id && ways.get(item.osm_way_id).nodes.slice(0, -1).map(id => project(nodes.get(String(id))))
     const position_m = parking ? [0, 1, 2].map(axis => round(parking.reduce((sum, point) => sum + point[axis], 0) / parking.length)) : project(nodes.get(item.osm_node_id))
     return { ...item, position_m }
   })
-  const networkIds = new Set(), networkPairs = new Map(), connectors = [], distances = []
-  const nearest = point => [...publicGraph.keys()].sort((a, b) => distance(point, project(nodes.get(a))) - distance(point, project(nodes.get(b))))[0]
+  const { graph, targets, clearComponent, reviewOverlaps } = clearApproaches(spatial)
+  const networkIds = new Set(), networkEdges = new Map(), connectors = [], distances = []
+  const nearest = point => [...clearComponent].sort((a, b) => distance(point, project(nodes.get(a))) - distance(point, project(nodes.get(b))))[0]
   const anchors = new Map(spatial.arrival_origins.map(origin => [origin.id, origin.osm_node_id ?? nearest(origin.position_m)]))
   const originAliases = new Map(spatial.arrival_origins.filter(origin => origin.osm_node_id).map(origin => [origin.osm_node_id, origin.id]))
   const navigationId = id => originAliases.get(id) ?? `approach_osm_${id}`
-  const addPair = (a, b) => { networkIds.add(a); networkIds.add(b); const key = [a, b].sort().join('_'); networkPairs.set(key, [a, b]) }
+  const addPair = (a, b) => {
+    networkIds.add(a)
+    networkIds.add(b)
+    networkEdges.set(`approach_${a}_${b}`, [a, b])
+    if (graph.get(b).has(a)) networkEdges.set(`approach_${b}_${a}`, [b, a])
+  }
   const join = (id, position, anchor, label, proposed = false) => {
     networkIds.add(anchor)
     const length = round(distance(position, project(nodes.get(anchor))))
@@ -146,27 +214,27 @@ export function addArrivalNetwork(spatial, layout) {
     const originConnector = join(origin.id, origin.position_m, anchors.get(origin.id), `${origin.label} pedestrian connector`, origin.id === 'origin_parking')
     layout.zones.push({ id: origin.id, name: origin.label, type: origin.mode === 'taxi_ride_hailing' ? 'drop_off' : 'holding', basis: 'estimate', position_m: origin.position_m, arrival_mode: origin.mode })
     for (const area of spatial.entry_areas) {
-      const arrivalId = area.id === 'plaza_utara' ? 'arrival' : `${area.id}_arrival`
-      const arrival = spatial.navigation.nodes.find(node => node.id === arrivalId)
-      const target = nearest(arrival.position_m), route = shortest(anchors.get(origin.id), target)
+      const target = targets.get(area.id)
+      const route = shortest(graph, anchors.get(origin.id), target.anchor)
       route.ids.slice(1).forEach((b, index) => addPair(route.ids[index], b))
-      const length = round(originConnector + route.distance + distance(arrival.position_m, project(nodes.get(target))))
-      distances.push({ origin_id: origin.id, entry_area_id: area.id, arrival_node_id: arrivalId, distance_m: length, basis: 'mapped_public_network_plus_explicit_connectors' })
+      const length = round(originConnector + route.distance + target.length)
+      const basis = reviewOverlaps.some(item => item.entry_area_id === area.id) ? 'mapped_public_network_with_site_review_overlap' : 'mapped_public_network_plus_explicit_connectors'
+      distances.push({ origin_id: origin.id, entry_area_id: area.id, arrival_node_id: target.nodeId, distance_m: length, basis })
       layout.walking_paths.push({ from: origin.id, to: `queue_${area.id}`, distance_m: length, basis: 'estimate', spatial_route_ref: `${origin.id}__${area.id}`, time_reference: 'origin_spawn' })
     }
   }
   for (const area of spatial.entry_areas) {
-    const arrivalId = area.id === 'plaza_utara' ? 'arrival' : `${area.id}_arrival`
-    const arrival = spatial.navigation.nodes.find(node => node.id === arrivalId), anchor = nearest(arrival.position_m)
-    networkIds.add(anchor)
-    connectors.push({ id: `connector_approach_to_${area.id}`, from_node_id: navigationId(anchor), to_node_id: arrivalId, directed: true, basis: 'mapped_corridor_access', distance_m: round(distance(arrival.position_m, project(nodes.get(anchor)))) })
+    const target = targets.get(area.id)
+    networkIds.add(target.anchor)
+    connectors.push({ id: `connector_approach_to_${area.id}`, from_node_id: navigationId(target.anchor), to_node_id: target.nodeId, directed: true, basis: 'mapped_corridor_access', distance_m: target.length })
   }
   for (const id of [...networkIds].sort()) if (!originAliases.has(id)) spatial.navigation.nodes.push({ id: navigationId(id), role: 'waypoint', entry_area_id: 'approach_network', position_m: project(nodes.get(id)), osm_node_id: id, basis: 'mapped_public_walking_network' })
-  for (const [, [a, b]] of [...networkPairs].sort(([a], [b]) => a.localeCompare(b))) {
-    for (const [from, to] of [[a, b], [b, a]]) spatial.navigation.edges.push({ id: `approach_${from}_${to}`, from_node_id: navigationId(from), to_node_id: navigationId(to), directed: true, osm_way_id: publicGraph.get(a).get(b).wayId, basis: 'mapped_public_walking_network' })
+  for (const [id, [from, to]] of [...networkEdges].sort(([a], [b]) => a.localeCompare(b))) {
+    const basis = reviewOverlaps.find(item => item.edge_id === id)?.basis ?? 'mapped_public_walking_network'
+    spatial.navigation.edges.push({ id, from_node_id: navigationId(from), to_node_id: navigationId(to), directed: true, osm_way_id: graph.get(from).get(to).wayId, basis })
   }
   spatial.navigation.edges.push(...connectors)
   spatial.approach_routes = distances
-  spatial.approach_network = { basis: 'mapped_public_osm_shared_nodes', public_component_nodes: publicGraph.size, used_nodes: networkIds.size, access_policy: 'Footway/pedestrian/path/steps/living_street/service; exclude access=no/private/customers and foot=no/private on ways and nodes. Area polygon boundaries are not walking links. Only rendered segments; intersections require a shared OSM node.', connectors: connectors.filter(item => item.basis.startsWith('proposed')), limitations: ['OSM access and illustrative path widths need event review.', 'No accessible-routing, opening-hours, crossing-signal or vehicle-traffic model.', 'Public approach paths can share corridors with fictional admission stations; operational closures are not modeled.'] }
+  spatial.approach_network = { basis: 'mapped_public_osm_shared_nodes', public_component_nodes: publicGraph.size, kit_clear_component_nodes: clearComponent.size, used_nodes: networkIds.size, access_policy: 'Footway/pedestrian/path/steps/living_street/service; exclude access=no/private/customers and foot=no/private on ways and nodes. Area polygon boundaries are not walking links. Only rendered segments; intersections require a shared OSM node. Exclude paths that cross installed kit except the explicitly flagged East review leg.', connectors: connectors.filter(item => item.basis.startsWith('proposed')), review_overlaps: reviewOverlaps, limitations: ['OSM access and illustrative path widths need event review.', 'No accessible-routing, opening-hours, crossing-signal or vehicle-traffic model.', 'The East Festival approach overlaps its own middle barrier row on one mapped leg pending site review.'] }
   return distances
 }

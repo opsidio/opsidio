@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { Html } from '@react-three/drei'
+import SceneHtml from './SceneHtml'
 import { Color, DynamicDrawUsage, Matrix4, OrthographicCamera, PerspectiveCamera, Vector3 } from 'three'
 import type { Group, InstancedMesh } from 'three'
 import type { OperationsOperator } from './OperationsLayer'
@@ -34,6 +34,7 @@ export function OperatorQueueBars({ sampler, operators, clockRef, showLabels = t
   const labels = useRef<(HTMLDivElement | null)[]>([])
   const counts = useRef<(HTMLSpanElement | null)[]>([])
   const waits = useRef<(HTMLSpanElement | null)[]>([])
+  const overflow = useRef<(HTMLSpanElement | null)[]>([])
   const buffers = useMemo(() => ({
     states: createOperatorQueueStates(sampler, operators.map(operator => operator.id)),
     matrix: new Matrix4(), color: new Color(), projected: new Vector3(),
@@ -81,10 +82,15 @@ export function OperatorQueueBars({ sampler, operators, clockRef, showLabels = t
       const element = labels.current[index], anchor = anchors.current[index]
       if (!element || !anchor) continue
       const state = buffers.states[index]
-      const count = counts.current[index], wait = waits.current[index]
+      const count = counts.current[index], wait = waits.current[index], offScene = overflow.current[index]
       if (count) count.textContent = `${state.queuedCount.toLocaleString()} queued`
       if (wait) wait.textContent = `${(state.oldestWaitSeconds / 60).toFixed(1)} min oldest`
+      if (offScene) {
+        offScene.textContent = state.overflowCount > 0 ? `${state.overflowCount.toLocaleString()} off-scene` : ''
+        offScene.hidden = state.overflowCount === 0
+      }
       element.dataset.queueCount = String(state.queuedCount)
+      element.dataset.queueOverflow = String(state.overflowCount)
       element.dataset.oldestWaitSeconds = String(Math.round(state.oldestWaitSeconds))
       buffers.projected.copy(anchor.position)
       let pixelsPerMetre = 0
@@ -100,7 +106,7 @@ export function OperatorQueueBars({ sampler, operators, clockRef, showLabels = t
       // Reveal every label when space permits, without a pile of overlapping DOM at map scale.
       for (let previous = 0; show && previous < visible; previous++) {
         const other = buffers.visibleLabels[previous]
-        if (Math.abs(x - buffers.screenX[other]) < 76 && Math.abs(y - buffers.screenY[other]) < 35) show = false
+        if (Math.abs(x - buffers.screenX[other]) < 76 && Math.abs(y - buffers.screenY[other]) < 45) show = false
       }
       element.style.display = show ? 'block' : 'none'
       if (show) {
@@ -122,13 +128,14 @@ export function OperatorQueueBars({ sampler, operators, clockRef, showLabels = t
     {showLabels && operators.map((operator, index) => <group key={operator.id}
       ref={group => { anchors.current[index] = group }}
       position={[operator.position[0], operator.position[1] + QUEUE_BAR_BASE_M + 1, operator.position[2]]}>
-      <Html center zIndexRange={[18, 0]} style={{ pointerEvents: 'none' }}>
+      <SceneHtml center zIndexRange={[18, 0]} style={{ pointerEvents: 'none' }}>
         <div ref={element => { labels.current[index] = element }} data-operator-queue={operator.id}
           title={`${operator.label}: height shows queue count; color shows oldest wait`} style={labelStyle}>
           <span ref={element => { counts.current[index] = element }} style={{ display: 'block' }}>0 queued</span>
           <span ref={element => { waits.current[index] = element }} style={{ display: 'block', fontWeight: 400 }}>0.0 min oldest</span>
+          <span ref={element => { overflow.current[index] = element }} style={{ fontWeight: 400 }} hidden />
         </div>
-      </Html>
+      </SceneHtml>
     </group>)}
   </group>
 }

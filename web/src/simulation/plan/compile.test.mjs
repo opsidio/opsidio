@@ -5,6 +5,7 @@ import ts from 'typescript'
 import { catalogue } from '../model.ts'
 import { validateLayout } from '../layout/core.ts'
 import { generateAbm } from '../abm/generator.ts'
+import { scheduleAdmission } from '../abm/admission.ts'
 const source = readFileSync(new URL('./compile.ts', import.meta.url), 'utf8')
 const compiledSource = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText
   .replace("'../model'", JSON.stringify(new URL('../model.ts', import.meta.url).href))
@@ -20,6 +21,28 @@ test('the actual JSON produces 70,000 journeys across all five authored entry ar
   assert.deepEqual(result.issues, [])
   assert.equal(plan.entryAreas.length, 5)
   assert.equal(plan.operators.length, 45)
+  const queueStations = plan.config.serviceStations.filter(station => station.queueStartNodeId)
+  assert.equal(queueStations.length, 20)
+  assert.ok(queueStations.every(station => station.admissionStage === 'security'))
+  const firstJourney = result.journeys.find(journey => journey.serviceStops[0].queueStartDistanceM !== undefined)
+  const firstStop = firstJourney.serviceStops[0]
+  assert.ok(firstStop.queueStartDistanceM < firstStop.queueEndDistanceM)
+  assert.ok(firstStop.queueEndDistanceM < firstStop.distanceM)
+  assert.ok(firstStop.arrivalSeconds < firstJourney.checkpointArrivalSeconds)
+  const stages = new Map(plan.config.serviceStations.map(station => [station.nodeId, station.admissionStage]))
+  const cohorts = new Map(plan.config.cohorts.map(cohort => [cohort.id, cohort]))
+  let helpVisits = 0
+  for (const journey of result.journeys) {
+    const { helpDesk, destinationNodeId } = cohorts.get(journey.cohortId)
+    const passed = journey.routeNodeIds.indexOf(helpDesk.passNodeId)
+    const security = journey.routeNodeIds.findIndex(id => stages.get(id) === 'security')
+    assert.ok(passed >= 0 && passed < security)
+    const stops = journey.routeNodeIds.map(id => stages.get(id)).filter(Boolean)
+    if (stops[0] === 'help') helpVisits++
+    assert.deepEqual(stops, stops[0] === 'help' ? ['help', 'security', 'scan'] : ['security', 'scan'])
+    assert.equal(journey.routeNodeIds.at(-1), destinationNodeId)
+  }
+  assert.ok(helpVisits > 0 && helpVisits < result.generatedCount)
   const venue = JSON.parse(readFileSync(new URL('../venue/gbk.json', import.meta.url)))
   const validation = validateLayout(plan.northLayout, { bounds: venue.editBounds, catalogue })
   assert.deepEqual(validation.issues, [])
@@ -86,14 +109,14 @@ const { prepareJourneySampler, sampleJourneyPosition, sampleWalkingCrowd } = awa
 function smallAdmissionConfig() {
   const config = compileSimulationPlan(fixture).config
   const cohort = config.cohorts.find(item => item.categoryId === 'cat5' && item.segmentId === 'early_fan')
-  return { ...config, cohorts: [{ ...cohort, count: 8, windows: [{ startSeconds: 0, endSeconds: .01, sharePercent: 100 }] }] }
+  return { ...config, cohorts: [{ ...cohort, helpDesk: { ...cohort.helpDesk, visitPercent: 0 }, count: 8, windows: [{ startSeconds: 0, endSeconds: .01, sharePercent: 100 }] }] }
 }
 test('four lanes are used, groups stay together, and one person per operator is processed', () => {
   const config = smallAdmissionConfig()
   const result = generateAbm(config)
   assert.deepEqual(result.issues, [])
-  const scanStops = result.journeys.map(journey => journey.serviceStops[0])
-  assert.equal(new Set(scanStops.map(stop => stop.operatorId)).size, 4)
+  const securityStops = result.journeys.map(journey => journey.serviceStops[0])
+  assert.equal(new Set(securityStops.map(stop => stop.operatorId)).size, 4)
   for (const journey of result.journeys) {
     const group = result.journeys.filter(item => item.groupId === journey.groupId)
     assert.ok(group.every(member => member.serviceStops[0].operatorId === journey.serviceStops[0].operatorId))
@@ -106,12 +129,12 @@ test('four lanes are used, groups stay together, and one person per operator is 
   const phases = result.journeys.map((_, index) => sampleJourneyPosition(sampler, index, 30601, new Float32Array(3)))
   assert.equal(phases.filter(phase => phase === 'processing').length, 4)
   assert.equal(phases.filter(phase => phase === 'waiting').length, 4)
-  for (const operator of new Set(scanStops.map(stop => stop.operatorId))) {
-    const stops = scanStops.filter(stop => stop.operatorId === operator).sort((a, b) => a.startSeconds - b.startSeconds)
+  for (const operator of new Set(securityStops.map(stop => stop.operatorId))) {
+    const stops = securityStops.filter(stop => stop.operatorId === operator).sort((a, b) => a.startSeconds - b.startSeconds)
     assert.ok(stops[0].endSeconds <= stops[1].startSeconds)
   }
 })
-test('closed processing leaves people pending in the queue, while completed service continues to security', () => {
+test('closed processing leaves people pending in the queue, while security clearance continues to ticket scan', () => {
   const config = smallAdmissionConfig()
   const normal = generateAbm(config)
   assert.ok(normal.journeys.every(journey => journey.serviceStops.length === 2 && journey.completionSeconds !== null))
@@ -126,12 +149,67 @@ test('closed processing leaves people pending in the queue, while completed serv
   assert.equal(pending.waitingCount, 8)
   assert.equal(pending.processingCount, 0)
 })
+
+test('ticket issue routing uses an independent group draw and the help desk service window', () => {
+  const config = smallAdmissionConfig()
+  const cohort = config.cohorts[0]
+  const issueConfig = { ...config, cohorts: [{ ...cohort, helpDesk: { ...cohort.helpDesk, visitPercent: 100 } }] }
+  const regular = generateAbm(config), issue = generateAbm(issueConfig)
+  assert.deepEqual(issue.issues, [])
+  assert.deepEqual(issue.journeys.map(journey => [journey.groupId, journey.onsiteArrivalSeconds]), regular.journeys.map(journey => [journey.groupId, journey.onsiteArrivalSeconds]))
+  const helpStation = config.serviceStations.find(station => station.nodeId === cohort.helpDesk.checkpointNodeId)
+  assert.equal(helpStation.opensSeconds, 4 * 3600)
+  for (const journey of issue.journeys) {
+    const [help, security, scan] = journey.serviceStops
+    assert.equal(help.stationId, helpStation.id)
+    assert.ok(help.startSeconds >= helpStation.opensSeconds && help.endSeconds <= helpStation.closesSeconds)
+    assert.ok(security.arrivalSeconds > help.endSeconds && scan.arrivalSeconds > security.endSeconds)
+  }
+  assert.ok(regular.journeys.every(journey => !journey.routeNodeIds.includes(cohort.helpDesk.checkpointNodeId)))
+  const closed = generateAbm({ ...issueConfig, serviceStations: config.serviceStations.map(station => station.id === helpStation.id ? { ...station, opensSeconds: 0, closesSeconds: 1 } : station) })
+  assert.ok(closed.journeys.every(journey => journey.serviceStops.length === 1 && journey.serviceStops[0].stationId === helpStation.id && journey.completionSeconds === null))
+})
+
+test('one-way plans reject bypasses and paths back to pre-entry after scan', () => {
+  const change = (from, to) => {
+    const plan = structuredClone(fixture)
+    plan.spatial_context.navigation.edges.push({ id: 'invalid-admission-edge', from_node_id: from, to_node_id: to, directed: true })
+    return plan
+  }
+  const route = fixture.spatial_context.cohort_routes.find(route => route.category_id === 'cat5')
+  assert.throws(() => compileSimulationPlan(change('scan_checkpoint', 'arrival')), /must not lead back to pre-entry/)
+  assert.throws(() => compileSimulationPlan(change('arrival', route.destination_node_id)), /bypasses the help passage/)
+  assert.throws(() => compileSimulationPlan(change(route.lane_checkpoint_ids[0], route.destination_node_id)), /through security and one ticket scan/)
+  assert.throws(() => compileSimulationPlan(change(route.destination_node_id, 'scan_checkpoint')), /must not lead back|terminal handover/)
+})
 test('changing open lane options preserves seeded onsite demand', () => {
   const config = smallAdmissionConfig()
   const four = generateAbm(config)
   const two = generateAbm({ ...config, cohorts: config.cohorts.map(cohort => ({ ...cohort, laneCheckpointIds: cohort.laneCheckpointIds.slice(0, 2) })) })
   assert.deepEqual(four.journeys.map(item => item.onsiteArrivalSeconds), two.journeys.map(item => item.onsiteArrivalSeconds))
   assert.equal(new Set(two.journeys.map(item => item.serviceStops[0].operatorId)).size, 2)
+})
+
+test('scan queues start at the pen entrance and preserve FIFO through the gate closing time', () => {
+  const routeNodeIds = ['origin', 'tail', 'head', 'scan', 'security', 'handover']
+  const points = [0, 10, 30, 40, 60, 70].map(distance => [distance, 0, 0])
+  const visits = () => [
+    { id: 'earlier', cohortId: 'slow', groupId: 'first', onsiteArrivalSeconds: 1, checkpointArrivalSeconds: 41, walkSeconds: 70, routeNodeIds, points },
+    { id: 'later', cohortId: 'fast', groupId: 'second', onsiteArrivalSeconds: 12, checkpointArrivalSeconds: 32, walkSeconds: 35, routeNodeIds, points },
+  ]
+  const scan = { id: 'scan-station', nodeId: 'scan', operatorId: 'scanner', serviceSeconds: 9, opensSeconds: 0, closesSeconds: 120, queueStartNodeId: 'tail', queueEndNodeId: 'head' }
+  const security = { id: 'security-station', nodeId: 'security', operatorId: 'guard', serviceSeconds: 8, opensSeconds: 0, closesSeconds: 120 }
+  const journeys = visits()
+  scheduleAdmission(journeys, [scan, security])
+  const [first, second] = journeys.map(journey => journey.serviceStops[0])
+  assert.deepEqual([first.arrivalSeconds, first.queueStartDistanceM, first.queueEndDistanceM, first.startSeconds, first.endSeconds], [11, 10, 30, 41, 50])
+  assert.deepEqual([second.arrivalSeconds, second.startSeconds, second.endSeconds], [17, 50, 59])
+  assert.equal(journeys[0].serviceStops[1].arrivalSeconds, 70)
+  assert.equal(journeys[0].serviceStops[1].queueStartDistanceM, undefined)
+  const late = visits()
+  scheduleAdmission(late, [{ ...scan, closesSeconds: 45 }, security])
+  assert.ok(late.every(journey => journey.serviceStops.length === 1 && journey.serviceStops[0].startSeconds === null && journey.completionSeconds === null))
+  assert.throws(() => scheduleAdmission(visits(), [{ ...scan, queueEndNodeId: 'missing' }]), /queue entrance and end in order/)
 })
 
 // A compact transport extension exercises the wire independently of the full mapped approach artifact.

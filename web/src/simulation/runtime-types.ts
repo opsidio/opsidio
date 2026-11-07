@@ -37,6 +37,7 @@ export type CohortDemand = {
   groupSize?: number
   walkSpeedMps?: number
   laneCheckpointIds?: string[]
+  helpDesk?: { passNodeId: string; checkpointNodeId: string; visitPercent: number }
 }
 
 export type ServiceStation = {
@@ -46,11 +47,17 @@ export type ServiceStation = {
   serviceSeconds: number
   opensSeconds: number
   closesSeconds: number
+  queueStartNodeId?: string
+  queueEndNodeId?: string
+  admissionStage?: 'help' | 'security' | 'scan'
 }
 export type ServiceStop = {
   stationId: string
   operatorId: string
   distanceM: number
+  queueStartDistanceM?: number
+  queueEndDistanceM?: number
+  /** Arrival at the authored queue entrance, or at the checkpoint if it has no queue geometry. */
   arrivalSeconds: number
   startSeconds: number | null
   endSeconds: number | null
@@ -73,6 +80,7 @@ export type AgentJourney = {
   cohortId: string
   groupId: string
   onsiteArrivalSeconds: number
+  /** Walking-only estimate for the first mandatory checkpoint. Service stops carry scheduled arrivals. */
   checkpointArrivalSeconds: number
   routeNodeIds: string[]
   points: Point[]

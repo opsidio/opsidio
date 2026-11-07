@@ -1,28 +1,29 @@
-.des-run-panel { width: min(350px, calc(100vw - 32px)); max-height: min(76vh, 760px); overflow: auto; color: #163b37; background: #f4f5edee; border: 1px solid #c6d0c4; border-radius: 12px; box-shadow: 0 12px 40px #183d4420; padding: 16px; font: 13px/1.45 system-ui, sans-serif; backdrop-filter: blur(12px); }
+.des-run-panel { width: min(350px, calc(100vw - 32px)); max-height: min(76vh, 760px); overflow: auto; color: var(--sim-text, #163b37); background: var(--sim-surface, #f4f5ed); border: 1px solid var(--sim-border, #c6d0c4); border-radius: var(--sim-radius, 12px); box-shadow: var(--sim-shadow, 0 12px 40px #183d4420); padding: 16px; font: 13px/1.45 var(--sim-font, system-ui, sans-serif); backdrop-filter: blur(12px); }
 .des-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .des-panel-heading h2 { font-size: 16px; margin: 0; }
-.des-panel-heading > span { font: 11px ui-monospace, monospace; border: 1px solid #a5bcb2; padding: 2px 6px; border-radius: 4px; }
+.des-panel-heading > span { font: 11px ui-monospace, monospace; border: 1px solid var(--sim-border, #a5bcb2); padding: 2px 6px; border-radius: 4px; }
 .des-run-panel p { margin: 8px 0; }
-.des-note { color: #526c62; font-size: 12px; }
-.des-notice { background: #ece9d7; padding: 9px; border-radius: 6px; }
-.des-plan-identity { margin: 12px 0; border-left: 3px solid #489589; padding-left: 10px; }
+.des-note { color: var(--sim-muted, #526c62); font-size: 12px; }
+.des-notice { background: color-mix(in srgb, var(--sim-warning, #835332) 10%, var(--sim-raised, #ece9d7)); padding: 9px; border-radius: 6px; }
+.des-plan-identity { margin: 12px 0; border-left: 3px solid var(--sim-accent, #489589); padding-left: 10px; }
 .des-plan-identity > strong, .des-plan-identity > span, .des-plan-identity > small { display: block; overflow-wrap: anywhere; }
-.des-plan-identity p { color: #526c62; font-size: 11px; }
+.des-plan-identity p { color: var(--sim-muted, #526c62); font-size: 11px; }
 .des-import { display: block; font-weight: 600; }
 .des-import input { display: block; max-width: 100%; margin-top: 6px; font: inherit; }
 .des-health, .des-settings { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-top: 14px; }
-.des-run-panel button { font: inherit; cursor: pointer; color: inherit; background: #e7ebe1; border: 1px solid #b9c7b9; border-radius: 5px; padding: 5px 9px; }
+.des-run-panel button { font: inherit; cursor: pointer; color: inherit; background: var(--sim-raised, #e7ebe1); border: 1px solid var(--sim-border, #b9c7b9); border-radius: 5px; padding: 5px 9px; }
 .des-run-panel button:disabled { opacity: .55; cursor: default; }
 .des-settings { font-size: 12px; }
-.des-settings input { width: 56px; font: inherit; padding: 4px; border: 1px solid #b9c7b9; border-radius: 4px; background: #fcfcf7; color: inherit; }
-.des-run-panel .des-run-button { width: 100%; padding: 9px; margin-top: 12px; background: #225e54; color: #fff; border-color: #225e54; }
-.des-error { color: #8c352c; overflow-wrap: anywhere; margin-top: 10px; }
+.des-settings input { width: 56px; font: inherit; padding: 4px; border: 1px solid var(--sim-border, #b9c7b9); border-radius: 4px; background: var(--sim-surface, #fcfcf7); color: inherit; }
+.des-run-panel .des-run-button { width: 100%; padding: 9px; margin-top: 12px; background: var(--sim-accent, #225e54); color: var(--sim-on-accent, #fff); border-color: var(--sim-accent, #225e54); font-weight: 700; }
+.des-error { color: var(--sim-danger, #8c352c); overflow-wrap: anywhere; margin-top: 10px; }
 .des-error small { display: block; }
-.des-result { border-top: 1px solid #c6d0c4; margin-top: 14px; padding-top: 12px; }
+.des-result { border-top: 1px solid var(--sim-border, #c6d0c4); margin-top: 14px; padding-top: 12px; }
 .des-result dl { margin: 10px 0; font-size: 11px; }
-.des-result dt { color: #526c62; }
+.des-result dt { color: var(--sim-muted, #526c62); }
 .des-result dd { margin: 0 0 6px; overflow-wrap: anywhere; font-family: ui-monospace, monospace; }
 .des-result details { margin-top: 8px; }
 .des-result summary { cursor: pointer; font-size: 12px; }
-.des-result pre { max-height: 250px; overflow: auto; background: #e6ebdf; padding: 8px; border-radius: 5px; font-size: 10px; }
+.des-result pre { max-height: 250px; overflow: auto; background: var(--sim-raised, #e6ebdf); padding: 8px; border-radius: 5px; font-size: 10px; }
 .des-run-panel ul { margin: 8px 0; padding-left: 18px; }
+.des-run-panel :is(button, input, summary):focus-visible { outline: 2px solid var(--sim-accent, #225e54); outline-offset: 2px; }

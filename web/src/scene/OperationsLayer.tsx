@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { Html, Line } from '@react-three/drei'
+import { Line } from '@react-three/drei'
+import SceneHtml from './SceneHtml'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import type { EntryAreaMarker, KitPreset, Placement, Point } from '../simulation/types'
@@ -189,15 +190,15 @@ export default function OperationsLayer({ operators, placements, catalogue, entr
     {showLabels && detail && checkpoints.map(({ placement, preset, role, operators: assigned }) => {
       const depth = preset.kind === 'roder' ? (placement.bays ?? 1) * (preset.bayLengthM ?? preset.depthM) : preset.depthM
       const color = OPERATIONS_ROLES[role].color
-      return <Html key={placement.id} position={localToWorld(placement, 0, (preset.eaveM ?? preset.heightM) + 0.3, -depth / 2 - 0.5)} center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
+      return <SceneHtml key={placement.id} position={localToWorld(placement, 0, (preset.eaveM ?? preset.heightM) + 0.3, -depth / 2 - 0.5)} center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
         <div data-operations-checkpoint={placement.id} style={{ ...labelStyle, borderTop: `3px solid ${color}`, padding: '3px 6px' }}>
           <strong style={{ display: 'block', fontSize: 10, color }}>{role === 'other' ? placement.label : OPERATIONS_ROLES[role].label}</strong>
           <span style={{ display: 'block', fontSize: 9, marginTop: 1 }}>{assigned.length} {assigned.length === 1 ? 'operator' : 'operators'}</span>
         </div>
-      </Html>
+      </SceneHtml>
     })}
     {showLabels && !detail && areas.filter(item => item.total > 0 || item.barrierCount > 0).map(({ area, counts, total, barrierCount }) =>
-      <Html key={area.id} position={[area.position[0], area.position[1] + 6, area.position[2]]} center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
+      <SceneHtml key={area.id} position={[area.position[0], area.position[1] + 6, area.position[2]]} center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
         <div data-operations-area={area.id} style={{ ...labelStyle, transform: `translateY(${areaLabelOffsetPx}px)`, borderTop: `3px solid ${area.color}` }}>
           <strong style={{ display: 'block', fontSize: 10 }}>{area.label} · {total} staff</strong>
           <span style={{ display: 'flex', gap: 7, marginTop: 3, fontSize: 9 }}>
@@ -208,6 +209,6 @@ export default function OperationsLayer({ operators, placements, catalogue, entr
           </span>
           <small style={{ display: 'block', marginTop: 3, color: '#6f8186', fontSize: 8 }}>{barrierCount} barrier panels · zoom to inspect</small>
         </div>
-      </Html>)}
+      </SceneHtml>)}
   </group>
 }

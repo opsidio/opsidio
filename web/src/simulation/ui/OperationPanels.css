@@ -1,0 +1,134 @@
+.gate-operations-panel,
+.optimization-panel {
+  display: grid;
+  gap: 12px;
+  color: var(--sim-text, #21242a);
+}
+
+:is(.gate-operations-panel, .optimization-panel) p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+:is(.gate-operations-panel, .optimization-panel) [role="alert"] {
+  padding: 9px 11px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--sim-danger, #a12f3d) 7%, var(--sim-surface, #fff));
+  color: var(--sim-danger, #a12f3d);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+:is(.gate-operations-panel, .optimization-panel) button {
+  padding: 7px 10px;
+  border: 1px solid var(--sim-border, #e3e5ea);
+  border-radius: 8px;
+  background: var(--sim-raised, #f5f6f8);
+  color: var(--sim-text, #21242a);
+  font: inherit;
+  cursor: pointer;
+}
+
+:is(.gate-operations-panel, .optimization-panel) button:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
+:is(.gate-operations-panel, .optimization-panel) :is(button, input, select):focus-visible {
+  outline: 2px solid var(--sim-accent, #ff5a5e);
+  outline-offset: 2px;
+}
+
+.gate-operations-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gate-operations-panel > p:not([role="alert"]),
+.optimization-panel > p:first-child,
+.optimization-panel small {
+  color: var(--sim-muted, #5c626e);
+}
+
+.gate-operations-panel .gate-inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 8px 10px 10px;
+  min-width: 0;
+  border: 1px solid var(--sim-border, #e3e5ea);
+  border-radius: 8px;
+  background: var(--sim-raised, #f5f6f8);
+}
+
+.gate-inputs legend {
+  padding: 0 3px;
+  font-weight: 650;
+}
+
+.gate-operations-panel .gate-inputs label {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+  color: var(--sim-muted, #5c626e);
+}
+
+.gate-operations-panel .gate-inputs :is(input, select) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 5px;
+  border: 1px solid var(--sim-border, #e3e5ea);
+  border-radius: 6px;
+  background: var(--sim-surface, #fff);
+  color: var(--sim-text, #21242a);
+  font: inherit;
+}
+
+.gate-operations-panel > button,
+.optimization-panel > button {
+  justify-self: start;
+}
+
+.optimization-panel .optimization-connection {
+  justify-self: start;
+  padding: 4px 8px;
+  border: 1px solid var(--sim-border, #e3e5ea);
+  border-radius: 999px;
+  background: var(--sim-raised, #f5f6f8);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.optimization-panel .optimization-connection[data-configured="true"] {
+  color: var(--sim-success, #24745d);
+}
+
+.optimization-panel .simulation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+
+.optimization-panel .optimization-primary {
+  border-color: var(--sim-accent, #ff5a5e);
+  background: var(--sim-accent, #ff5a5e);
+  color: var(--sim-on-accent, #fff);
+  font-weight: 700;
+}
+
+.optimization-candidate {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--sim-border, #e3e5ea);
+  border-radius: 8px;
+  background: var(--sim-raised, #f5f6f8);
+}

@@ -19,10 +19,12 @@ at ground level. Bars start 6 m above ground to clear the current canopies.
   Offscreen and overlapping labels are hidden, with at most 16 shown at once.
   Bars remain visible without labels at map scale.
 
-Queue counts and oldest waits come from binary searches over the full FIFO
-timeline, including unserved people whose start/end times are null. They are
-independent of the crowd preview's front-32-per-queue display cap. Help operators
-without an authored service queue show zero; no exception demand is invented.
+Queue counts and oldest waits come from the full FIFO timeline, including
+people still waiting at closing. The view draws only the people who fit in the
+authored pen or are walking from its front to the security checkpoint. Other waiting people
+are counted as off-scene. This includes queues without a drawn pen; the preview
+makes no estimate of where those people would stand. Help operators without an
+authored service station show zero.
 
 `prepareJourneySampler` should be called once per result and shared between
 `CrowdPreview` and `OperatorQueueBars`. Queue annotation geometry uses instances
