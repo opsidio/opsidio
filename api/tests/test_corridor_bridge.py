@@ -105,6 +105,18 @@ class CorridorBridgeTests(unittest.TestCase):
         self.assertIs(result["best"], result["baseline"])
         self.assertEqual(len(client.calls), 3)
 
+    def test_comparison_accepts_larger_populations_and_lane_counts(self):
+        document = copy.deepcopy(DOCUMENT)
+        document['arrivals']['count'] = 16500
+        document['scan'].update(lanes=9, physical_slots=12, available_staff=12, available_scanners=12)
+        responses = response_chain(improved=False)
+        responses[0] = plan_resource(PLAN_ID, document)
+        responses[2] = run_resource(BASELINE_ID, responses[0], peak=0, wait=0)
+        responses[2]['output']['population'].update(total=16500, admitted=16500)
+        result = self.bridge(StubClient(responses)).optimize({'plan': document})
+        self.assertEqual(result['baseline']['output']['population']['total'], 16500)
+        self.assertEqual(result['baseline']['output']['scan']['lanes'], 9)
+
     def test_invalid_requests_and_missing_configuration_make_no_upstream_calls(self):
         client = StubClient([])
         empty = CorridorBridge(BridgeConfig(), client)
@@ -113,7 +125,7 @@ class CorridorBridgeTests(unittest.TestCase):
         self.assertEqual(context.exception.http_status, 503)
         self.assertIn("OPSIDIO_CORRIDOR_API_KEY", empty.health()["missing"])
         for invalid in ({}, {"plan": {**DOCUMENT, "schema_version": "0.1"}},
-                        {"plan": {**DOCUMENT, "arrivals": {"count": 501}}},
+                        *({"plan": {**DOCUMENT, "arrivals": {"count": value}}} for value in (0, -1, True, 1.5)),
                         {"plan": {**DOCUMENT, "scan": {**DOCUMENT["scan"], "available_staff": 0}}},
                         {"plan": {**DOCUMENT, "walking_speed_mps": float("nan")}}):
             with self.assertRaises(BridgeError) as context:

@@ -33,7 +33,7 @@ test('projects an actual selected route and a deterministic V1 forecourt arrival
   assert.equal(projection.gateAttendees, 16500)
   assert.equal(projection.startingLanes, 3)
   assert.equal(projection.authoredLanes, 8)
-  assert.deepEqual(document.arrivals, { count: 500, start_seconds: 0, end_seconds: projection.sampleEndSeconds - projection.sampleStartSeconds })
+  assert.deepEqual(document.arrivals, { count: 16500, start_seconds: 0, end_seconds: projection.sampleEndSeconds - projection.sampleStartSeconds })
   assert.ok(document.arrivals.end_seconds > 0)
   assert.ok(document.horizon_seconds >= document.arrivals.end_seconds && document.horizon_seconds <= 86400)
   assert.deepEqual(document.scan, {

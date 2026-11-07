@@ -1,8 +1,14 @@
 # Doni V3 corridor comparison
 
-The full GBK simulation runs in the browser from the selected saved version or draft. Doni's deployed Phase 1 service runs a different, smaller model: one ordered corridor, up to 500 visitors, one ticket scan checkpoint, and up to eight scan lanes. It compares lane counts; it does not optimize venue-wide demand, security, help desks or gate clocks.
+The full GBK simulation runs in the browser from the selected saved version or draft.
+Doni's corridor service models one ordered route, all visitors at the selected entrance, and one ticket scan checkpoint.
+Visitor and lane counts have no fixed upper limit. Lane comparisons use the authored gate capacity, available staff, scanners, and budget.
+It compares lane counts; it does not optimize venue-wide demand, security, help desks or gate clocks.
 
-The workspace projects a busy wave from actual generated arrivals for the selected entrance. The corridor preserves one authored walking path, the observed release interval and sample walking speed, and the plan's typical ticket-scan and wristband time. V3 releases visitors uniformly across that interval. The pilot's queue results describe this corridor sample only.
+The workspace projects every generated arrival at the selected entrance.
+The corridor preserves one authored walking path, the full release interval, mean walking speed, and typical ticket-scan and wristband time.
+V3 releases visitors uniformly across that interval. Queue results describe this representative corridor and its uniform arrival distribution.
+The 24-hour horizon and computation deadlines still apply.
 
 ## Run locally
 

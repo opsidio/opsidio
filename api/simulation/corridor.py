@@ -150,12 +150,12 @@ class CorridorBridge:
             raise failure(422, "validation_failed", "Provide a corridor-1 document in plan.", status="invalid")
         scan, arrivals = document.get("scan"), document.get("arrivals")
         lane_fields = ("lanes", "physical_slots", "available_staff", "available_scanners")
-        if (not isinstance(scan, dict) or any(type(scan.get(field)) is not int or not 1 <= scan[field] <= 8
+        if (not isinstance(scan, dict) or any(type(scan.get(field)) is not int or scan[field] < 1
                                              for field in lane_fields)
                 or any(scan[field] < scan["lanes"] for field in lane_fields[1:])):
-            raise failure(422, "validation_failed", "Scan capacities must cover 1–8 active lanes.", status="invalid")
-        if not isinstance(arrivals, dict) or type(arrivals.get("count")) is not int or not 1 <= arrivals["count"] <= 500:
-            raise failure(422, "validation_failed", "The corridor sample must contain 1–500 arrivals.", status="invalid")
+            raise failure(422, "validation_failed", "Scan capacities must cover all active lanes.", status="invalid")
+        if not isinstance(arrivals, dict) or type(arrivals.get("count")) is not int or arrivals["count"] < 1:
+            raise failure(422, "validation_failed", "The corridor must contain a positive integer arrival count.", status="invalid")
         try:
             _snapshot_hash(document)
         except (ValueError, TypeError, UnicodeError, RecursionError):

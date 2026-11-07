@@ -51,8 +51,7 @@ def simulate(plan: PlanDocument, *, deadline: float) -> RunOutput:
     arrival_window = Fraction(str(plan.arrivals.end_seconds)) - first_arrival
     service_time = Fraction(str(plan.scan.service_seconds))
     count = plan.arrivals.count
-    lanes = [(Fraction(0), index) for index in range(plan.scan.lanes)]
-    heapq.heapify(lanes)
+    lanes = [(Fraction(0), 0)]
     unfinished = dict(walking_to_scan=0, queued=0, scanning=0, walking_to_admission=0)
     waits = []
     queue_events = []
@@ -67,6 +66,8 @@ def simulate(plan: PlanDocument, *, deadline: float) -> RunOutput:
         service_end = service_start + service_time
         admission = service_end + walk_to_admission
         heapq.heappush(lanes, (service_end, lane_index))
+        if index + 1 < min(plan.scan.lanes, count):
+            heapq.heappush(lanes, (Fraction(0), index + 1))
         walking_observations.append(min(walk_to_scan, max(0, horizon - arrival)))
         walking_observations.append(min(walk_to_admission, max(0, horizon - service_end)))
         if admission <= horizon:
@@ -141,7 +142,7 @@ def compare_lanes(plan: PlanDocument, *, deadline: float) -> Comparison:
         stop_reason='completed',
     )
     maximum = min(
-        plan.scan.physical_slots, plan.scan.available_staff, plan.scan.available_scanners, 8,
+        plan.scan.physical_slots, plan.scan.available_staff, plan.scan.available_scanners, plan.arrivals.count,
     )
     budget = int(plan.budget.amount.replace('.', ''))
     for lanes in range(plan.scan.lanes + 1, maximum + 1):
@@ -149,7 +150,7 @@ def compare_lanes(plan: PlanDocument, *, deadline: float) -> Comparison:
             _check_deadline(deadline)
             if lane_cost_minor(plan, lanes) > budget:
                 comparison.evaluations.append(Evaluation(lanes=lanes, status='excluded_budget', score=None))
-                continue
+                break
             candidate = plan.model_copy(update={'scan': plan.scan.model_copy(update={'lanes': lanes})})
             output = simulate(candidate, deadline=min(deadline, time.monotonic() + 2.0))
             candidate_score = score(output, candidate)
