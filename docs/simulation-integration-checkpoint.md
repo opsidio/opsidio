@@ -14,6 +14,8 @@ The next work runs in three isolated worktrees. Faisal owns shared interfaces, a
 
 ## Frozen seams
 
+Editor-state import/export uses `opsidio-editor/0.1` with camelCase fields. The algorithm-facing `opsidio-layout/0.1` envelope remains a separate proposal for the boundary adapter.
+
 The TypeScript integration types are in `web/src/simulation/runtime-types.ts`. Ground coordinates remain local metres with X east, Y up, Z south.
 
 ABM onsite arrival is arrival at the graph's origin node. Checkpoint arrival adds walking time. Keep both counts in separate 15-minute buckets. Project onsite demand into Doni's arrival curve when the plan also contains walking distances, so walking is counted once. ABM movement is a journey preview. DES determines processing and queue metrics.
