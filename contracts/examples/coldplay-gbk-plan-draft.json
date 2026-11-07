@@ -1,0 +1,744 @@
+{
+  "schema_version": "0.1",
+  "meta": {
+    "document": "opsidio_event_input",
+    "example": true,
+    "description": "Partial, fictional GBK planning draft projected from the admission scenario. Not ready for DES.",
+    "timezone": "Asia/Jakarta",
+    "currency": "IDR",
+    "readiness": {
+      "status": "draft_requires_operational_inputs",
+      "simulation_ready": false,
+      "schema_target": "Doni PlanDocument v0.1",
+      "semantic_validation": "not_run"
+    },
+    "unresolved": [
+      {
+        "field": "event.capacity",
+        "reason": "Venue/configured capacity, sold/issued ticket totals and no-show rate are not authored. Expected attendance is not a ticket-sales fact."
+      },
+      {
+        "field": "event.ticket_categories[*].sold|issued",
+        "reason": "Fictional expected-arrival counts are retained as estimates, not sold or issued inventory."
+      },
+      {
+        "field": "event.audience_profile",
+        "reason": "Gender, bag, locker, accessibility and group proportions remain unauthored."
+      },
+      {
+        "field": "venue.layout",
+        "reason": "Proposed gate references require real gate records, queue/destination zones, areas, lane counts, opening/closing times, directed walking paths and validated internal routes."
+      },
+      {
+        "field": "process_steps",
+        "reason": "Admission functions are recorded, but their operational order, service-time distributions and exception handling require authoring."
+      },
+      {
+        "field": "staff",
+        "reason": "Roles, headcounts, assignments, shifts and costs are not authored."
+      },
+      {
+        "field": "constraints",
+        "reason": "Service targets, budgets and safe operational limits are not authored."
+      },
+      {
+        "field": "demand",
+        "reason": "Expected attendance has no authored arrival curve or group model in this draft; browser ABM results have not been projected."
+      }
+    ],
+    "projection": {
+      "version": "admission-scenario-to-plan/0.1",
+      "schedule_mapping": {
+        "outer_area_open": "proposal.schedule.prefunction_open",
+        "doors_open": "proposal.schedule.general_concert_doors",
+        "main_act": "proposal.schedule.main_act"
+      },
+      "admission_mapping": "Festival viewing tier is standing; CAT 1–8 are seated. Packages retain their underlying viewing tier.",
+      "infinity_rule": "Split the existing 500-person Infinity cohort using its fixed viewing-tier allocation; all splits keep the original arrival entry area.",
+      "count_rule": "Preserve expected arrivals as expected_attendees_estimate. Do not infer sold/issued tickets, quota or no-show rates.",
+      "source_titles": "Descriptive labels for the fixture's existing source URLs; no additional research was performed."
+    },
+    "source_scenario": {
+      "file": "data/scenarios/coldplay-gbk-demo.json",
+      "canonical_sha256": "08c515311cf749e512013686eddc68db63de5f7ba20d07ebd9e9fef9e6f37cd0",
+      "snapshot": {
+        "schema_version": "opsidio-admission-scenario/0.1",
+        "id": "coldplay-gbk-70k-demo",
+        "title": "Coldplay-inspired GBK admission · fictional 70,000-person scenario",
+        "venue_id": "gbk-osm-local",
+        "basis": "fictional_operations_scenario",
+        "historical_reference": {
+          "event_date": "2023-11-15",
+          "timezone": "Asia/Jakarta",
+          "source_id": "promoter"
+        },
+        "proposal": {
+          "event_date": "2026-11-14",
+          "timezone": "Asia/Jakarta",
+          "expected_attendees": 70000,
+          "attendance_basis": "fictional_demo_demand",
+          "venue_capacity_validation": "pending",
+          "schedule": {
+            "arrival_generation_start": "09:00",
+            "prefunction_open": "13:00",
+            "ultimate_check_in_start": "15:30",
+            "ultimate_experience": "16:30",
+            "premium_concert_doors": "17:00",
+            "general_concert_doors": "17:30",
+            "opening_act": "20:00",
+            "main_act": "21:00",
+            "model_end": "23:30"
+          },
+          "schedule_basis": "proposed_demo_clock_using_published_2023_entry_times"
+        },
+        "entry_areas": [
+          {
+            "id": "plaza_tenggara",
+            "label": "Plaza Tenggara",
+            "position": [
+              145,
+              0,
+              185
+            ],
+            "landmark": "Istora / Gate 5",
+            "color": "#877dba",
+            "position_basis": "proposed_demo_anchor",
+            "historical_routing_source": "entry_guide",
+            "route_status": "awaiting_authored_graph"
+          },
+          {
+            "id": "plaza_barat",
+            "label": "Plaza Barat",
+            "position": [
+              -185,
+              0,
+              35
+            ],
+            "landmark": "Tennis Indoor / Stadion Madya",
+            "color": "#579b9a",
+            "position_basis": "proposed_demo_anchor",
+            "historical_routing_source": "entry_guide",
+            "route_status": "awaiting_authored_graph"
+          },
+          {
+            "id": "pintu_kuning",
+            "label": "Pintu Kuning",
+            "position": [
+              -175,
+              0,
+              -235
+            ],
+            "landmark": "Gate H / Indonesia Arena",
+            "color": "#c29b49",
+            "position_basis": "proposed_demo_anchor",
+            "historical_routing_source": "entry_guide",
+            "route_status": "awaiting_authored_graph"
+          },
+          {
+            "id": "plaza_utara",
+            "label": "Plaza Utara",
+            "position": [
+              12,
+              0,
+              -275
+            ],
+            "landmark": "Gate 10 / SPARK",
+            "color": "#62967a",
+            "position_basis": "proposed_demo_anchor",
+            "historical_routing_source": "entry_guide",
+            "route_status": "awaiting_authored_graph"
+          },
+          {
+            "id": "plaza_timur",
+            "label": "Plaza Timur · Festival",
+            "position": [
+              185,
+              0,
+              20
+            ],
+            "landmark": "Aquatic Stadium / Istora parking",
+            "color": "#bd7f66",
+            "position_basis": "proposed_demo_anchor",
+            "historical_routing_source": "entry_guide",
+            "route_status": "awaiting_authored_graph"
+          }
+        ],
+        "cohorts": [
+          {
+            "id": "ultimate_experience",
+            "label": "Ultimate Experience",
+            "expected_attendees": 800,
+            "count_basis": "fictional_demo_allocation",
+            "viewing_tier": "cat1",
+            "entry_area_id": "plaza_tenggara"
+          },
+          {
+            "id": "my_universe",
+            "label": "My Universe",
+            "expected_attendees": 2200,
+            "count_basis": "fictional_demo_allocation",
+            "viewing_tier": "festival",
+            "entry_area_id": "plaza_tenggara"
+          },
+          {
+            "id": "festival",
+            "label": "Festival",
+            "expected_attendees": 22000,
+            "count_basis": "fictional_demo_allocation",
+            "viewing_tier": "festival",
+            "entry_area_id": "plaza_timur"
+          },
+          {
+            "id": "cat1",
+            "label": "CAT 1",
+            "expected_attendees": 6000,
+            "count_basis": "fictional_demo_allocation",
+            "viewing_tier": "cat1",
+            "entry_area_id": "plaza_tenggara"
+          },
+          {
+            "id": "cat2",
+            "label": "CAT 2",
+            "expected_attendees": 7000,
+            "count_basis": "fictional_demo_allocation",
+            "viewing_tier": "cat2",
+            "entry_area_id": "plaza_tenggara"
+          },
+          {
+            "id": "cat3",
+            "label": "CAT 3",
+            "expected_attendees": 8000,
+            "count_basis": "fictional_demo_allocation",
+            "viewing_tier": "cat3",
+            "entry_area_id": "plaza_barat"
+          },
+          {
+            "id": "cat4",
+            "label": "CAT 4",
+            "expected_attendees": 8000,
+            "count_basis": "fictional_demo_allocation",
+            "viewing_tier": "cat4",
+            "entry_area_id": "pintu_kuning"
+          },
+          {
+            "id": "cat5",
+            "label": "CAT 5",
+            "expected_attendees": 5000,
+            "count_basis": "fictional_demo_allocation",
+            "viewing_tier": "cat5",
+            "entry_area_id": "plaza_utara"
+          },
+          {
+            "id": "cat6",
+            "label": "CAT 6",
+            "expected_attendees": 4000,
+            "count_basis": "fictional_demo_allocation",
+            "viewing_tier": "cat6",
+            "entry_area_id": "plaza_utara"
+          },
+          {
+            "id": "cat7",
+            "label": "CAT 7",
+            "expected_attendees": 3000,
+            "count_basis": "fictional_demo_allocation",
+            "viewing_tier": "cat7",
+            "entry_area_id": "plaza_utara"
+          },
+          {
+            "id": "cat8",
+            "label": "CAT 8",
+            "expected_attendees": 3500,
+            "count_basis": "fictional_demo_allocation",
+            "viewing_tier": "cat8",
+            "entry_area_id": "plaza_utara"
+          },
+          {
+            "id": "infinity",
+            "label": "Infinity allocation cohort",
+            "expected_attendees": 500,
+            "count_basis": "fictional_demo_allocation",
+            "viewing_tier": null,
+            "entry_area_id": "plaza_tenggara"
+          }
+        ],
+        "infinity_demo_allocation": {
+          "basis": "fictional_fixed_allocation_included_in_the_500_infinity_attendees",
+          "viewing_tiers": {
+            "festival": 200,
+            "cat1": 50,
+            "cat2": 50,
+            "cat3": 50,
+            "cat4": 50,
+            "cat5": 25,
+            "cat6": 25,
+            "cat7": 25,
+            "cat8": 25
+          },
+          "arrival_entry_area_id": "plaza_tenggara",
+          "internal_route_validation": "pending"
+        },
+        "admission_process": {
+          "wristband_collection": "during_admission_at_the_category_entry_area",
+          "functions_from_public_guide": [
+            "matching_e_ticket_and_id",
+            "security_inspection",
+            "barcode_scan",
+            "admission_wristband",
+            "prefunction_area",
+            "concert_area_entry"
+          ],
+          "tent_order_basis": "scenario_design_pending",
+          "category_specific_redemption_tent_evidence": "not_found",
+          "group_policy": "tickets_purchased_together_enter_with_registered_holder",
+          "exception_branch": "staffed_ticket_help_desk_proposed",
+          "ultimate_check_in": "separate_package_check_in_at_plaza_tenggara",
+          "infinity_check_in": "original_ID_verification_at_gate_D_plaza_tenggara"
+        },
+        "sources": {
+          "promoter": "https://www.pk-ent.com/news/coldplay-music-of-the-spheres-world-tour",
+          "entry_guide": "https://www.antaranews.com/berita/3823839/perhatikan-hal-penting-ini-sebelum-nonton-konser-coldplay",
+          "venue_map": "https://amp.kompas.com/hype/read/2023/11/14/105246766/denah-venue-konser-coldplay-di-jakarta",
+          "admission_process": "https://www.liputan6.com/showbiz/read/5452689/h-1-konser-coldplay-di-jakarta-simak-informasi-penting-soal-e-ticket-dan-cara-masuk-venue-agar-tak-keliru",
+          "wristband_reporting": "https://www.bloombergtechnoz.com/detail-news/20633/cara-tukar-wristband-untuk-masuk-venue-konser-coldplay-di-jakarta",
+          "ticket_products": "https://kalteng.antaranews.com/berita/634332/harga-tiket-konser-coldplay-di-jakarta-termahal-hingga-rp11-juta"
+        }
+      }
+    }
+  },
+  "event": {
+    "id": "coldplay-gbk-70k-demo",
+    "name": "Coldplay-inspired GBK admission · fictional 70,000-person scenario",
+    "venue": "gbk-osm-local",
+    "date": "2026-11-14",
+    "day_of_week": "saturday",
+    "schedule": {
+      "arrival_generation_start": "09:00",
+      "prefunction_open": "13:00",
+      "ultimate_check_in_start": "15:30",
+      "ultimate_experience": "16:30",
+      "premium_concert_doors": "17:00",
+      "general_concert_doors": "17:30",
+      "opening_act": "20:00",
+      "main_act": "21:00",
+      "model_end": "23:30",
+      "basis": "assumed",
+      "outer_area_open": "13:00",
+      "doors_open": "17:30"
+    },
+    "schedule_basis": "proposed_demo_clock_using_published_2023_entry_times",
+    "expected_attendees_estimate": 70000,
+    "attendance_basis": "fictional_demo_demand",
+    "ticket_categories": [
+      {
+        "id": "ultimate_experience",
+        "name": "Ultimate Experience",
+        "admission": "seated",
+        "entry_gate": "proposed_gate_plaza_tenggara",
+        "entry_gate_status": "proposed_reference_requires_authored_gate",
+        "entry_area_id": "plaza_tenggara",
+        "cohort_id": "ultimate_experience",
+        "ticket_product_id": "ultimate_experience",
+        "viewing_tier": "cat1",
+        "expected_attendees_estimate": 800,
+        "count_basis": "fictional_demo_allocation",
+        "attendance_interpretation": "Expected arrivals only; sold/issued tickets and no-show rates are unresolved."
+      },
+      {
+        "id": "my_universe",
+        "name": "My Universe",
+        "admission": "standing",
+        "entry_gate": "proposed_gate_plaza_tenggara",
+        "entry_gate_status": "proposed_reference_requires_authored_gate",
+        "entry_area_id": "plaza_tenggara",
+        "cohort_id": "my_universe",
+        "ticket_product_id": "my_universe",
+        "viewing_tier": "festival",
+        "expected_attendees_estimate": 2200,
+        "count_basis": "fictional_demo_allocation",
+        "attendance_interpretation": "Expected arrivals only; sold/issued tickets and no-show rates are unresolved."
+      },
+      {
+        "id": "festival",
+        "name": "Festival",
+        "admission": "standing",
+        "entry_gate": "proposed_gate_plaza_timur",
+        "entry_gate_status": "proposed_reference_requires_authored_gate",
+        "entry_area_id": "plaza_timur",
+        "cohort_id": "festival",
+        "ticket_product_id": "festival",
+        "viewing_tier": "festival",
+        "expected_attendees_estimate": 22000,
+        "count_basis": "fictional_demo_allocation",
+        "attendance_interpretation": "Expected arrivals only; sold/issued tickets and no-show rates are unresolved."
+      },
+      {
+        "id": "cat1",
+        "name": "CAT 1",
+        "admission": "seated",
+        "entry_gate": "proposed_gate_plaza_tenggara",
+        "entry_gate_status": "proposed_reference_requires_authored_gate",
+        "entry_area_id": "plaza_tenggara",
+        "cohort_id": "cat1",
+        "ticket_product_id": "cat1",
+        "viewing_tier": "cat1",
+        "expected_attendees_estimate": 6000,
+        "count_basis": "fictional_demo_allocation",
+        "attendance_interpretation": "Expected arrivals only; sold/issued tickets and no-show rates are unresolved."
+      },
+      {
+        "id": "cat2",
+        "name": "CAT 2",
+        "admission": "seated",
+        "entry_gate": "proposed_gate_plaza_tenggara",
+        "entry_gate_status": "proposed_reference_requires_authored_gate",
+        "entry_area_id": "plaza_tenggara",
+        "cohort_id": "cat2",
+        "ticket_product_id": "cat2",
+        "viewing_tier": "cat2",
+        "expected_attendees_estimate": 7000,
+        "count_basis": "fictional_demo_allocation",
+        "attendance_interpretation": "Expected arrivals only; sold/issued tickets and no-show rates are unresolved."
+      },
+      {
+        "id": "cat3",
+        "name": "CAT 3",
+        "admission": "seated",
+        "entry_gate": "proposed_gate_plaza_barat",
+        "entry_gate_status": "proposed_reference_requires_authored_gate",
+        "entry_area_id": "plaza_barat",
+        "cohort_id": "cat3",
+        "ticket_product_id": "cat3",
+        "viewing_tier": "cat3",
+        "expected_attendees_estimate": 8000,
+        "count_basis": "fictional_demo_allocation",
+        "attendance_interpretation": "Expected arrivals only; sold/issued tickets and no-show rates are unresolved."
+      },
+      {
+        "id": "cat4",
+        "name": "CAT 4",
+        "admission": "seated",
+        "entry_gate": "proposed_gate_pintu_kuning",
+        "entry_gate_status": "proposed_reference_requires_authored_gate",
+        "entry_area_id": "pintu_kuning",
+        "cohort_id": "cat4",
+        "ticket_product_id": "cat4",
+        "viewing_tier": "cat4",
+        "expected_attendees_estimate": 8000,
+        "count_basis": "fictional_demo_allocation",
+        "attendance_interpretation": "Expected arrivals only; sold/issued tickets and no-show rates are unresolved."
+      },
+      {
+        "id": "cat5",
+        "name": "CAT 5",
+        "admission": "seated",
+        "entry_gate": "proposed_gate_plaza_utara",
+        "entry_gate_status": "proposed_reference_requires_authored_gate",
+        "entry_area_id": "plaza_utara",
+        "cohort_id": "cat5",
+        "ticket_product_id": "cat5",
+        "viewing_tier": "cat5",
+        "expected_attendees_estimate": 5000,
+        "count_basis": "fictional_demo_allocation",
+        "attendance_interpretation": "Expected arrivals only; sold/issued tickets and no-show rates are unresolved."
+      },
+      {
+        "id": "cat6",
+        "name": "CAT 6",
+        "admission": "seated",
+        "entry_gate": "proposed_gate_plaza_utara",
+        "entry_gate_status": "proposed_reference_requires_authored_gate",
+        "entry_area_id": "plaza_utara",
+        "cohort_id": "cat6",
+        "ticket_product_id": "cat6",
+        "viewing_tier": "cat6",
+        "expected_attendees_estimate": 4000,
+        "count_basis": "fictional_demo_allocation",
+        "attendance_interpretation": "Expected arrivals only; sold/issued tickets and no-show rates are unresolved."
+      },
+      {
+        "id": "cat7",
+        "name": "CAT 7",
+        "admission": "seated",
+        "entry_gate": "proposed_gate_plaza_utara",
+        "entry_gate_status": "proposed_reference_requires_authored_gate",
+        "entry_area_id": "plaza_utara",
+        "cohort_id": "cat7",
+        "ticket_product_id": "cat7",
+        "viewing_tier": "cat7",
+        "expected_attendees_estimate": 3000,
+        "count_basis": "fictional_demo_allocation",
+        "attendance_interpretation": "Expected arrivals only; sold/issued tickets and no-show rates are unresolved."
+      },
+      {
+        "id": "cat8",
+        "name": "CAT 8",
+        "admission": "seated",
+        "entry_gate": "proposed_gate_plaza_utara",
+        "entry_gate_status": "proposed_reference_requires_authored_gate",
+        "entry_area_id": "plaza_utara",
+        "cohort_id": "cat8",
+        "ticket_product_id": "cat8",
+        "viewing_tier": "cat8",
+        "expected_attendees_estimate": 3500,
+        "count_basis": "fictional_demo_allocation",
+        "attendance_interpretation": "Expected arrivals only; sold/issued tickets and no-show rates are unresolved."
+      },
+      {
+        "id": "infinity_festival",
+        "name": "Infinity allocation cohort — FESTIVAL",
+        "admission": "standing",
+        "entry_gate": "proposed_gate_plaza_tenggara",
+        "entry_gate_status": "proposed_reference_requires_authored_gate",
+        "entry_area_id": "plaza_tenggara",
+        "cohort_id": "infinity",
+        "ticket_product_id": "infinity",
+        "viewing_tier": "festival",
+        "expected_attendees_estimate": 200,
+        "count_basis": "fictional_demo_allocation",
+        "attendance_interpretation": "Expected arrivals only; sold/issued tickets and no-show rates are unresolved."
+      },
+      {
+        "id": "infinity_cat1",
+        "name": "Infinity allocation cohort — CAT1",
+        "admission": "seated",
+        "entry_gate": "proposed_gate_plaza_tenggara",
+        "entry_gate_status": "proposed_reference_requires_authored_gate",
+        "entry_area_id": "plaza_tenggara",
+        "cohort_id": "infinity",
+        "ticket_product_id": "infinity",
+        "viewing_tier": "cat1",
+        "expected_attendees_estimate": 50,
+        "count_basis": "fictional_demo_allocation",
+        "attendance_interpretation": "Expected arrivals only; sold/issued tickets and no-show rates are unresolved."
+      },
+      {
+        "id": "infinity_cat2",
+        "name": "Infinity allocation cohort — CAT2",
+        "admission": "seated",
+        "entry_gate": "proposed_gate_plaza_tenggara",
+        "entry_gate_status": "proposed_reference_requires_authored_gate",
+        "entry_area_id": "plaza_tenggara",
+        "cohort_id": "infinity",
+        "ticket_product_id": "infinity",
+        "viewing_tier": "cat2",
+        "expected_attendees_estimate": 50,
+        "count_basis": "fictional_demo_allocation",
+        "attendance_interpretation": "Expected arrivals only; sold/issued tickets and no-show rates are unresolved."
+      },
+      {
+        "id": "infinity_cat3",
+        "name": "Infinity allocation cohort — CAT3",
+        "admission": "seated",
+        "entry_gate": "proposed_gate_plaza_tenggara",
+        "entry_gate_status": "proposed_reference_requires_authored_gate",
+        "entry_area_id": "plaza_tenggara",
+        "cohort_id": "infinity",
+        "ticket_product_id": "infinity",
+        "viewing_tier": "cat3",
+        "expected_attendees_estimate": 50,
+        "count_basis": "fictional_demo_allocation",
+        "attendance_interpretation": "Expected arrivals only; sold/issued tickets and no-show rates are unresolved."
+      },
+      {
+        "id": "infinity_cat4",
+        "name": "Infinity allocation cohort — CAT4",
+        "admission": "seated",
+        "entry_gate": "proposed_gate_plaza_tenggara",
+        "entry_gate_status": "proposed_reference_requires_authored_gate",
+        "entry_area_id": "plaza_tenggara",
+        "cohort_id": "infinity",
+        "ticket_product_id": "infinity",
+        "viewing_tier": "cat4",
+        "expected_attendees_estimate": 50,
+        "count_basis": "fictional_demo_allocation",
+        "attendance_interpretation": "Expected arrivals only; sold/issued tickets and no-show rates are unresolved."
+      },
+      {
+        "id": "infinity_cat5",
+        "name": "Infinity allocation cohort — CAT5",
+        "admission": "seated",
+        "entry_gate": "proposed_gate_plaza_tenggara",
+        "entry_gate_status": "proposed_reference_requires_authored_gate",
+        "entry_area_id": "plaza_tenggara",
+        "cohort_id": "infinity",
+        "ticket_product_id": "infinity",
+        "viewing_tier": "cat5",
+        "expected_attendees_estimate": 25,
+        "count_basis": "fictional_demo_allocation",
+        "attendance_interpretation": "Expected arrivals only; sold/issued tickets and no-show rates are unresolved."
+      },
+      {
+        "id": "infinity_cat6",
+        "name": "Infinity allocation cohort — CAT6",
+        "admission": "seated",
+        "entry_gate": "proposed_gate_plaza_tenggara",
+        "entry_gate_status": "proposed_reference_requires_authored_gate",
+        "entry_area_id": "plaza_tenggara",
+        "cohort_id": "infinity",
+        "ticket_product_id": "infinity",
+        "viewing_tier": "cat6",
+        "expected_attendees_estimate": 25,
+        "count_basis": "fictional_demo_allocation",
+        "attendance_interpretation": "Expected arrivals only; sold/issued tickets and no-show rates are unresolved."
+      },
+      {
+        "id": "infinity_cat7",
+        "name": "Infinity allocation cohort — CAT7",
+        "admission": "seated",
+        "entry_gate": "proposed_gate_plaza_tenggara",
+        "entry_gate_status": "proposed_reference_requires_authored_gate",
+        "entry_area_id": "plaza_tenggara",
+        "cohort_id": "infinity",
+        "ticket_product_id": "infinity",
+        "viewing_tier": "cat7",
+        "expected_attendees_estimate": 25,
+        "count_basis": "fictional_demo_allocation",
+        "attendance_interpretation": "Expected arrivals only; sold/issued tickets and no-show rates are unresolved."
+      },
+      {
+        "id": "infinity_cat8",
+        "name": "Infinity allocation cohort — CAT8",
+        "admission": "seated",
+        "entry_gate": "proposed_gate_plaza_tenggara",
+        "entry_gate_status": "proposed_reference_requires_authored_gate",
+        "entry_area_id": "plaza_tenggara",
+        "cohort_id": "infinity",
+        "ticket_product_id": "infinity",
+        "viewing_tier": "cat8",
+        "expected_attendees_estimate": 25,
+        "count_basis": "fictional_demo_allocation",
+        "attendance_interpretation": "Expected arrivals only; sold/issued tickets and no-show rates are unresolved."
+      }
+    ],
+    "admission_planning_notes": {
+      "wristband_collection": "during_admission_at_the_category_entry_area",
+      "functions_from_public_guide": [
+        "matching_e_ticket_and_id",
+        "security_inspection",
+        "barcode_scan",
+        "admission_wristband",
+        "prefunction_area",
+        "concert_area_entry"
+      ],
+      "tent_order_basis": "scenario_design_pending",
+      "category_specific_redemption_tent_evidence": "not_found",
+      "group_policy": "tickets_purchased_together_enter_with_registered_holder",
+      "exception_branch": "staffed_ticket_help_desk_proposed",
+      "ultimate_check_in": "separate_package_check_in_at_plaza_tenggara",
+      "infinity_check_in": "original_ID_verification_at_gate_D_plaza_tenggara"
+    },
+    "historical_reference": {
+      "event_date": "2023-11-15",
+      "timezone": "Asia/Jakarta",
+      "source_id": "promoter"
+    }
+  },
+  "venue": {
+    "id": "gbk-osm-local",
+    "name": "Stadion Utama Gelora Bung Karno",
+    "capacity_validation": "pending",
+    "proposed_entry_areas": [
+      {
+        "id": "plaza_tenggara",
+        "label": "Plaza Tenggara",
+        "position": [
+          145,
+          0,
+          185
+        ],
+        "landmark": "Istora / Gate 5",
+        "color": "#877dba",
+        "position_basis": "proposed_demo_anchor",
+        "historical_routing_source": "entry_guide",
+        "route_status": "awaiting_authored_graph",
+        "proposed_gate_id": "proposed_gate_plaza_tenggara"
+      },
+      {
+        "id": "plaza_barat",
+        "label": "Plaza Barat",
+        "position": [
+          -185,
+          0,
+          35
+        ],
+        "landmark": "Tennis Indoor / Stadion Madya",
+        "color": "#579b9a",
+        "position_basis": "proposed_demo_anchor",
+        "historical_routing_source": "entry_guide",
+        "route_status": "awaiting_authored_graph",
+        "proposed_gate_id": "proposed_gate_plaza_barat"
+      },
+      {
+        "id": "pintu_kuning",
+        "label": "Pintu Kuning",
+        "position": [
+          -175,
+          0,
+          -235
+        ],
+        "landmark": "Gate H / Indonesia Arena",
+        "color": "#c29b49",
+        "position_basis": "proposed_demo_anchor",
+        "historical_routing_source": "entry_guide",
+        "route_status": "awaiting_authored_graph",
+        "proposed_gate_id": "proposed_gate_pintu_kuning"
+      },
+      {
+        "id": "plaza_utara",
+        "label": "Plaza Utara",
+        "position": [
+          12,
+          0,
+          -275
+        ],
+        "landmark": "Gate 10 / SPARK",
+        "color": "#62967a",
+        "position_basis": "proposed_demo_anchor",
+        "historical_routing_source": "entry_guide",
+        "route_status": "awaiting_authored_graph",
+        "proposed_gate_id": "proposed_gate_plaza_utara"
+      },
+      {
+        "id": "plaza_timur",
+        "label": "Plaza Timur · Festival",
+        "position": [
+          185,
+          0,
+          20
+        ],
+        "landmark": "Aquatic Stadium / Istora parking",
+        "color": "#bd7f66",
+        "position_basis": "proposed_demo_anchor",
+        "historical_routing_source": "entry_guide",
+        "route_status": "awaiting_authored_graph",
+        "proposed_gate_id": "proposed_gate_plaza_timur"
+      }
+    ]
+  },
+  "sources": {
+    "promoter": {
+      "title": "Promoter event reference",
+      "url": "https://www.pk-ent.com/news/coldplay-music-of-the-spheres-world-tour"
+    },
+    "entry_guide": {
+      "title": "Published entry guide",
+      "url": "https://www.antaranews.com/berita/3823839/perhatikan-hal-penting-ini-sebelum-nonton-konser-coldplay"
+    },
+    "venue_map": {
+      "title": "Published category routing and venue map",
+      "url": "https://amp.kompas.com/hype/read/2023/11/14/105246766/denah-venue-konser-coldplay-di-jakarta"
+    },
+    "admission_process": {
+      "title": "Published admission process",
+      "url": "https://www.liputan6.com/showbiz/read/5452689/h-1-konser-coldplay-di-jakarta-simak-informasi-penting-soal-e-ticket-dan-cara-masuk-venue-agar-tak-keliru"
+    },
+    "wristband_reporting": {
+      "title": "Published wristband instructions",
+      "url": "https://www.bloombergtechnoz.com/detail-news/20633/cara-tukar-wristband-untuk-masuk-venue-konser-coldplay-di-jakarta"
+    },
+    "ticket_products": {
+      "title": "Published ticket products",
+      "url": "https://kalteng.antaranews.com/berita/634332/harga-tiket-konser-coldplay-di-jakarta-termahal-hingga-rp11-juta"
+    }
+  }
+}

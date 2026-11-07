@@ -59,3 +59,43 @@ html, body, #root, .standalone-scene {
 .entry-area-label strong { font-size: 11px; }
 .entry-area-label span { margin-top: 3px; font-size: 10px; }
 .entry-area-label small { margin-top: 3px; color: #8b978c; font-size: 8px; }
+.layout-overlay {
+  position: absolute;
+  right: 18px;
+  top: 80px;
+  z-index: 40;
+}
+.standalone-scene:has(.layout-overlay) .scene-tools { right: 376px; }
+@media(max-width: 700px) {
+  .layout-overlay { right: 12px; top: 76px; }
+  .standalone-scene:has(.layout-overlay) .scene-tools { right: 12px; top: auto; bottom: 35px; }
+}
+.simulation-overlay {
+  position: absolute;
+  left: 18px;
+  bottom: 52px;
+  width: 340px;
+  max-width: calc(100vw - 36px);
+  max-height: calc(100vh - 160px);
+  overflow: auto;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid #d6e0d5;
+  background: #fbfcf6f5;
+  color: #365047;
+  box-shadow: 0 5px 25px #23442e24;
+  font-size: 12px;
+  z-index: 41;
+}
+.simulation-overlay header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.simulation-overlay p { line-height: 1.5; }
+.simulation-overlay button { background: #e8eee3; border: 1px solid #c5d0bf; border-radius: 5px; padding: 6px 9px; color: inherit; cursor: pointer; font: inherit; }
+.simulation-overlay button:disabled { opacity: .5; cursor: default; }
+.simulation-overlay input[type="number"] { width: 110px; margin-left: 12px; border: 1px solid #c7d1c2; border-radius: 4px; padding: 5px; color: inherit; }
+.simulation-overlay input[type="range"] { width: 100%; accent-color: #426c55; }
+.simulation-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 12px 0; }
+.simulation-overlay small { display: block; font-size: 10px; line-height: 1.5; color: #7d8e7d; }
+.des-overlay { width: 380px; padding: 12px; }
+@media(max-width:700px) {
+  .standalone-scene:has(.layout-overlay) .simulation-overlay { left: 12px; bottom: 42px; }
+}
