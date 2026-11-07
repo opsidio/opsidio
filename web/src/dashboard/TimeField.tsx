@@ -55,7 +55,6 @@ export default function TimeField({
           setInvalid(normalized === null);
           if (normalized !== null) setText(normalized);
           onChange(normalized ?? text);
-          attrs.onBlur();
           onBlur?.();
         };
         return (
@@ -93,7 +92,6 @@ export default function TimeField({
                     setText(e.target.value);
                     setInvalid(false);
                     onChange(e.target.value);
-                    attrs.onBlur();
                     onBlur?.();
                   }
                 }}

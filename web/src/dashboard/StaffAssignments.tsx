@@ -157,7 +157,7 @@ export default function StaffAssignments({
           No assignments yet. Choose a role above to add your first assignment.
         </p>
       )}
-      {over.map((role) => (
+      {context?.submitted && over.map((role) => (
         <FieldMessage
           key={role.id}
           error={`${role.name}: more people are assigned than the ${role.count ?? 0} planned. Reduce assignments or update the team size above.`}

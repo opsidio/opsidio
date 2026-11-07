@@ -188,7 +188,7 @@ export default function ArrivalProfileEditor({ plan, onChange }: Props) {
                 the even split to give every category the same pattern.
               </p>
             ) : windows.length > 0 ? (
-              <div className="op-table-scroll">
+              <div className="op-table-scroll op-editable-table">
                 <table className="op-table op-arrival-table">
                   <thead>
                     <tr>
@@ -291,7 +291,10 @@ export default function ArrivalProfileEditor({ plan, onChange }: Props) {
                               )}
                             </FormField>
                           </td>
-                          <td>{expected === null ? "—" : fmt(expected)}</td>
+                          <td>
+                            <span className="op-stacked-cell-label">Estimated arrivals</span>
+                            {expected === null ? "—" : fmt(expected)}
+                          </td>
                           <td>
                             <button
                               className="op-icon-button"
