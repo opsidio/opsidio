@@ -2418,6 +2418,65 @@ summary {
 .op-assignment-rows .op-field-message {
   line-height: 18px !important;
 }
+.op-field input[type="number"] {
+  appearance: textfield;
+}
+.op-field input[type="number"]::-webkit-inner-spin-button,
+.op-field input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.op-editable-table {
+  container: editable-fields / inline-size;
+}
+.op-stacked-cell-label {
+  display: none;
+}
+@container editable-fields (max-width: 1100px) {
+  .op-table,
+  .op-table tbody {
+    display: block;
+  }
+  .op-table thead {
+    display: none;
+  }
+  .op-table tr {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(176px, 100%), 1fr));
+    gap: 16px;
+    padding: 16px 0;
+    border-top: 1px solid #ecedf0;
+  }
+  .op-table td {
+    display: block;
+    padding: 0;
+    border: 0;
+  }
+  .op-table td:first-child,
+  .op-table .op-field,
+  .op-table .op-field-message,
+  .op-table .op-time-control,
+  .op-table td input,
+  .op-table td select {
+    min-width: 0;
+  }
+  .op-table .op-field > label,
+  .op-stacked-cell-label {
+    display: block;
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    overflow-wrap: anywhere;
+  }
+  .op-stacked-cell-label {
+    margin-bottom: 8px;
+    font-size: 13px;
+    line-height: 20px;
+    color: #30333a;
+  }
+}
 @media (max-width: 640px) {
   .op-field .op-input,
   .op-table td .op-input {
@@ -2425,9 +2484,6 @@ summary {
   }
   .op-validation-summary {
     padding: 16px;
-  }
-  .op-table .op-field {
-    min-width: 130px;
   }
   .op-time-control .op-input {
     font-size: 14px;

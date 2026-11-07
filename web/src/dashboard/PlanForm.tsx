@@ -102,7 +102,6 @@ export default function PlanForm({
 }: Props) {
   const p = draft.plan,
     t = totals(p),
-    [touched, setTouched] = useState<Set<string>>(() => new Set()),
     [cohortsOpen, setCohortsOpen] = useState(false),
     [submitted, setSubmitted] = useState(Boolean(validationAttempt)),
     [focusPath, setFocusPath] = useState(""),
@@ -205,7 +204,6 @@ export default function PlanForm({
                   event.currentTarget.value !== (value ?? "")
                 )
                   change(path, event.currentTarget.value);
-                attrs.onBlur();
               }}
               onChange={(e) =>
                 change(
@@ -224,9 +222,11 @@ export default function PlanForm({
     );
   }
 
-  function table(headers: string[], rows: React.ReactNode[][]) {
+  function table(headers: string[], rows: React.ReactNode[][], editable = true) {
     return (
-      <div className="op-table-scroll">
+      <div
+        className={editable ? "op-table-scroll op-editable-table" : "op-table-scroll"}
+      >
         <table className="op-table">
           <thead>
             <tr>
@@ -382,8 +382,6 @@ export default function PlanForm({
         submitted,
         focusPath,
         attempt,
-        touched,
-        touch: (path) => setTouched((current) => new Set([...current, path])),
       }}
     >
       <div data-form-top>
@@ -685,7 +683,7 @@ export default function PlanForm({
                 </details>
               )}
               <p className="op-muted">
-                {cats.length} submitted cohorts · Sold {fmt(t.sold)} /{" "}
+                {cats.length} {cats.length === 1 ? "category" : "categories"} · Sold {fmt(t.sold)} /{" "}
                 {fmt(p.event.capacity.tickets_sold)} · Quota {fmt(t.quota)} /{" "}
                 {fmt(p.event.capacity.tickets_on_sale)}
               </p>
@@ -1258,6 +1256,7 @@ export default function PlanForm({
                   ["Committed equipment", money(t.equipmentCost)],
                   ["Total planned cost", <strong>{money(t.total)}</strong>],
                 ],
+                false,
               )}
               <p className="op-muted">
                 Calculated from inputs. Additional rentals and optimization

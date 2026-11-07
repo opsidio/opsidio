@@ -469,6 +469,9 @@ test("arrivals outside the required simulation period cannot proceed", () => {
 
 test("missing inputs report the field to fix instead of treating unknown values as zero", () => {
   const plan = copyDemo();
+  const quotaIssues = validate(set(plan, "event.ticket_categories.0.quota", null));
+  assert.ok(quotaIssues.some((i) => i.path === "event.ticket_categories.0.quota"));
+  assert.ok(!quotaIssues.some((i) => i.path === "event.ticket_categories.0.sold"));
   const shift = set(plan, "staff.shifts.0.end", "");
   assert.ok(validate(shift).some((i) => i.path === "staff.shifts.0.end"));
   assert.ok(
