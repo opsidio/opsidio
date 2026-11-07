@@ -24,6 +24,8 @@ Routes:
 
 The separate `/simulation/workspace` route runs the full spatial fixture with all five entrances, local queues, version switching and waypoint traces. It is available for integration without changing the dashboard’s `/simulation` route.
 
+Planning navigation accepts incomplete estimates, so organizers can move through every section and return to unknown inputs later. Review shows remaining issues; Optimize still validates the full plan. The arrival editor supports editable time periods, a per-category assigned / remaining total, and an explicit even-split estimate based on the event’s configured start and last-entry times. Estimates are applied only to the categories selected by the organizer. Missing values are not silently converted to zero or normalized.
+
 Drafts are saved after each edit in localStorage (`opsidio:plans:v1`). Layouts use a separate key for each event. Export the full plan from Review; export the authored layout from its existing Save / import panel. Optimization jobs and comparisons persist for the current tab in sessionStorage, including refresh recovery. Storage failures remain visible and JSON export remains available.
 
 ## V1 and the scene
