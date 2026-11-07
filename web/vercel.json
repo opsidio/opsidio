@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "api/simulation/corridor/optimize.js": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     {
       "source": "/pitch",
@@ -6,6 +11,10 @@
     },
     {
       "source": "/simulation/workspace",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/events/:path*",
       "destination": "/index.html"
     }
   ]
