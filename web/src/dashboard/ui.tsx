@@ -88,7 +88,7 @@ export function Heading({
     <div className="op-heading">
       <div>
         <h1>{title}</h1>
-        {children && <div className="op-notice-content">{children}</div>}
+        {children && <p>{children}</p>}
       </div>
       {action}
     </div>

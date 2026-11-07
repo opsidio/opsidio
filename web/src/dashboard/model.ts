@@ -303,6 +303,95 @@ export function replaceArrivalProfiles(
     next.demand.arrival_windows_percent[id] = structuredClone(profile);
   return next;
 }
+export function normalizeTime(raw: string): string | null {
+  if (typeof raw !== "string") return null;
+  const text = raw.trim().toLowerCase();
+  if (!text) return "";
+  const separated = text.match(/^(\d{1,2})[:.](\d{2})\s*(am|pm)?$/);
+  const hourOnly = text.match(/^(\d{1,2})\s*(am|pm)?$/);
+  const digits = text.match(/^(\d{1,2})(\d{2})$/);
+  if (!separated && !hourOnly && !digits) return null;
+  let hour = Number(separated?.[1] ?? hourOnly?.[1] ?? digits?.[1]);
+  const minute = Number(separated?.[2] ?? digits?.[2] ?? 0),
+    period = separated?.[3] ?? hourOnly?.[2];
+  if (minute > 59 || (period ? hour < 1 || hour > 12 : hour > 23)) return null;
+  if (period) hour = (hour % 12) + (period === "pm" ? 12 : 0);
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+export function displayTime(value: string): string {
+  const normalized = normalizeTime(value);
+  if (!normalized) return value;
+  const [hour, minute] = normalized.split(":").map(Number);
+  return `${hour % 12 || 12}:${String(minute).padStart(2, "0")} ${hour >= 12 ? "PM" : "AM"}`;
+}
+export function changeStaffAssignment(
+  plan: Plan,
+  roleId: string,
+  index: number,
+  patch: Plan,
+): Plan {
+  const next = structuredClone(plan),
+    role = next.staff.roles.find((r: Plan) => r.id === roleId);
+  if (!role?.assignment?.[index]) return plan;
+  const assignment = { ...role.assignment[index], ...patch };
+  if (Object.hasOwn(patch, "point")) {
+    const point = [
+      ...next.venue.layout.gates,
+      ...(next.venue.layout.service_points ?? []),
+    ].find((p: Plan) => p.id === patch.point);
+    if (point?.lanes?.length) {
+      assignment.lane_group = point.lanes.some(
+        (l: Plan) => l.group === assignment.lane_group,
+      )
+        ? assignment.lane_group
+        : point.lanes[0].group;
+      assignment.per_lane ??= 1;
+    } else if (point) {
+      delete assignment.lane_group;
+      delete assignment.per_lane;
+    }
+  }
+  role.assignment[index] = assignment;
+  return next;
+}
+export function moveStaffAssignment(
+  plan: Plan,
+  roleId: string,
+  index: number,
+  targetRoleId: string,
+): Plan {
+  if (roleId === targetRoleId) return plan;
+  const next = structuredClone(plan),
+    source = next.staff.roles.find((r: Plan) => r.id === roleId),
+    target = next.staff.roles.find((r: Plan) => r.id === targetRoleId);
+  if (!source?.assignment?.[index] || !target) return plan;
+  const [assignment] = source.assignment.splice(index, 1);
+  (target.assignment ??= []).push(assignment);
+  return next;
+}
+export function addStaffAssignment(plan: Plan, roleId: string): Plan {
+  const next = structuredClone(plan),
+    role = next.staff.roles.find((r: Plan) => r.id === roleId);
+  if (!role) return plan;
+  (role.assignment ??= []).push({
+    point: "",
+    lane_group: "",
+    per_lane: 1,
+    count: null,
+  });
+  return next;
+}
+export function removeStaffAssignment(
+  plan: Plan,
+  roleId: string,
+  index: number,
+): Plan {
+  const next = structuredClone(plan),
+    role = next.staff.roles.find((r: Plan) => r.id === roleId);
+  if (!role?.assignment?.[index]) return plan;
+  role.assignment.splice(index, 1);
+  return next;
+}
 export function validate(p: Plan): Issue[] {
   const issues: Issue[] = [];
   const add = (step: Step, path: string, message: string) =>
@@ -486,21 +575,49 @@ export function validate(p: Plan): Issue[] {
     );
     if (assigned > r.count)
       add("resources", path + ".count", `${r.name}: assignments exceed count.`);
-    for (const a of r.assignment ?? []) {
-      const point = points.find((p) => p.id === a.point),
+    (r.assignment ?? []).forEach((a: Plan, j: number) => {
+      const assignmentPath = `${path}.assignment.${j}`,
+        point = points.find((p) => p.id === a.point),
         shift = p.staff.shifts.find((s: Plan) => s.id === r.shift);
+      number(
+        "resources",
+        assignmentPath + ".count",
+        `${r.name} assigned headcount`,
+      );
+      if (!point)
+        add(
+          "resources",
+          assignmentPath + ".point",
+          `${r.name}: choose an entrance or help point.`,
+        );
+      const lane = point?.lanes?.find((l: Plan) => l.group === a.lane_group);
+      if (point?.lanes?.length && !lane && !a.duty)
+        add(
+          "resources",
+          assignmentPath + ".lane_group",
+          `${r.name}: choose a lane group at this entrance.`,
+        );
       if (
-        !point ||
+        lane &&
+        !(r.can_do ?? []).some((step: string) =>
+          (lane.steps ?? []).includes(step),
+        )
+      )
+        add(
+          "resources",
+          assignmentPath + ".point",
+          `${r.name}: this role is not qualified for the checks at this lane.`,
+        );
+      if (
         !shift ||
-        shift.start > point.opens ||
-        shift.end < point.closes
+        (point && (shift.start > point.opens || shift.end < point.closes))
       )
         add(
           "resources",
           path + ".shift",
-          `${r.name}: shift must cover the assigned point.`,
+          `${r.name}: the shift must cover this entrance’s opening hours.`,
         );
-    }
+    });
   });
   for (const point of points)
     for (const lane of point.lanes ?? [])

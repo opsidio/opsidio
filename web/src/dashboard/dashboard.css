@@ -1901,3 +1901,316 @@ summary {
 .op-sim-panel .op-notice-content {
   font-size: 12px;
 }
+.op-time-field > label {
+  font-weight: 500;
+}
+.op-time-control {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  height: 46px;
+}
+.op-time-control > svg {
+  margin-left: 12px;
+  color: #8b8f95;
+  flex-shrink: 0;
+}
+.op-time-control > input {
+  border: 0 !important;
+  box-shadow: none;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  padding: 12px 9px;
+  background: transparent;
+}
+.op-time-control:focus-within {
+  outline: 2px solid #3f7ddd;
+  outline-offset: 2px;
+}
+.op-time-control > input:focus-visible {
+  outline: none;
+}
+.op-time-field.invalid .op-time-control {
+  border-color: #d94848;
+}
+.op-time-picker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border);
+  padding: 0 12px;
+  background: #fafafa;
+  border-radius: 0 6px 6px 0;
+  font-size: 12px;
+  color: #646971;
+}
+.op-time-picker > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.op-time-picker > select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  padding: 0;
+}
+.op-time-field small {
+  line-height: 1.6;
+}
+.op-timing-section {
+  margin-top: 26px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+.op-timing-section h3 {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+.op-special-times {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0 18px;
+  margin-top: 28px;
+  background: #fcfcfd;
+}
+.op-special-times summary {
+  font-size: 13px;
+  line-height: 20px;
+  padding: 16px 0;
+}
+.op-special-times summary span {
+  font-size: 11px;
+  font-weight: 400;
+  color: #777;
+  margin-left: 12px;
+}
+.op-special-times[open] {
+  padding-bottom: 20px;
+}
+.op-special-times > .op-muted {
+  margin: 0 0 20px;
+}
+.op-table .op-time-control input {
+  min-width: 65px;
+  width: 80px;
+}
+.op-table .op-time-control {
+  min-width: 185px;
+}
+.op-table .op-time-picker {
+  padding: 0 9px;
+  font-size: 11px;
+}
+.op-assignment-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--border);
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 18px 0;
+  margin: 24px 0;
+}
+.op-assignment-summary > div {
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.op-assignment-summary > div + div {
+  border-left: 1px solid var(--border);
+}
+.op-assignment-summary span {
+  font-size: 12px;
+  color: #777;
+}
+.op-assignment-summary strong {
+  font-family: var(--heading);
+  font-size: 26px;
+  font-weight: 500;
+}
+.op-assignment-add {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  margin: 24px 0;
+}
+.op-assignment-add > .op-field {
+  flex: 1;
+  margin: 0;
+}
+.op-assignment-add > .op-button {
+  min-height: 46px;
+}
+.op-assignment-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.op-assignment-row {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+}
+.op-assignment-row > header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.op-assignment-row > header > strong {
+  font-size: 13px;
+  white-space: nowrap;
+}
+.op-assignment-row > header > span {
+  font-size: 11px;
+  color: #777;
+  line-height: 1.5;
+}
+.op-assignment-row > header > button {
+  margin-left: auto;
+}
+.op-assignment-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.op-assignment-grid .op-field {
+  margin-bottom: 0;
+}
+.op-assignment-grid > label:nth-child(4) {
+  grid-column: span 2;
+}
+.op-assignment-grid select {
+  width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+.op-assignment-row .op-error {
+  line-height: 1.5;
+}
+@media (max-width: 640px) {
+  .op-time-picker {
+    padding: 0 10px;
+    font-size: 11px;
+  }
+  .op-time-control > input {
+    font-size: 13px;
+  }
+  .op-assignment-summary > div {
+    padding: 0 12px;
+  }
+  .op-assignment-summary strong {
+    font-size: 22px;
+  }
+  .op-assignment-summary span {
+    font-size: 10px;
+  }
+  .op-assignment-add {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .op-assignment-grid {
+    grid-template-columns: 1fr;
+  }
+  .op-assignment-grid > label:nth-child(4) {
+    grid-column: auto;
+  }
+  .op-assignment-row {
+    padding: 16px;
+  }
+  .op-assignment-row > header {
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .op-special-times summary span {
+    display: block;
+    margin: 6px 0 0;
+  }
+}
+.op-table .op-time-field > label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.op-assignment-row > header {
+  margin-bottom: 0;
+}
+.op-assignment-row.is-expanded > header {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.op-assignment-toggle {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  justify-content: space-between;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  color: inherit;
+}
+.op-assignment-toggle > span:first-child {
+  min-width: 0;
+}
+.op-assignment-toggle strong {
+  display: block;
+  font-size: 14px;
+  line-height: 20px;
+}
+.op-assignment-toggle small {
+  display: block;
+  font-size: 12px;
+  line-height: 20px;
+  color: #777;
+  margin-top: 5px;
+}
+.op-assignment-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #a73841;
+  flex-shrink: 0;
+}
+.op-assignment-row.is-expanded .op-assignment-edit svg {
+  transform: rotate(180deg);
+}
+.op-assignment-skills {
+  font-size: 12px;
+  color: #777;
+  margin: 16px 0;
+}
+.op-shift-row {
+  margin: 24px 0;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+.op-shift-row > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  gap: 20px;
+}
+.op-shift-row > header .op-button {
+  font-size: 11px;
+  min-height: 32px;
+  padding: 6px 10px;
+}
