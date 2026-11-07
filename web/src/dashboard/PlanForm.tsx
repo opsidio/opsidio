@@ -28,6 +28,7 @@ import {
   steps,
   titles,
   validate,
+  availableEquipment,
   isRequiredField,
   exportJSON,
   type Draft,
@@ -43,6 +44,9 @@ type Props = {
   onStep: (s: Step) => void;
   onHome: () => void;
   onSimulation: () => void;
+  onOptimize: () => void;
+  onLegacySimulation: () => void;
+  openingWorkspace: boolean;
   validationAttempt?: number;
 };
 const scheduleGroups = [
@@ -91,6 +95,9 @@ export default function PlanForm({
   onStep,
   onHome,
   onSimulation,
+  onOptimize,
+  onLegacySimulation,
+  openingWorkspace,
   validationAttempt = 0,
 }: Props) {
   const p = draft.plan,
@@ -1087,7 +1094,7 @@ export default function PlanForm({
                     <div className="op-stat">
                       <span>Required by active lanes</span>
                       <strong>
-                        {t.required[e.id] ?? 0} / {e.available ?? "—"}
+                        {t.required[e.id] ?? 0} / {availableEquipment(e) ?? "—"}
                       </strong>
                     </div>
                   </div>
@@ -1219,7 +1226,7 @@ export default function PlanForm({
               ],
               [
                 "People and equipment",
-                `${t.staff} staff · ${p.staff.shifts[0]?.start || "—"}–${p.staff.shifts[0]?.end || "—"}\n${p.constraints.equipment.items.map((e: Plan) => `${e.available ?? "—"} ${e.name}`).join(" · ")}`,
+                `${t.staff} staff · ${p.staff.shifts[0]?.start || "—"}–${p.staff.shifts[0]?.end || "—"}\n${p.constraints.equipment.items.map((e: Plan) => `${availableEquipment(e) ?? "—"} ${e.name}`).join(" · ")}`,
                 "resources",
               ],
               [
@@ -1257,6 +1264,12 @@ export default function PlanForm({
                 changes are not included.
               </p>
             </Card>
+            <p className="op-muted">
+              The full 3D workspace saves this form as an event version. It uses
+              the entered arrival forecast, group sizes, gate hours, staffing
+              and typical check times on the mapped GBK routes. Transport and
+              help desk assumptions are included in the saved JSON.
+            </p>
           </>
         )}
         <footer className="op-form-actions">
@@ -1276,8 +1289,12 @@ export default function PlanForm({
                 <Button onClick={() => exportJSON(p, "opsidio-plan.json")}>
                   Export plan
                 </Button>
-                <Button primary onClick={onSimulation}>
-                  Open 3D simulation <Forward />
+                <Button onClick={onLegacySimulation}>Open arrival preview</Button>
+                <Button disabled={openingWorkspace} onClick={onOptimize}>
+                  Optimize in 3D
+                </Button>
+                <Button primary disabled={openingWorkspace} onClick={onSimulation}>
+                  {openingWorkspace ? "Opening 3D…" : "Open 3D simulation"} <Forward />
                 </Button>
               </>
             ) : (

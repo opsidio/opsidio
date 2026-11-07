@@ -27,6 +27,7 @@ import {
 import PlanForm from "./PlanForm";
 import { RequiredMark, FieldMessage } from "./FormField";
 import { Badge, Brand, Button, Card, GbkDemoLink, Heading, Notice } from "./ui";
+import { eventSimulationVersions, eventWorkspaceHref, readEventVersionPlan, saveEventFormVersion } from "../simulation/ui/useSimulationVersions";
 import {
   exportJSON,
   fmt,
@@ -67,6 +68,32 @@ function authenticated() {
     return false;
   }
 }
+function EventWorkspaceVersions({ eventId, compact = false }: { eventId: string; compact?: boolean }) {
+  const [versions, setVersions] = useState(() => eventSimulationVersions(eventId));
+  useEffect(() => {
+    const refresh = () => setVersions(eventSimulationVersions(eventId));
+    refresh();
+    window.addEventListener("storage", refresh);
+    window.addEventListener("pageshow", refresh);
+    return () => {
+      window.removeEventListener("storage", refresh);
+      window.removeEventListener("pageshow", refresh);
+    };
+  }, [eventId]);
+  const visible = compact ? versions.filter(item => item.source === "optimized").slice(-1) : versions;
+  if (!visible.length) return null;
+  return <div className="op-workspace-versions">
+    {!compact && <strong>Saved simulation versions</strong>}
+    <ul>{visible.map(item => <li key={item.id}>
+      <a href={eventWorkspaceHref(eventId, item.id, "report")}>{item.label}</a>
+      {item.source === "optimized" && <Badge tone="coral">Proposal</Badge>}
+      {!compact && <Button aria-label={`Download V${item.number} JSON`} onClick={() => {
+        const plan = readEventVersionPlan(eventId, item.id);
+        if (plan) exportJSON(plan, `opsidio-event-v${item.number}.json`);
+      }}>JSON</Button>}
+    </li>)}</ul>
+  </div>;
+}
 export class AppBoundary extends Component<
   { children: ReactNode },
   { error: boolean }
@@ -99,6 +126,8 @@ export default function App() {
     [profile, setProfile] = useState(false),
     [mobileMenu, setMobileMenu] = useState(false),
     [toast, setToast] = useState(""),
+    [workspaceError, setWorkspaceError] = useState<{ id: string; message: string } | null>(null),
+    [openingWorkspace, setOpeningWorkspace] = useState(false),
     [forcedValidation, setForcedValidation] = useState<{
       draftId: string;
       step: Step;
@@ -194,6 +223,26 @@ export default function App() {
     setDrafts((items) =>
       items.map((d) => (d.id === draft.id ? updated(d, plan) : d)),
     );
+    setWorkspaceError(null);
+  }
+  async function openWorkspace(d: Draft, panel = "controls") {
+    if (openingWorkspace) return;
+    if (firstBlockingIssue(d.plan, "simulation")) {
+      open(d, "review");
+      return;
+    }
+    setOpeningWorkspace(true);
+    setWorkspaceError(null);
+    try {
+      const { projectDashboardPlan } = await import("./workspacePlan");
+      const versionId = saveEventFormVersion(d.id, projectDashboardPlan(d));
+      location.assign(eventWorkspaceHref(d.id, versionId, panel));
+    } catch (error) {
+      setWorkspaceError({ id: d.id, message: error instanceof Error ? error.message : "The event snapshot could not be saved. Export the plan to keep it." });
+      open(d, "review");
+    } finally {
+      setOpeningWorkspace(false);
+    }
   }
   function logout() {
     try {
@@ -363,7 +412,7 @@ export default function App() {
                 aria-current={currentGroup === i ? "step" : undefined}
                 onClick={() =>
                   i === 3
-                    ? navigate(`/simulation?event=${draft.id}`)
+                    ? void openWorkspace(draft)
                     : open(
                         draft,
                         i === 0 ? "brief" : i === 1 ? "attendance" : "review",
@@ -450,6 +499,11 @@ export default function App() {
           </Notice>
         )}
         {draft ? (
+          <>
+          {step === "review" && workspaceError?.id === draft.id && (
+            <Notice title="3D workspace unavailable" tone="amber">{workspaceError.message}</Notice>
+          )}
+          {step === "review" && <EventWorkspaceVersions key={draft.id} eventId={draft.id} />}
           <PlanForm
             key={`${draft.id}:${step}`}
             draft={draft}
@@ -479,8 +533,12 @@ export default function App() {
             }
             onStep={(s) => open(draft, s)}
             onHome={() => navigate("/")}
-            onSimulation={() => navigate(`/simulation?event=${draft.id}`)}
+            onSimulation={() => void openWorkspace(draft)}
+            onOptimize={() => void openWorkspace(draft, "optimize")}
+            onLegacySimulation={() => navigate(`/simulation?event=${draft.id}`)}
+            openingWorkspace={openingWorkspace}
           />
+          </>
         ) : isSettings ? (
           <>
             <Heading title="Your workspace">
@@ -580,11 +638,13 @@ export default function App() {
                       <ArrowRight size={16} />
                     </Button>
                     <Button
-                      onClick={() => navigate(`/simulation?event=${d.id}`)}
+                      disabled={openingWorkspace}
+                      onClick={() => void openWorkspace(d)}
                     >
                       <Box size={16} />
                       3D view
                     </Button>
+                    <EventWorkspaceVersions eventId={d.id} compact />
                   </Card>
                 ))}
               </div>

@@ -107,6 +107,19 @@ test("attendance reconciliation, lane limits and equipment shortages block optim
   assert.match(messages, /required/);
   assert.match(messages, /qualified staff/);
 });
+test("only committed rentals count toward available equipment", () => {
+  const plan = copyDemo();
+  const scanner = plan.constraints.equipment.items[0];
+  const required = totals(plan).required[scanner.id];
+  scanner.available = required - 1;
+  const equipmentIssue = () =>
+    validate(plan).some((issue) => issue.path === "constraints.equipment.items.0.available");
+  assert.equal(equipmentIssue(), true);
+  scanner.extra_rented = 1;
+  assert.equal(equipmentIssue(), false);
+  scanner.extra_rented = scanner.extra_rentable + 1;
+  assert.equal(equipmentIssue(), true);
+});
 test("worker receives current expected cohorts and arrival profiles only for authored north route", () => {
   const p = copyDemo(),
     c = workerConfig(p, graph, 42);
