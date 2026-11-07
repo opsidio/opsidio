@@ -280,7 +280,7 @@
       "Rates, queue dimensions, costs, capacity, staff genders, targets and opening policies are fictional demo inputs.",
       "The browser displays walking trajectories. Queue and processing results require a separate engine run or optimization response.",
       "Local admission uses one FIFO server per bound operator, fixed typical step times, and the native gate opening/closing clock. Unprocessed people remain queued when processing closes. Only the queue front is rendered.",
-      "Arriving groups are assigned round-robin across the four open authored lanes. Queue waiting and shortest-queue selection require service-state simulation.",
+      "Arriving groups are assigned round-robin across the four open authored lanes. Queue waiting follows the local FIFO service schedule. Shortest-queue selection is outside the round-robin demo policy.",
       "Behavior profiles, origin shares and category mixes are fictional inputs. The 76 category × behavior rows expand into 228 origin-specific runtime cohorts with exact attendee conservation. Category handovers remain near the admitted entrance endpoint until internal sector routes are reviewed.",
       "MRT Exit B and drop-off coordinates use existing public OSM nodes. Parkir Timur uses a mapped polygon centroid with one explicitly proposed exit connector. Designating the parking entrance for taxi or app-based passenger drop-off is fictional; no vehicle movement is modeled."
     ]
@@ -650,7 +650,12 @@
       "arrive_in_groups_percent": 100,
       "visitors_with_bag_percent": 50,
       "visitors_using_locker_percent": 0,
-      "accessible_visitors_percent": 0
+      "accessible_visitors_percent": 0,
+      "arrival_mode_percent": {
+        "mrt": 43.62,
+        "private_car": 21.21,
+        "ride_hailing_drop_off": 35.17
+      }
     }
   },
   "venue": {

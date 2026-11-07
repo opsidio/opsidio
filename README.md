@@ -11,7 +11,7 @@ npm ci --prefix web
 npm run dev --prefix web -- --port 5173
 ```
 
-Open [the scene](http://127.0.0.1:5173/simulation). Use `?view=map&entries=1` for the proposed category-entry map. Add `?debug=1` to view renderer measurements and the provisional route guides.
+Open [the scene](http://127.0.0.1:5173/simulation). Use `?view=map` for the transport and entry-area overview. Add `?debug=1` for renderer measurements. Use **Routes** to toggle the path guides.
 
 Select **Run V1 locally** to generate 70,000 fictional arrivals from `contracts/examples/coldplay-gbk-demo-plan.json`. People walk from MRT Istora Mandiri Exit B, Parkir Timur or a proposed passenger drop-off to their assigned category entrance. **Focus North layout** shows the queue barriers, scan operators, security officers and help agent. The area buttons focus the other entry areas. **Layout editor** edits the North equipment, attached checkpoints and directed waypoints with revisioned persistence and JSON import/export.
 
@@ -21,6 +21,7 @@ V1 is authored and played locally. **Optimize via Doni** submits the current pla
 npm run build --prefix web
 node --test web/src/simulation/route.test.mjs tests/scenarios/coldplay.test.mjs web/src/simulation/layout/core.test.mjs
 node --experimental-strip-types --test web/src/simulation/abm/abm.test.mjs
+node --experimental-strip-types --test web/src/simulation/abm/queue-visuals.test.mjs
 node --experimental-strip-types --test web/src/simulation/plan/compile.test.mjs
 node --experimental-strip-types --test tests/scenarios/mapped-arrivals.test.mjs
 python3.11 -m unittest discover -s api/tests -p 'test_*.py' -v
@@ -34,6 +35,7 @@ python3.11 -m unittest discover -s api/tests -p 'test_*.py' -v
 - [Parallel integration checkpoint](docs/simulation-integration-checkpoint.md)
 - [ABM preview integration](docs/abm-preview.md)
 - [Category and behavior cohort handoff](docs/abm-cohort-handoff.md)
+- [Queue and waiting-time visuals](docs/queue-visuals.md)
 - [Spatial and layout contract proposal](docs/spatial-layout-contract.md)
 - [Simulation handoff](docs/simulation-handoff.md)
 - [GBK demo plan and equipment references](docs/gbk-demo-implementation.md)

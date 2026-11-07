@@ -8,7 +8,7 @@ export type NavigationNode = {
   attachment?: { placementId: string; offset: Point }
 }
 
-export type NavigationEdge = { id: string; from: string; to: string }
+export type NavigationEdge = { id: string; from: string; to: string; basis?: string }
 
 export type LayoutRevision = {
   schemaVersion: 'opsidio-editor/0.1'

@@ -105,3 +105,10 @@ html, body, #root, .standalone-scene {
 .operations-legend small { color: #7c887c; font-size: 9px; }
 .simulation-overlay input[type="file"] { width: 100%; margin-top: 6px; font: inherit; }
 @media(max-width:700px) { .operations-focus { top: 72px; max-width: 58%; left: 12px; } .operations-legend { display: none; } }
+.arrival-origin-label { border: 1px solid #d5ded3; border-top: 3px solid; border-radius: 6px; padding: 7px 9px; background: #fffef4f2; color: #304e45; min-width: 145px; max-width: 195px; box-shadow: 0 3px 12px #213b2b20; }
+.arrival-origin-label strong, .arrival-origin-label span, .arrival-origin-label small { display: block; }
+.arrival-origin-label strong { font-size: 11px; }
+.arrival-origin-label span { margin-top: 3px; font-size: 10px; }
+.arrival-origin-label small { margin-top: 3px; color: #7b8c80; font-size: 8px; }
+.queue-wait-gradient { height: 5px; border-radius: 3px; background: linear-gradient(90deg, #f4cf4b, #ef8c2f 33%, #db302c); }
+.operations-focus .origin-shortcut { border-color: #b9bdce; background: #f5f3f9f2; color: #575b79; }

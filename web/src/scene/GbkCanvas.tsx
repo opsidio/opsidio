@@ -50,7 +50,9 @@ function CameraRig(props: SceneProps) {
     } else if (view === 'isometric') {
       camera.position.set(cx + 800, 800, cz + 800)
     } else if (entry) {
-      camera.position.set(target.x + 58, 66, target.z - 90)
+      const yaw = THREE.MathUtils.degToRad(props.focusYawDeg ?? 0)
+      const c = Math.cos(yaw), s = Math.sin(yaw)
+      camera.position.set(target.x + 58 * c - 90 * s, 66, target.z - 58 * s - 90 * c)
     } else {
       camera.position.set(cx + 510, 620, cz + 650)
     }
@@ -60,7 +62,7 @@ function CameraRig(props: SceneProps) {
       controls.current.target.copy(target)
       controls.current.update()
     }
-  }, [camera, flat, set, venue.id, view, props.focusPosition?.[0], props.focusPosition?.[2]])
+  }, [camera, flat, set, venue.id, view, props.focusPosition?.[0], props.focusPosition?.[2], props.focusYawDeg])
 
   return <OrbitControls ref={controls} camera={camera} makeDefault
     minDistance={6} maxDistance={2400} minZoom={0.5} maxZoom={30}
@@ -108,7 +110,7 @@ function Scene(props: SceneProps & { showGuides?: boolean }) {
         <span className="venue-label">{landmark.label.replace('Istana Olahraga Gelora Bung Karno', 'Istora').replace('Stadion Utama Gelora Bung Karno', 'Stadion Utama GBK')}</span>
       </Html>)}
     {props.showGuides && props.view === 'layout' && <gridHelper args={[600, 120, '#84988b', '#92a18c']} position={[0, 0.16, 0]} />}
-    {props.showGuides && routes.filter(r => r.points.length > 1).map(route => <Line key={route.id} points={route.points.map(p => [p[0], 0.35, p[2]])} color={route.kind === 'entry' ? palette.cyan : palette.amber} lineWidth={3} dashed={route.kind === 'exception'} dashSize={1.2} gapSize={0.7} />)}
+    {props.showGuides && routes.filter(r => r.points.length > 1).map(route => <Line key={route.id} segments={route.segments} points={route.points.map(p => [p[0], 0.35, p[2]])} color={route.kind === 'entry' ? palette.cyan : route.kind === 'connector' ? '#8c64b6' : palette.amber} lineWidth={props.view === 'map' ? 2 : 3} dashed={route.kind !== 'entry'} dashSize={route.kind === 'connector' ? 3 : 1.2} gapSize={route.kind === 'connector' ? 2 : 0.7} />)}
     {props.showGuides && nodes.map(node => <group key={node.id} position={[node.position[0], 0.4, node.position[2]]}>
       <mesh rotation={[-Math.PI / 2, 0, 0]}><ringGeometry args={[0.7, 1.05, 24]} /><meshBasicMaterial color={node.role === 'checkpoint' ? palette.amber : palette.cyan} side={THREE.DoubleSide} /></mesh>
       {props.view === 'layout' && <Html position={[0, 1, 0]} center style={{ pointerEvents: 'none', whiteSpace: 'nowrap', font: '500 10px system-ui', color: '#173c3d', background: '#f5f4e5e8', padding: '2px 5px', borderRadius: 3 }}>{node.label}</Html>}
