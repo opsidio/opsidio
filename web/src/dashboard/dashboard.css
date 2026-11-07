@@ -223,6 +223,14 @@ small {
   margin: 8px 0 0;
   font-size: 15px;
 }
+.op-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.op-demo-link {
+  text-decoration: none;
+}
 .op-card {
   background: #fff;
   border: 1px solid var(--border);

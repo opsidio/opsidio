@@ -1,5 +1,5 @@
 import type { ReactNode, ButtonHTMLAttributes } from "react";
-import { ArrowRight, Info } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Info } from "lucide-react";
 export function Button({
   children,
   primary = false,
@@ -14,6 +14,20 @@ export function Button({
     >
       {children}
     </button>
+  );
+}
+export function GbkDemoLink() {
+  return (
+    <a
+      className="op-button op-demo-link"
+      href="/simulation/workspace?version=baseline&view=isometric&panel=controls"
+      target="_blank"
+      rel="noopener"
+      aria-label="Try the GBK demo (opens in a new tab)"
+    >
+      Try the GBK demo
+      <ArrowUpRight size={16} aria-hidden="true" />
+    </a>
   );
 }
 export function Badge({

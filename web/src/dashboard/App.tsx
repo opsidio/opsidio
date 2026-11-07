@@ -25,7 +25,7 @@ import {
   X,
 } from "lucide-react";
 import PlanForm from "./PlanForm";
-import { Badge, Brand, Button, Card, Heading, Notice } from "./ui";
+import { Badge, Brand, Button, Card, GbkDemoLink, Heading, Notice } from "./ui";
 import {
   exportJSON,
   fmt,
@@ -487,12 +487,15 @@ export default function App() {
             <Heading
               title={isEvents ? "Your events" : "Welcome to Opsidio"}
               action={
-                drafts.length ? (
-                  <Button primary onClick={() => create()}>
-                    <Plus size={16} />
-                    Create event
-                  </Button>
-                ) : undefined
+                <div className="op-heading-actions">
+                  <GbkDemoLink />
+                  {drafts.length > 0 && (
+                    <Button primary onClick={() => create()}>
+                      <Plus size={16} />
+                      Create event
+                    </Button>
+                  )}
+                </div>
               }
             >
               {isEvents
@@ -584,7 +587,7 @@ export default function App() {
                 Import plan JSON
               </Button>
               <Button onClick={() => create(true)}>
-                Explore the GBK demo
+                Use GBK sample plan
                 <ArrowRight size={15} />
               </Button>
             </div>
