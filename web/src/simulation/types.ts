@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 export type Point = readonly [x: number, y: number, z: number]
 export type Bounds = { minX: number; maxX: number; minZ: number; maxZ: number }
 
@@ -76,6 +78,7 @@ export type EntryAreaMarker = {
 }
 
 export type SceneProps = {
+  children?: ReactNode
   entryAreas?: readonly EntryAreaMarker[]
   debug?: boolean
   autoRotate?: boolean

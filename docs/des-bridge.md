@@ -114,4 +114,4 @@ npm run build --prefix web
 
 Tests use mocks and temporary loopback HTTP servers only. `api/tests/fixtures/des_bridge_run.json` is explicitly synthetic, for contract checks; it is never served by the bridge. The existing `api/algorithm/example_plan.json` is used as test input without editing it. No live backend run or GBK operational result is claimed by these checks.
 
-This is a local rehearsal adapter, not production infrastructure. It does not optimize plans, manage jobs, cancel remote runs, authenticate browser users, persist its own results, or implement another DES engine. Python's per-request timeout is not a strict deadline for the complete health/create/validate/simulate sequence.
+This adapter serves the local hackathon demo. Production deployment requires browser authentication, job management and persistence. Python's per-request timeout applies separately to each upstream request in the health/create/validate/simulate sequence.
