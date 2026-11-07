@@ -62,3 +62,5 @@
   color: var(--sim-on-accent, #fff);
   font-weight: 700;
 }
+
+.sim-first-person-actions button:disabled { opacity: .5; cursor: default; }

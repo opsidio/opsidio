@@ -23,7 +23,7 @@ Camera presets are at the top of the map, pan and rotation are on the left, and 
 
 Use **Version** to choose the saved snapshot for playback. **Editor** opens that version’s draft; use **Save as new version** to keep the edits as a separate snapshot. **Include draft edits** previews local edits without overwriting a saved plan. Saved versions and copied editor links resolve in the same browser. Export a plan JSON to share it.
 
-After running the simulation, choose **First person** to follow a visible attendee. The panel shows their origin, current location and queue wait. Use **Next person** to pick another attendee.
+After running the simulation, click a visible attendee to see their ticket category, origin, current location and queue wait. Choose **View first person** to follow that attendee. The toolbar’s **First person** button can also pick a visible attendee. Use **Next person** to switch while following.
 
 Playback starts at **1× real time**. Choose **10×**, **60×** or **180×** under **Playback speed** to review arrivals faster. Drag the time slider to pause and jump to a specific time. The WIB clock displays hours, minutes and seconds.
 
