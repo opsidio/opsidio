@@ -26,7 +26,7 @@ export type LayoutEditorProps = { editor: LayoutEditorController; className?: st
 export function LayoutEditor({ editor, className = '', onClose }: LayoutEditorProps) {
   const [tab, setTab] = useState<'kit' | 'graph' | 'json'>('kit')
   const [from, setFrom] = useState(''), [to, setTo] = useState('')
-  const [json, setJSON] = useState(''), [fileError, setFileError] = useState<string | null>(null)
+  const [json, setJSON] = useState(editor.recoveryJSON ?? ''), [fileError, setFileError] = useState<string | null>(null)
   const titleId = useId()
   const selected = editor.layout.placements.find(item => item.id === editor.selectedPlacementId)
   const preset = editor.catalogue.find(item => item.id === selected?.presetId)
@@ -59,7 +59,7 @@ export function LayoutEditor({ editor, className = '', onClose }: LayoutEditorPr
             editor.updatePlacement({ ...base, presetId: next.id, ...(next.kind === 'roder' ? { bays: previous ?? 2 } : {}) })
           }}>{!preset && <option value={selected.presetId}>Unknown: {selected.presetId}</option>}{editor.catalogue.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
           <div className="ole-grid"><NumberField label="X east (m)" value={selected.position[0]} onChange={x => editor.updatePlacement({ ...selected, position: [x, 0, selected.position[2]] })} /><NumberField label="Z south (m)" value={selected.position[2]} onChange={z => editor.updatePlacement({ ...selected, position: [selected.position[0], 0, z] })} /><NumberField label="Yaw (°)" value={selected.yawDeg} onChange={yawDeg => editor.updatePlacement({ ...selected, yawDeg })} /></div>
-          {preset?.kind === 'roder' && <NumberField label="Roder bays (5 m each for this preset)" value={selected.bays ?? 1} min={1} max={12} integer onChange={bays => editor.updatePlacement({ ...selected, bays })} />}
+          {preset?.kind === 'roder' && <NumberField label={`Roder bays (${preset.bayLengthM ?? preset.depthM} m each)`} value={selected.bays ?? 1} min={1} max={12} integer onChange={bays => editor.updatePlacement({ ...selected, bays })} />}
           {preset && dimensions && <p className="ole-note">{dimensions[0].toFixed(2)} × {dimensions[1].toFixed(2)} m footprint · {preset.heightM} m high. <a href={preset.sourceUrl} target="_blank" rel="noreferrer">Catalogue source ↗</a></p>}
           <div className="ole-row"><code title={selected.id}>{selected.id}</code><button type="button" className="ole-danger" onClick={() => editor.removePlacement(selected.id)}>Remove</button></div>
           <p className="ole-note">Select an object, then click the ground to move it. Enter or blur applies numeric fields. Esc cancels.</p>

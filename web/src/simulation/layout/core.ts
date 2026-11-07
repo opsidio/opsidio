@@ -172,30 +172,35 @@ export function validateLayout(layout: LayoutRevision, options: LayoutValidation
   const graph: ResolvedLayoutGraph = { nodes: [], edges: [], routes: [], sceneNodes: [] }
   if (issues.length) return { valid: false, issues, graph }
   const assumptions = options.assumptions ?? DEFAULT_ASSUMPTIONS
-  if (Object.values(assumptions).some(value => !Number.isFinite(value) || value < 0)) return { valid: false, issues: [error('invalid_assumption', 'assumptions', 'Clearances and foot sizes must be finite and nonnegative.')], graph }
+  if (Object.entries(assumptions).some(([key, value]) => !Number.isFinite(value) || (key === 'routeClearanceM' ? value < 0 : value <= 0))) return { valid: false, issues: [error('invalid_assumption', 'assumptions', 'Clearance must be nonnegative and support-foot dimensions must be positive finite metres.')], graph }
+  if (Object.values(options.bounds).some(value => !Number.isFinite(value)) || options.bounds.minX >= options.bounds.maxX || options.bounds.minZ >= options.bounds.maxZ) return { valid: false, issues: [error('invalid_bounds', 'bounds', 'Editable bounds must be finite with minimums below maximums.')], graph }
   const duplicatePlacements = duplicates(layout.placements, 'placements', issues)
   const duplicateNodes = duplicates(layout.nodes, 'nodes', issues)
   const duplicateEdges = duplicates(layout.edges, 'edges', issues)
   const presets = new Map(options.catalogue.map(preset => [preset.id, preset]))
   const placements = new Map<string, Placement>(), obstacles: Footprint[] = [], envelopes: Footprint[] = []
+  const partsByPlacement = new Map<string, Footprint[]>(), physicalEnvelopes = new Map<string, Footprint>()
   for (const placement of layout.placements) {
     if (duplicatePlacements.has(placement.id)) continue
     const preset = presets.get(placement.presetId), dimensions = placementDimensions(placement, options.catalogue)
     if (!preset || !dimensions) { issues.push(error('unknown_preset', `placements.${placement.id}`, `${placement.label}: missing or invalid kit preset ${placement.presetId}.`, [placement.id])); continue }
     placements.set(placement.id, placement)
     const footprint: Footprint = { placement, width: dimensions[0], depth: dimensions[1], offset: [0, 0, 0], part: 'envelope' }
-    if (footprintCorners(footprint).some(point => !inBounds(point, options.bounds))) issues.push(error('placement_bounds', `placements.${placement.id}.position`, `${placement.label}: the full footprint leaves the editable bounds.`, [placement.id]))
+    const parts = obstacleParts(placement, preset, dimensions, assumptions)
+    if ([...footprintCorners(footprint), ...parts.flatMap(footprintCorners)].some(point => !inBounds(point, options.bounds))) issues.push(error('placement_bounds', `placements.${placement.id}.position`, `${placement.label}: the full footprint, including support feet, leaves the editable bounds.`, [placement.id]))
     if (Math.abs(placement.position[1]) > EPS) issues.push(error('ground_height', `placements.${placement.id}.position`, `${placement.label}: this ground-plane scenario requires Y = 0 m.`, [placement.id]))
     envelopes.push(footprint)
-    obstacles.push(...obstacleParts(placement, preset, dimensions, assumptions))
+    obstacles.push(...parts)
+    partsByPlacement.set(placement.id, parts)
+    physicalEnvelopes.set(placement.id, { ...footprint, width: Math.max(dimensions[0], ...parts.map(part => 2 * Math.abs(part.offset[0]) + part.width)), depth: Math.max(dimensions[1], ...parts.map(part => 2 * Math.abs(part.offset[2]) + part.depth)) })
   }
   for (let i = 0; i < envelopes.length; i++) for (let j = i + 1; j < envelopes.length; j++) {
     const a = envelopes[i], b = envelopes[j]
-    if (!overlaps(a, b)) continue
-    const physical = obstacles.filter(part => part.placement.id === a.placement.id).some(aPart => obstacles.filter(part => part.placement.id === b.placement.id).some(bPart => overlaps(aPart, bPart)))
+    if (!overlaps(physicalEnvelopes.get(a.placement.id)!, physicalEnvelopes.get(b.placement.id)!)) continue
+    const physical = partsByPlacement.get(a.placement.id)!.some(aPart => partsByPlacement.get(b.placement.id)!.some(bPart => overlaps(aPart, bPart)))
     const ids = [a.placement.id, b.placement.id]
     if (physical) issues.push(error('physical_overlap', 'placements', `${a.placement.label} and ${b.placement.label} have overlapping solid footprints or support feet.`, ids))
-    else if ([a, b].every(item => ['pagoda', 'roder'].includes(presets.get(item.placement.presetId)!.kind))) issues.push({ code: 'canopy_overlap', severity: 'warning', path: 'placements', message: `${a.placement.label} and ${b.placement.label} canopy envelopes overlap. Support feet are clear; roof/rigging compatibility needs review.`, relatedIds: ids })
+    else if (overlaps(a, b) && [a, b].every(item => ['pagoda', 'roder'].includes(presets.get(item.placement.presetId)!.kind))) issues.push({ code: 'canopy_overlap', severity: 'warning', path: 'placements', message: `${a.placement.label} and ${b.placement.label} canopy envelopes overlap. Support feet are clear; roof/rigging compatibility needs review.`, relatedIds: ids })
   }
   for (const node of layout.nodes) {
     if (duplicateNodes.has(node.id)) continue
@@ -279,10 +284,10 @@ export function importLayoutJSON(json: string, options: LayoutValidationOptions)
 export function exportLayoutJSON(layout: LayoutRevision): string { return JSON.stringify(layout, null, 2) }
 
 export type LayoutStorage = Pick<Storage, 'getItem' | 'setItem'>
-export function restoreLayout(storage: LayoutStorage, key: string, options: LayoutValidationOptions): ImportResult & { found: boolean } {
+export function restoreLayout(storage: LayoutStorage, key: string, options: LayoutValidationOptions): ImportResult & { found: boolean; sourceJSON?: string } {
   try {
     const json = storage.getItem(key)
-    return json === null ? { found: false, layout: null, validation: null, issues: [] } : { found: true, ...importLayoutJSON(json, options) }
+    return json === null ? { found: false, layout: null, validation: null, issues: [] } : { found: true, sourceJSON: json, ...importLayoutJSON(json, options) }
   } catch { return { found: false, layout: null, validation: null, issues: [error('storage_read', 'storage', 'Browser storage is unavailable; use JSON export to keep this draft.')] } }
 }
 export function persistLayout(storage: LayoutStorage, key: string, layout: LayoutRevision, options: LayoutValidationOptions): LayoutIssue[] {
