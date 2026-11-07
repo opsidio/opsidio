@@ -1,59 +1,68 @@
 # GBK mapped context for a local demo
 
-This is a fresh extraction from public OpenStreetMap data. It does not reuse the rehearsal viewer, its code, or its assets. The resulting JSON follows `VenuePack` in `web/src/simulation/types.ts`.
+This is a fresh extraction from public OpenStreetMap data. It does not reuse the rehearsal viewer, its code, or its assets. The required JSON fields follow `VenuePack` in `web/src/simulation/types.ts`; optional landscape metadata is described below.
 
 ## Sources and license
 
-- Stadium: [OSM way 682984153](https://www.openstreetmap.org/way/682984153), tagged **Stadion Utama Gelora Bung Karno**, version 5, edited 2026-06-01.
-- Stadium geometry: <https://api.openstreetmap.org/api/0.6/way/682984153/full.json>.
-- Nearby public map extract: <https://api.openstreetmap.org/api/0.6/map.json?bbox=106.797,-6.224,106.808,-6.2125>.
+- Stadium: [OSM way 682984153](https://www.openstreetmap.org/way/682984153), **Stadion Utama Gelora Bung Karno**, version 5, edited 2026-06-01.
+- Stadium geometry endpoint: <https://api.openstreetmap.org/api/0.6/way/682984153/full.json>.
+- Public map extract used for this snapshot: <https://api.openstreetmap.org/api/0.6/map.json?bbox=106.7938,-6.2273,106.8113,-6.2099>.
 - Map data **© OpenStreetMap contributors**, available under the [Open Database License 1.0](https://opendatacommons.org/licenses/odbl/1-0/). [Attribution information](https://www.openstreetmap.org/copyright).
 
 Keep visible OSM attribution and the license link with the map. The pinned source and derived geometry are an adapted OSM database under ODbL; this statement covers the data, not the application code. OpenStreetMap contributors do not endorse this demo.
 
-`osm-source.json` is a small, sanitized selection from the API responses. It retains the geometry, relevant tags, source versions and edit timestamps. It excludes contributor account identifiers, contact information, unrelated POIs and relations. `provenance.json` records retrieval time, source hash, each rendered feature's OSM link, height assumptions and geometry treatment.
+`osm-source.json` is a sanitized selection from the map API response. It retains geometry, relevant tags, source versions and edit timestamps, while excluding contributor account identifiers, contact information, unrelated POIs and relations. `provenance.json` records retrieval time, source hash, each feature's OSM link, omissions, height assumptions and rendering treatment.
 
-## Coordinates and bounds
+## Coordinates and extent
 
-- Origin: longitude **106.80255**, latitude **−6.21858**, in WGS84.
-- Local coordinates: **X east, Y up, Z south**, in metres. All mapped ground points have Y = 0.
+- Fixed origin: longitude **106.80255**, latitude **−6.21858**, in WGS84.
+- Local coordinates: **X east, Y up, Z south**, in metres. All mapped ground points have **Y = 0**. The landscape's ground surfaces and building bases also render at Y = 0, so placements and waypoints need no display-height correction.
 - Projection: `x = R × cos(lat0) × (lon − lon0)` and `z = R × (lat0 − lat)`, with angles in radians and R = 6,378,137 m. This is a local equirectangular approximation, not a survey coordinate system.
-- Values are rounded to 0.01 m for a stable file. That precision does **not** imply centimetre accuracy.
-- Context display bounds: X −480…480 m, Z −550…450 m. Road and path segments are clipped to this rectangle; only complete contained area rings are retained. No connecting segments are invented across clipped gaps.
-- Stadium outline bounds: X −127.55…140.26 m, Z −161.36…160.87 m, with 124 points including the repeated closing point.
+- Values are rounded to 0.01 m for stable files. That precision does **not** imply centimetre accuracy.
+- Context: a **900 m radius** around the origin, supplying surroundings for a study area of about 800 m radius. Whole contained area rings are retained; paths are clipped to the circle and outside the main stadium. No connecting segments are invented across clipped gaps.
+- Stadium outline bounds remain X −127.55…140.26 m, Z −161.36…160.87 m, with 124 points including the repeated closing point.
+- Current pack: **376 building footprints, 119 other areas, 1,054 road/path pieces and 91 landmark anchors**. These are a source snapshot, not a completeness claim.
+
+The main nearby venues include Indonesia Arena, Tennis Indoor, Istora, Stadion Madya, the JCC complex, GBK Arena and Senayan Park, along with mapped courts, fields, pools, woodland, parking areas and surrounding streets. The map also includes numerous smaller source-mapped buildings; none is positioned arbitrarily.
 
 ## Fictional work envelope
 
-`editBounds = { minX: -55, maxX: 55, minZ: -325, maxZ: -175 }` is an **illustrative north-side work envelope**, not a mapped event boundary, confirmed usable area, operational plan or permission to place equipment.
+`editBounds = { minX: -55, maxX: 55, minZ: -325, maxZ: -175 }` remains an **illustrative north-side work envelope**, not a mapped event boundary, confirmed usable area, operational plan or permission to place equipment.
 
 It sits outside the mapped stadium footprint. [Pedestrian way 28212629](https://www.openstreetmap.org/way/28212629) runs around X 12 m between Z −328 and −174 m. [Pedestrian area 555817845](https://www.openstreetmap.org/way/555817845) is much narrower, around X 5…19 m and Z −321…−200 m. The demo rectangle deliberately extends beyond that mapped pedestrian area and may include landscaped ground. No included building footprint intersects its bounding rectangle. These observations do not establish access, ground condition, levelness, capacity, clearance or event suitability.
 
-The editable area is separate from the public map data. Its routes, equipment and any crowd results must be labeled as demo assumptions by the application.
+The editable area is separate from public map data. Its routes, equipment and any crowd results must be labeled as demo assumptions by the application.
 
-## Geometry and assumptions
+## Geometry and rendering assumptions
 
-- The stadium outline and feature coordinates come from OSM. No gates, paths or footprints were traced from another map or invented to fill gaps.
-- Nearby context is intentionally incomplete: minor unnamed service spurs, parking aisles, most buildings, relations and distant objects are omitted. Path geometry is a visual reference, not a connected or validated navigation graph.
-- The stadium's mapped leisure outline is not a detailed architectural model. It supplies no roof, bowl, seating or height geometry. Any such rendering is illustrative.
-- Ten selected nearby building footprints are rendered with `heightM`. A numeric OSM `height` tag would be used when present; otherwise mapped levels × 3 m or an 8 m default is used. **Every current height is an estimate**, listed individually in `provenance.json`; none is a measured height.
-- `green`, `plaza` and path categories are simplified visual classes. In particular, non-grass pitches use `plaza`, and shared paths use `walk`; this does not grant pedestrian access. Rendering widths, colors, materials, heights and all Y elevations are illustrative.
-- Named-area labels use the mean of polygon vertices. They are label anchors, not entrance locations. Gate labels use mapped OSM nodes. Some mapped gates have restricted or closed access tags; the app must not present them as available entrances.
-- Existing OSM polygons can be approximate, incomplete or stale. Buildings were selected explicitly to avoid known overlapping alternative outlines in this extract. This pack is for local visual prototyping.
+- Footprint vertices and path coordinates come from OSM. No gates, paths or buildings were traced from another map or invented to fill gaps.
+- The context omits relations, incomplete/out-of-scope rings, and tunnels. It flattens source bridge and layer information; this is **not a connected or validated navigation graph**, terrain model or representation of multi-level access.
+- The main stadium's leisure outline supplies no roof, bowl, seating or height geometry. Its separate model is illustrative. The mapped pitch inside that outline is omitted from the landscape to prevent overlapping stadium surfaces.
+- Alternative footprints inside Indonesia Arena and Istora are omitted. JCC Hall A/B outlines nested within the larger JCC footprint are simplified to the outer complex footprint. The generator records these omissions; it does not assert that the smaller structures do not exist.
+- A numeric OSM `height` tag is used when present, without independent survey verification. Otherwise, building levels × 3 m is used; sports halls use levels × 5 m with a 14 m minimum; unsized buildings use 8 m and roof-only masses use 4 m. **Those estimates are illustrative**, individually recorded in provenance.
+- Optional area fields `landscapeUse`, `label` and `sport` preserve simplified source semantics for rendering. Optional path fields `widthM`, `highway` and `label` support world-metre ribbons. `contextRadiusM` records the visual scope. Existing required `VenuePack` fields and the coordinate basis remain unchanged.
+- All road/path widths are **illustrative class-based values**. They must not be used as measured clearance, capacity, accessibility or permission to enter. Shared/closed/private paths can still appear as contextual geometry.
+- Tree positions, count, dimensions, species and crown shapes are **illustrative**. A seeded sampler plants only inside mapped woodland, park and lawn polygons, with exclusion clearances around buildings, water, sports fields, mapped path ribbons and the demo work envelope. The same input produces the same trees. No trees are treated as surveyed obstacles.
+- Palette, periwinkle landmark massing, roof-edge bands, pitch borders, graphic ground shadows and the circular presentation disk are styling. They are not architectural measurements or extra source features.
+- `LandscapeContext.tsx` merges geometry and instances trees. Overlapping ground polygons are placed in conservative depth-order batches, with `polygonOffset` and `renderOrder` keeping all ground at Y = 0. Ground layers do not receive shadow maps. Roof borders alone sit 0.06 m above the illustrative roof. This avoids moving the operational coordinate plane to fix rendering artifacts.
+- Named-area labels use mean polygon vertices. These are label anchors, not entrances. Gate labels use OSM nodes; some gates have restricted or closed access tags and must not be presented as available entrances.
 
-## Rebuild
+OSM polygons can be approximate, incomplete or stale. This pack is a coordinate foundation for local visual prototyping; actual placement, access and routes still need event-specific verification.
 
-From the repository root, using Python 3:
+## Rebuild and checks
+
+From the repository root, using Python 3.9 or later:
 
 ```sh
 python3 tools/venue-gbk.py
 ```
 
-This rebuilds `web/src/simulation/venue/gbk.json` and `data/venues/gbk/provenance.json` offline from the pinned source. The output is deterministic. To fetch current public data and replace the pinned snapshot:
+This rebuilds `web/src/simulation/venue/gbk.json` and `data/venues/gbk/provenance.json` deterministically from the pinned source. To fetch current public data and replace the snapshot:
 
 ```sh
 python3 tools/venue-gbk.py --refresh
 ```
 
-Refresh performs two bounded, read-only API requests with 30-second timeouts. It requires network access and may produce changed geometry as OSM changes. The first attempted Overpass service was unavailable; the pinned extract instead uses the OSM map API listed above. No API key or private data is used.
+Refresh performs one bounded, read-only map API request with a 45-second timeout. It needs network access and may produce changed geometry as OSM changes. No API key or private data is used.
 
-The generator checks closed rings, finite coordinates, flat-ground Y values, and clipped path bounds before writing. Schema and application integration checks belong to the application test suite.
+The generator checks closed rings, finite coordinates, flat-ground Y values, circular bounds and the exclusion of alternative stadium footprints. The landscape pass was also checked in a standalone Chromium preview: 19 landscape draw calls, about 158,000 triangles, and 1,130 illustrative trees for this snapshot. Full application draw counts depend on the stadium, kit and overlays. The web build passes with the existing large-bundle warning.
