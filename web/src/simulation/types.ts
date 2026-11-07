@@ -82,6 +82,7 @@ export type EntryAreaMarker = {
 export type SceneProps = {
   children?: ReactNode
   focusPosition?: Point
+  followCamera?: boolean
   editBounds?: Bounds
   inspectWaypoints?: boolean
   focusYawDeg?: number
