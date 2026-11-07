@@ -9,6 +9,8 @@ const plan = JSON.parse(readFileSync(new URL('../../contracts/examples/coldplay-
 const { navigation, entry_areas: areas, arrival_origins: origins, approach_routes: approaches } = plan.spatial_context
 const expectedLanes = { plaza_tenggara: 8, plaza_barat: 4, pintu_kuning: 5, plaza_utara: 5, plaza_timur: 8 }
 const expectedWays = { plaza_tenggara: '403720975', plaza_barat: '555901298', pintu_kuning: '403721028', plaza_utara: '28212629', plaza_timur: '555901293' }
+const handoverBasis = 'proposed_stadium_handover_site_review_required'
+const demoBounds = { minX: -900, maxX: 900, minZ: -900, maxZ: 900 }
 const nodes = new Map(navigation.nodes.map(node => [node.id, node]))
 const placements = plan.spatial_context.placements.map(item => ({ id: item.id, label: item.label, presetId: item.preset_id, position: item.position_m, yawDeg: item.yaw_deg, bays: item.parameters?.bays, entryAreaId: item.entry_area_id }))
 const position = node => node.position_m ?? localToWorld(node.attachment.offset_m, placements.find(item => item.id === node.attachment.placement_id))
@@ -117,7 +119,7 @@ test('all five forecourts have clear upstream access, with one reviewed Yellow c
     placements,
     nodes: navigation.nodes.map(node => ({ id: node.id, role: node.role, position: position(node) })),
     edges: navigation.edges.map(item => ({ id: item.id, from: item.from_node_id, to: item.to_node_id })),
-  }, { bounds: { minX: -900, maxX: 900, minZ: -900, maxZ: 900 }, catalogue })
+  }, { bounds: demoBounds, catalogue })
   assert.deepEqual(checked.issues, [])
 })
 
@@ -141,13 +143,13 @@ test('help, security and scan form one-way lanes within the mapped corridor and 
     assert.equal(laneCount, expectedLanes[area.id])
     assert.equal(area.corridor.lane_center_offsets_m.length, laneCount)
     assert.deepEqual(area.corridor.osm_way_ids, [expectedWays[area.id]])
-    const checked = validateLayout({ schemaVersion: 'opsidio-editor/0.1', id: area.id, revision: plan.spatial_context.revision, placements: kit, nodes: group.map(node => ({ id: node.id, role: node.role, position: node.position_m ?? [0, 0, 0], ...(node.attachment && { attachment: { placementId: node.attachment.placement_id, offset: node.attachment.offset_m } }) })), edges: edges.map(edge => ({ id: edge.id, from: edge.from_node_id, to: edge.to_node_id })) }, { bounds: north ? venue.editBounds : { minX: -900, maxX: 900, minZ: -900, maxZ: 900 }, catalogue })
+    const checked = validateLayout({ schemaVersion: 'opsidio-editor/0.1', id: area.id, revision: plan.spatial_context.revision, placements: kit, nodes: group.map(node => ({ id: node.id, role: node.role, position: node.position_m ?? [0, 0, 0], ...(node.attachment && { attachment: { placementId: node.attachment.placement_id, offset: node.attachment.offset_m } }) })), edges: edges.map(edge => ({ id: edge.id, from: edge.from_node_id, to: edge.to_node_id })) }, { bounds: demoBounds, catalogue })
     assert.ok(checked.valid, `${area.id}: ${checked.issues.map(issue => issue.message).join(' | ')}`)
     const spine = admissionSpine(area.id)
     for (let s = 0; s <= spine.lengthM; s += 1) for (let offset = -width / 2; offset <= width / 2; offset += 0.5) {
       assert.equal(forbiddenArea(spine.sample(s, offset)), undefined, `${area.id} footprint intersects mapped geometry`)
     }
-    for (const edge of edges) for (const p of samples(position(nodes.get(edge.from_node_id)), position(nodes.get(edge.to_node_id)))) {
+    for (const edge of edges.filter(edge => edge.basis !== handoverBasis)) for (const p of samples(position(nodes.get(edge.from_node_id)), position(nodes.get(edge.to_node_id)))) {
       assert.ok(corridorDistance(p, paths) < width / 2 - 0.3, edge.id)
       assert.equal(forbiddenArea(p), undefined, edge.id)
     }
@@ -206,5 +208,28 @@ test('help, security and scan form one-way lanes within the mapped corridor and 
       assert.equal(scanStation.queue_start_node_id, undefined)
       assert.equal(scanStation.queue_end_node_id, undefined)
     }
+  }
+})
+
+test('post-scan routes reach the stadium threshold and terminate at their assigned category handovers', () => {
+  const outline = venue.stadiumOutline
+  const edges = navigation.edges.filter(edge => edge.basis === handoverBasis)
+  assert.equal(edges.length, areas.length + plan.event.ticket_categories.length)
+  for (const edge of edges) {
+    const from = nodes.get(edge.from_node_id), to = nodes.get(edge.to_node_id)
+    assert.equal(edge.directed, true, edge.id)
+    assert.equal(from.entry_area_id, to.entry_area_id, edge.id)
+    assert.equal(to.role, 'destination', to.id)
+    assert.equal(to.position_m[1], 0, to.id)
+    assert.ok(inside(to.position_m, outline), to.id)
+    for (const p of samples(from.position_m, to.position_m)) {
+      const obstacle = forbiddenArea(p)
+      assert.ok(!obstacle || obstacle.id === 'stadium', `${edge.id} intersects ${obstacle?.id}`)
+    }
+  }
+  for (const route of plan.spatial_context.cohort_routes) {
+    const terminal = nodes.get(route.destination_node_id)
+    assert.ok(edges.some(edge => edge.to_node_id === terminal.id), terminal.id)
+    assert.ok(!navigation.edges.some(edge => edge.from_node_id === terminal.id), terminal.id)
   }
 })

@@ -11,11 +11,11 @@ type Tree = { x: number; z: number; radius: number; height: number; tint: string
 type Surface = { area: LandscapeArea; layer: number; bounds: ReturnType<typeof extent> }
 
 const colors = {
-  disk: '#d1d8c5', edge: '#bec7b2', woodland: '#a5b793', park: '#b3c19f', lawn: '#bdc9ab',
-  pitch: '#94ac87', court: '#abb4b0', plaza: '#d5d5c4', parking: '#b7bdb1', sportsGround: '#c1c7b8', water: '#9fbec1',
-  road: '#64726d', roadEdge: '#b1baa9', walk: '#929e90', walkEdge: '#c8cebc',
-  wall: '#ddd9c7', roof: '#efebdd', roofEdge: '#c7c6b5', accentWall: '#919fce', accentRoof: '#b1bde1', accentEdge: '#7e8ebf',
-  trunk: '#8d8f74', markings: '#e2e7cf', shadow: '#4a5947',
+  disk: '#e0e4e9', edge: '#cdd4dd', woodland: '#adbfaf', park: '#becdc0', lawn: '#c7d4c9',
+  pitch: '#97b39b', court: '#aeb9c6', plaza: '#e1e4e9', parking: '#bec6d0', sportsGround: '#c5cdd3', water: '#a5c3d8',
+  road: '#687483', roadEdge: '#b0bac7', walk: '#96a3af', walkEdge: '#cbd3dc',
+  wall: '#dce1e8', roof: '#f5f6f9', roofEdge: '#b7c0cf', accentWall: '#929dbc', accentRoof: '#b7c3df', accentEdge: '#8293b7',
+  trunk: '#808278', markings: '#eff3f7', shadow: '#495663',
 }
 const landmarkBuildings = new Set([
   'osm-way-29203124', // Indonesia Arena
@@ -25,7 +25,7 @@ const landmarkBuildings = new Set([
   'osm-way-153303496', 'osm-way-1371873078', 'osm-way-1371873079', // JCC halls
   'osm-way-754516405', // Senayan Park
 ])
-const treeTints = ['#81976f', '#8ca379', '#9eb18a', '#769066', '#a7b994']
+const treeTints = ['#789480', '#85a08a', '#97ad98', '#728d79', '#a4baa4']
 
 function areaSize(ring: readonly Point[]) {
   let sum = 0

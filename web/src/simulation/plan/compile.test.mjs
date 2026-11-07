@@ -48,7 +48,8 @@ test('the actual JSON produces 70,000 journeys across all five authored entry ar
   }
   assert.ok(helpVisits > 0 && helpVisits < result.generatedCount)
   const venue = JSON.parse(readFileSync(new URL('../venue/gbk.json', import.meta.url)))
-  const validation = validateLayout(plan.northLayout, { bounds: venue.editBounds, catalogue })
+  const northThreshold = Math.min(...venue.stadiumOutline.map(point => point[2]))
+  const validation = validateLayout(plan.northLayout, { bounds: { ...venue.editBounds, maxZ: northThreshold + 4 }, catalogue })
   assert.deepEqual(validation.issues, [])
   assert.equal(validation.valid, true)
   assert.equal(plan.placements.filter(item => item.presetId === 'barrier-230').length, 105)

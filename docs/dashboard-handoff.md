@@ -11,7 +11,7 @@ npm run dev --prefix web -- --port 5173
 
 Open http://127.0.0.1:5173. Demo login: **organizer@opsidio.demo** / **Opsidio2026!**. This is the requested hardcoded MVP login, not server authentication. Use this workspace in the team's private demo environment.
 
-A new browser begins with an empty homepage. Create a blank draft or choose **Explore the GBK demo**. The latter loads the supplied full 70,000-person, 20-cohort plan; its proposed event date is 14 November 2026, with the 2023 concert retained as a historical reference. It does not silently substitute the earlier Tennis Indoor example.
+A new browser begins with an empty homepage. Create a blank draft or choose **Use GBK sample plan** to edit the supplied 70,000-person plan. Its proposed event date is 14 November 2026, with the 2023 concert retained as a historical reference.
 
 Routes:
 
@@ -22,7 +22,7 @@ Routes:
 - `/simulation?event=:id`: fullscreen interactive `GbkCanvas`. `/simulation` selects the most recent draft when no ID is supplied.
 - `/settings`: demo profile and logout. `/reports`: entry point back to event comparisons.
 
-The separate `/simulation/workspace` route runs the full spatial fixture with all five entrances, local queues, version switching and waypoint traces. It is available for integration without changing the dashboard’s `/simulation` route. The workspace also has the [Doni V3 corridor comparison](corridor-optimization.md); the legacy dashboard comparison below still uses its original API contract.
+Choose **Try the GBK demo** on the dashboard or from the event form to open the V1 baseline at `/simulation/workspace` in a new tab. Choose **Run simulation** in the open Control Panel to see all five entrances, local queues, version switching and waypoint traces. Playback runs in the browser. The workspace also has the [Doni V3 corridor comparison](corridor-optimization.md).
 
 Planning navigation accepts incomplete estimates, so organizers can move through every section and return to unknown inputs later. Review shows remaining issues; Optimize still validates the full plan. The arrival editor supports editable time periods, a per-category assigned / remaining total, and an explicit even-split estimate based on the event’s configured start and last-entry times. Estimates are applied only to the categories selected by the organizer. Missing values are not silently converted to zero or normalized.
 

@@ -3,6 +3,10 @@
     {
       "source": "/pitch",
       "destination": "/pitch.html"
+    },
+    {
+      "source": "/simulation/workspace",
+      "destination": "/index.html"
     }
   ]
 }
