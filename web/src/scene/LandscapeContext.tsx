@@ -187,7 +187,7 @@ function Trees({ trees }: { trees: readonly Tree[] }) {
   if (!trees.length) return null
   return <group name="illustrative-planting" userData={{ basis: 'Illustrative deterministic planting inside mapped green polygons', trees: trees.length }}>
     <instancedMesh ref={shades} args={[undefined, undefined, trees.length]} renderOrder={30}>
-      <circleGeometry args={[1, 10]} /><meshBasicMaterial color={colors.shadow} transparent opacity={0.1} depthWrite={false} polygonOffset polygonOffsetFactor={-30} polygonOffsetUnits={-30} />
+      <circleGeometry args={[1, 10]} /><meshBasicMaterial color={colors.shadow} transparent opacity={0.1} depthWrite={false} polygonOffset polygonOffsetFactor={0} polygonOffsetUnits={-1} />
     </instancedMesh>
     <instancedMesh ref={trunks} args={[undefined, undefined, trees.length]}>
       <cylinderGeometry args={[0.7, 1, 1, 5]} /><meshStandardMaterial color={colors.trunk} roughness={1} />
@@ -217,9 +217,10 @@ const LandscapeContext = memo(function LandscapeContext({ venue }: { venue: Venu
   const scene = useMemo(() => {
     const areas = venue.areas as readonly LandscapeArea[], paths = venue.paths as readonly LandscapePath[]
     const surfaceParts: THREE.BufferGeometry[][] = [], buildingParts: THREE.BufferGeometry[] = [], roofEdges: THREE.BufferGeometry[] = [], markings: THREE.BufferGeometry[] = [], shadows: THREE.BufferGeometry[] = []
-    // All ground stays exactly Y=0. Larger polygons precede their contained
-    // courts/parks. Conservative bounds-overlap layers ensure no overlapping
-    // polygons with different colours share a batch or depth bias.
+    // All ground stays exactly Y=0. Draw its colour layers before 3D objects,
+    // without changing depth. Slope-based depth bias can lift kilometre-wide
+    // surfaces in front of tent legs and walkers when the camera tilts.
+    // Bounds-overlap layers keep contained courts/parks in a stable order.
     const ground = areas.filter(a => a.kind !== 'building').sort((a, b) => areaSize(b.ring) - areaSize(a.ring) || a.id.localeCompare(b.id))
     const surfaces: Surface[] = []
     for (const area of ground) {
@@ -271,21 +272,21 @@ const LandscapeContext = memo(function LandscapeContext({ venue }: { venue: Venu
   }, [scene])
   const radius = (venue as VenuePack & { contextRadiusM?: number }).contextRadiusM ?? 900
   return <group name="gbk-mapped-landscape">
-    <mesh position={[0, -3, 0]}>
+    <mesh position={[0, -3, 0]} renderOrder={-1000}>
       <cylinderGeometry args={[radius + 8, radius + 8, 6, 160]} /><meshStandardMaterial color={colors.disk} roughness={1} />
     </mesh>
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
-      <ringGeometry args={[radius + 3, radius + 8, 160]} /><meshBasicMaterial color={colors.edge} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1} />
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} renderOrder={-990}>
+      <ringGeometry args={[radius + 3, radius + 8, 160]} /><meshBasicMaterial color={colors.edge} depthTest={false} depthWrite={false} />
     </mesh>
-    {scene.ground.map((geometry, layer) => geometry && <mesh key={layer} geometry={geometry} renderOrder={layer + 2}>
-      <meshStandardMaterial vertexColors roughness={1} polygonOffset polygonOffsetFactor={-(layer + 2) * 2} polygonOffsetUnits={-(layer + 2) * 2} />
+    {scene.ground.map((geometry, layer) => geometry && <mesh key={layer} geometry={geometry} renderOrder={-900 + layer}>
+      <meshStandardMaterial vertexColors roughness={1} depthTest={false} depthWrite={false} />
     </mesh>)}
-    {scene.shadows && <mesh geometry={scene.shadows} renderOrder={30}><meshBasicMaterial color={colors.shadow} transparent opacity={0.12} depthWrite={false} polygonOffset polygonOffsetFactor={-30} polygonOffsetUnits={-30} /></mesh>}
-    {scene.roadEdge && <mesh geometry={scene.roadEdge} renderOrder={40}><meshBasicMaterial color={colors.roadEdge} side={THREE.DoubleSide} polygonOffset polygonOffsetFactor={-40} polygonOffsetUnits={-40} /></mesh>}
-    {scene.road && <mesh geometry={scene.road} renderOrder={42}><meshBasicMaterial color={colors.road} side={THREE.DoubleSide} polygonOffset polygonOffsetFactor={-42} polygonOffsetUnits={-42} /></mesh>}
-    {scene.walkEdge && <mesh geometry={scene.walkEdge} renderOrder={44}><meshBasicMaterial color={colors.walkEdge} side={THREE.DoubleSide} polygonOffset polygonOffsetFactor={-44} polygonOffsetUnits={-44} /></mesh>}
-    {scene.walk && <mesh geometry={scene.walk} renderOrder={46}><meshBasicMaterial color={colors.walk} side={THREE.DoubleSide} polygonOffset polygonOffsetFactor={-46} polygonOffsetUnits={-46} /></mesh>}
-    {scene.markings && <mesh geometry={scene.markings} renderOrder={26}><meshBasicMaterial color={colors.markings} side={THREE.DoubleSide} polygonOffset polygonOffsetFactor={-26} polygonOffsetUnits={-26} /></mesh>}
+    {scene.shadows && <mesh geometry={scene.shadows} renderOrder={30}><meshBasicMaterial color={colors.shadow} transparent opacity={0.12} depthWrite={false} polygonOffset polygonOffsetFactor={0} polygonOffsetUnits={-1} /></mesh>}
+    {scene.roadEdge && <mesh geometry={scene.roadEdge} renderOrder={-560}><meshBasicMaterial color={colors.roadEdge} side={THREE.DoubleSide} depthTest={false} depthWrite={false} /></mesh>}
+    {scene.road && <mesh geometry={scene.road} renderOrder={-558}><meshBasicMaterial color={colors.road} side={THREE.DoubleSide} depthTest={false} depthWrite={false} /></mesh>}
+    {scene.walkEdge && <mesh geometry={scene.walkEdge} renderOrder={-556}><meshBasicMaterial color={colors.walkEdge} side={THREE.DoubleSide} depthTest={false} depthWrite={false} /></mesh>}
+    {scene.walk && <mesh geometry={scene.walk} renderOrder={-554}><meshBasicMaterial color={colors.walk} side={THREE.DoubleSide} depthTest={false} depthWrite={false} /></mesh>}
+    {scene.markings && <mesh geometry={scene.markings} renderOrder={-574}><meshBasicMaterial color={colors.markings} side={THREE.DoubleSide} depthTest={false} depthWrite={false} /></mesh>}
     {scene.buildings && <mesh geometry={scene.buildings}><meshStandardMaterial vertexColors roughness={0.95} flatShading /></mesh>}
     {scene.roofEdges && <mesh geometry={scene.roofEdges}><meshBasicMaterial vertexColors side={THREE.DoubleSide} /></mesh>}
     <Trees trees={scene.trees} />
