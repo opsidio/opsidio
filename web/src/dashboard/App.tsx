@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import PlanForm from "./PlanForm";
+import { RequiredMark, FieldMessage } from "./FormField";
 import { Badge, Brand, Button, Card, GbkDemoLink, Heading, Notice } from "./ui";
 import {
   exportJSON,
@@ -35,6 +36,7 @@ import {
   titles,
   updated,
   validate,
+  firstBlockingIssue,
   type Draft,
   type Plan,
   type Step,
@@ -96,7 +98,12 @@ export default function App() {
     [storageError, setStorageError] = useState(""),
     [profile, setProfile] = useState(false),
     [mobileMenu, setMobileMenu] = useState(false),
-    [toast, setToast] = useState("");
+    [toast, setToast] = useState(""),
+    [forcedValidation, setForcedValidation] = useState<{
+      draftId: string;
+      step: Step;
+      token: number;
+    } | null>(null);
   const importRef = useRef<HTMLInputElement>(null),
     first = useRef(true);
   useEffect(() => {
@@ -141,9 +148,32 @@ export default function App() {
         ? parts[2]
         : null,
     draft = drafts.find((d) => d.id === draftId),
-    step: Step = steps.includes(parts[3] as Step)
+    requestedStep: Step = steps.includes(parts[3] as Step)
       ? (parts[3] as Step)
       : "brief";
+  const blocking = draft
+    ? firstBlockingIssue(
+        draft.plan,
+        isSimulation ? "simulation" : requestedStep,
+      )
+    : undefined;
+  const step: Step = blocking?.step ?? requestedStep;
+  useEffect(() => {
+    if (session && draft && blocking) {
+      const path = `/events/${draft.id}/${blocking.step}`;
+      history.replaceState({}, "", path);
+      setRoute(path);
+      setForcedValidation((current) => ({
+        draftId: draft.id,
+        step: blocking.step,
+        token: (current?.token ?? 0) + 1,
+      }));
+      setMobileMenu(false);
+      setToast(
+        `Complete the required fields in ${titles[blocking.step]} before continuing.`,
+      );
+    }
+  }, [session, draft?.id, isSimulation, requestedStep, blocking?.step]);
   function navigate(path: string) {
     history.pushState({}, "", path);
     setRoute(path);
@@ -199,7 +229,7 @@ export default function App() {
     }
   }
   if (!session) return <Login onLogin={signIn} />;
-  if (isSimulation && draft)
+  if (isSimulation && draft && !blocking)
     return (
       <AppBoundary key={draft.id}>
         <Suspense
@@ -377,8 +407,8 @@ export default function App() {
             <small>{complete} of 5 input sections ready</small>
           </div>
           <p className="op-muted">
-            Move freely between sections. Readiness is checked before
-            optimization.
+            Complete each required section before moving forward. You can return
+            to previous sections to make changes.
           </p>
         </aside>
       )}
@@ -424,6 +454,14 @@ export default function App() {
             key={`${draft.id}:${step}`}
             draft={draft}
             step={step}
+            validationAttempt={
+              blocking
+                ? 1
+                : forcedValidation?.draftId === draft.id &&
+                    forcedValidation.step === step
+                  ? forcedValidation.token
+                  : 0
+            }
             onChange={change}
             onType={(venueType) =>
               setDrafts((items) =>
@@ -665,7 +703,10 @@ function Login({ onLogin }: { onLogin: () => void }) {
             }}
           >
             <label className="op-field">
-              <span>Email address</span>
+              <span>
+                Email address
+                <RequiredMark />
+              </span>
               <input
                 type="email"
                 autoComplete="username"
@@ -676,7 +717,10 @@ function Login({ onLogin }: { onLogin: () => void }) {
               />
             </label>
             <label className="op-field">
-              <span>Password</span>
+              <span>
+                Password
+                <RequiredMark />
+              </span>
               <input
                 type={show ? "text" : "password"}
                 autoComplete="current-password"
@@ -694,11 +738,7 @@ function Login({ onLogin }: { onLogin: () => void }) {
               />
               Show password
             </label>
-            {error && (
-              <p role="alert" className="op-error">
-                {error}
-              </p>
-            )}
+            {error && <FieldMessage error={error} />}
             <Button primary type="submit">
               Log in
               <ArrowRight size={16} />
