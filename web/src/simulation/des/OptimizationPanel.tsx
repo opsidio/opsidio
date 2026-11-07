@@ -73,7 +73,7 @@ export default function OptimizationPanel({ plan, baseSeed, disabled, onLoad }: 
     <p>The simulation runs locally. Optimize submits the selected plan to Doni’s API. You can save a returned candidate as a new version.</p>
     <p className="optimization-connection" data-configured={health?.configured ?? false}>{health?.configured ? 'API bridge configured' : 'API access needs configuration'}</p>
     <div className="simulation-actions"><button onClick={() => void refresh()}>Refresh connection</button><button className="optimization-primary" disabled={disabled || busy || !health?.configured || !!job && ['queued', 'running'].includes(job.status)} onClick={() => void start()}>{busy ? 'Submitting…' : 'Optimize plan'}</button></div>
-    <small>Greedy search · 60-second search limit · 20 DES verification replications. Service validation runs before optimization.</small>
+    <small>Greedy search · 180-second search limit · 20 DES verification replications. Service validation runs before optimization.</small>
     {error && <p role="alert">{error}</p>}
     {job && <div role="status"><p><strong>{job.status}</strong> · {job.id}</p>{job.error && <p>{job.error.message}</p>}
       {job.candidates?.map(item => <div className="optimization-candidate" key={item.plan_id}><p>{item.recommended ? 'Recommended candidate' : item.kind}{item.score && ` · ${item.score.missed_checks} checks missed · IDR ${item.score.cost_idr.toLocaleString()}`}</p><button onClick={() => void loadCandidate(item.plan_id)}>Save candidate as version</button></div>)}
