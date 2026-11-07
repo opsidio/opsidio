@@ -12,6 +12,7 @@ import type { EditorArea } from './layout/core'
 import { readEventBaseline, useSimulationVersions } from './ui/useSimulationVersions'
 import SimulationVersions from './ui/SimulationVersions'
 import CorridorOptimizationPanel from './ui/CorridorOptimizationPanel'
+import EntranceExpansionPanel from './ui/EntranceExpansionPanel'
 import { applyCorridorCandidate, projectCorridorPlan } from './des/corridorPlan'
 import { createConfigHash } from './abm/worker-protocol'
 import SimulationControls, { SimulationMapControls } from './ui/SimulationControls'
@@ -128,14 +129,21 @@ function SimulationWorkspace({ catalog, eventId }: { catalog: VersionCatalog; ev
   const compiled = resolved.compiled
   const [corridorGate, setCorridorGate] = useState('proposed_gate_plaza_timur')
   const corridorGates = useMemo(() => {
-    const capacity = new Map(editableGates(resolved.authoredPlan).map(gate => [gate.id, Math.min(gate.maxLanes, 8)]))
+    const capacity = new Map(editableGates(resolved.authoredPlan).map(gate => [gate.id, gate.maxLanes]))
     return editableGates(resolved.plan).flatMap(gate => {
       const maxLanes = capacity.get(gate.id)
       return maxLanes && gate.lanes <= maxLanes ? [{ ...gate, maxLanes }] : []
     })
   }, [resolved.plan, resolved.authoredPlan])
   const corridorKey = useMemo(() => `${version.id}:${createConfigHash(resolved.plan)}:${createConfigHash(resolved.authoredPlan)}`, [version.id, resolved.plan, resolved.authoredPlan])
-  const footprints = useMemo(() => admissionFootprints(resolved.plan), [resolved.plan])
+  const expansionGates = useMemo(() => editableGates(resolved.plan), [resolved.plan])
+  const [expansionPreview, setExpansionPreview] = useState<{ key: string; lanes: number; plan: unknown } | null>(null)
+  const expansionGateId = expansionGates.some(gate => gate.id === corridorGate) ? corridorGate : expansionGates[0]?.id ?? ''
+  const expansionKey = `${corridorKey}:${expansionGateId}`
+  const preview = expansionPreview?.key === expansionKey ? expansionPreview : null
+  const scenePlan = preview?.plan ?? resolved.plan
+  const scene = useMemo(() => scenePlan === resolved.plan ? compiled : compileSimulationPlan(scenePlan), [scenePlan, resolved.plan, compiled])
+  const footprints = useMemo(() => admissionFootprints(scenePlan), [scenePlan])
   const params = new URLSearchParams(location.search)
   const requestedView = params.get('view')
   const canvasOnly = params.get('canvas') === '1'
@@ -192,13 +200,13 @@ function SimulationWorkspace({ catalog, eventId }: { catalog: VersionCatalog; ev
   const inspector = activeTool === 'controls' && !canvasOnly
   const trace = useMemo(() => waypointId && abm.result ? traceWaypoint(abm.result.journeys, waypointId, compiled.arrivalOrigins) : null, [waypointId, abm.result, compiled.arrivalOrigins])
   const traceRoutes = inspector && showTrace && trace ? traceOrigin ? trace.origins.find(origin => origin.id === traceOrigin)?.routes ?? [] : trace.routes : []
-  const guides = editorOpen || showRoutes || (inspector && waypointId !== null)
+  const guides = !!preview || editorOpen || showRoutes || (inspector && waypointId !== null)
   const editedEdges = editorOpen ? editor.visibleEdges : null
   const editedNodes = editorOpen ? editor.graph?.nodes ?? editor.layout.nodes : null
   const routes = useMemo<RouteLine[]>(() => {
-    const nodes = new Map((editedNodes ?? compiled.nodes).map(node => [node.id, node]))
+    const nodes = new Map((editedNodes ?? scene.nodes).map(node => [node.id, node]))
     const entry: Point[] = [], exception: Point[] = [], connector: Point[] = [], publicApproach: Point[] = []
-    for (const edge of editedEdges ?? compiled.edges) {
+    for (const edge of editedEdges ?? scene.edges) {
       const from = nodes.get(edge.from), to = nodes.get(edge.to)
       if (!from || !to) continue
       const points = edge.basis === 'mapped_public_walking_network' ? publicApproach : edge.basis?.startsWith('proposed') ? connector : edge.id.includes('help_checkpoint') ? exception : entry
@@ -210,7 +218,7 @@ function SimulationWorkspace({ catalog, eventId }: { catalog: VersionCatalog; ev
       { id: 'proposed-connectors', kind: 'connector', points: connector, segments: true },
       { id: 'public-approach', kind: 'public', points: publicApproach, segments: true },
     ]
-  }, [compiled, editedEdges, editedNodes])
+  }, [scene, editedEdges, editedNodes])
   const guideNodes: RouteNode[] = editorOpen
     ? [
         ...(editedNodes ?? []).filter(node => editor.visibleNodes.some(item => item.id === node.id)).map(node => ({ ...node, label: compiled.arrivalOrigins.find(origin => origin.id === node.id)?.label ?? node.id })),
@@ -228,6 +236,7 @@ function SimulationWorkspace({ catalog, eventId }: { catalog: VersionCatalog; ev
   }
   function selectTool(tool: SimulationTool | null) {
     const next = tool === activeTool ? null : tool
+    if (next !== 'optimize') setExpansionPreview(null)
     if (activeTool === 'editor' && next !== 'editor') setView(priorEditorView.current)
     if (next === 'editor') {
       clearAttendee()
@@ -344,23 +353,23 @@ function SimulationWorkspace({ catalog, eventId }: { catalog: VersionCatalog; ev
   }
   return <main className="standalone-scene simulation-theme" data-panel-open={activeTool !== null}>
     <Suspense fallback={<div className="scene-loading">Loading GBK…</div>}>
-      <GbkCanvas venue={venue} catalogue={catalogue} placements={editorOpen ? editor.layout.placements : compiled.placements} editBounds={editorOpen ? editOptions.bounds : undefined}
-        routes={[...(editorOpen || showRoutes ? routes : []), ...traceRoutes]} nodes={guides ? guideNodes : []} inspectWaypoints={inspector}
+      <GbkCanvas venue={venue} catalogue={catalogue} placements={editorOpen ? editor.layout.placements : scene.placements} editBounds={editorOpen ? editOptions.bounds : undefined}
+        routes={[...(preview || editorOpen || showRoutes ? routes : []), ...traceRoutes]} nodes={guides ? guideNodes : []} inspectWaypoints={inspector}
         view={view} followCamera={following} focusPosition={focusPosition} focusYawDeg={focusYawDeg} autoRotate={autoRotate} panMode={panMode} showLabels={showLabels}
         onCameraInteraction={() => setAutoRotate(false)} debug={debug} showGuides={guides}
         selectedId={editorOpen ? editor.selectedId : inspector ? waypointId : null} onSelect={editorOpen ? editor.onSelect : id => { if (inspector && id) selectWaypoint(id) }} onMove={editorOpen ? editor.onMove : () => {}}>
-        <PlaybackClock clockRef={clockRef} playing={playing && abm.result !== null} rate={playbackRate} duration={compiled.config.horizonSeconds} onTick={setClockSeconds} onEnd={() => setPlaying(false)} />
+        <PlaybackClock clockRef={clockRef} playing={!preview && playing && abm.result !== null} rate={playbackRate} duration={compiled.config.horizonSeconds} onTick={setClockSeconds} onEnd={() => setPlaying(false)} />
         <Suspense fallback={null}>
-          {abm.result && sampler && <CrowdPreview result={abm.result} sampler={sampler} clockRef={clockRef} maxVisible={5000}
+          {!preview && abm.result && sampler && <CrowdPreview result={abm.result} sampler={sampler} clockRef={clockRef} maxVisible={5000}
             hiddenJourneyIndex={following ? attendeeIndex : null} selectedJourneyIndex={following ? null : attendeeIndex}
             onSelectJourney={canvasOnly || activeTool === 'editor' || following ? undefined : selectAttendee}
             visualSpreadM={0.1} onSampleStats={setCrowdStats} />}
-          {sampler && showOperations && <OperatorQueueBars sampler={sampler} operators={compiled.operators} clockRef={clockRef} showLabels={showLabels} />}
+          {!preview && sampler && showOperations && <OperatorQueueBars sampler={sampler} operators={compiled.operators} clockRef={clockRef} showLabels={showLabels} />}
         </Suspense>
         {attendee && sampler && attendeeIndex !== null && <FirstPersonFollow sampler={sampler} journeyIndex={attendeeIndex} journey={attendee} clockRef={clockRef}
           followCamera={following} onStatus={setAttendeeStatus} />}
-        {(showOperations || editorOpen) && footprints.length > 0 && <AdmissionFootprints footprints={footprints} />}
-        {showOperations && <OperationsLayer operators={compiled.operators} placements={compiled.placements} catalogue={catalogue} entryAreas={compiled.entryAreas} showLabels={showLabels} />}
+        {(preview || showOperations || editorOpen) && footprints.length > 0 && <AdmissionFootprints footprints={footprints} />}
+        {(preview || showOperations) && <OperationsLayer operators={scene.operators} placements={scene.placements} catalogue={catalogue} entryAreas={scene.entryAreas} showLabels={showLabels} />}
         {compiled.arrivalOrigins.length > 0 && <ArrivalOrigins origins={compiled.arrivalOrigins} showLabels={showLabels} />}
       </GbkCanvas>
     </Suspense>
@@ -416,17 +425,40 @@ function SimulationWorkspace({ catalog, eventId }: { catalog: VersionCatalog; ev
         revision={compiled.layoutRevision} clockLabel={clockLabel} status={abm.status} result={abm.result} stats={crowdStats}
         error={abm.error ?? planError} onRun={runLocal} runDisabled={!config} onExport={exportPlan} exportDisabled={!!planError}
         onClear={() => { setPlaying(false); abm.cancel() }} onImport={importPlan} importError={importError} onClose={() => selectTool(null)} />}
-      <SimulationDrawer tool="optimize" active={activeTool === 'optimize'} description="Compare staffed lane counts on one entrance with Doni’s API." onClose={() => selectTool(null)}>
+      <SimulationDrawer tool="optimize" active={activeTool === 'optimize'} description="Test extra lanes and preview where they would go." onClose={() => selectTool(null)}>
         {planError && <p className="sim-drawer-note" role="alert">{planError}</p>}
         {draftSelector}
-        <CorridorOptimizationPanel active={activeTool === 'optimize'} gates={corridorGates}
-          gateId={corridorGates.some(gate => gate.id === corridorGate) ? corridorGate : corridorGates[0]?.id ?? ''}
-          onGateChange={setCorridorGate} planKey={corridorKey} disabled={!config}
-          project={gateId => projectCorridorPlan({ authoredPlan: resolved.authoredPlan, activePlan: resolved.plan, gateId })}
-          onApply={(projection, candidate) => {
-            catalog.addVersion(applyCorridorCandidate(projection, candidate), 'optimized', resolved.plan)
-            selectTool('report')
-          }} />
+        {activeTool === 'optimize' && <>
+          <EntranceExpansionPanel gates={expansionGates}
+            gateId={expansionGateId}
+            onGateChange={id => { setExpansionPreview(null); setCorridorGate(id) }}
+            planKey={corridorKey} activePlan={resolved.plan} authoredPlan={resolved.authoredPlan}
+            disabled={!config} previewLanes={preview?.lanes}
+            onPreview={proposal => {
+              if (preview?.lanes === proposal.lanes) { setExpansionPreview(null); return }
+              const candidate = compileSimulationPlan(proposal.plan)
+              const operator = candidate.operators.find(item => item.pointId === expansionGateId)
+              if (operator) focusPoint(operator.position, operator.yawDeg)
+              setPlaying(false)
+              setExpansionPreview({ key: expansionKey, lanes: proposal.lanes, plan: proposal.plan })
+            }}
+            onApply={proposal => {
+              catalog.addVersion(proposal.plan, 'optimized', resolved.plan)
+              selectTool('report')
+            }} />
+          <details className="sim-existing-lane-comparison">
+            <summary>Compare existing lanes with Doni</summary>
+            <CorridorOptimizationPanel gates={corridorGates}
+              gateId={corridorGates.some(gate => gate.id === corridorGate) ? corridorGate : corridorGates[0]?.id ?? ''}
+              onGateChange={id => { setExpansionPreview(null); setCorridorGate(id) }}
+              planKey={corridorKey} disabled={!config}
+              project={gateId => projectCorridorPlan({ authoredPlan: resolved.authoredPlan, activePlan: resolved.plan, gateId })}
+              onApply={(projection, candidate) => {
+                catalog.addVersion(applyCorridorCandidate(projection, candidate), 'optimized', resolved.plan)
+                selectTool('report')
+              }} />
+          </details>
+        </>}
       </SimulationDrawer>
       {attendee && attendeeIndex !== null && <div className="sim-first-person-dock"><FirstPersonPanel
         attendeeLabel={`Attendee ${attendeeIndex + 1}${attendeeCategory?.name ? ` · ${attendeeCategory.name}` : ''}`} originLabel={attendeeOrigin?.label ?? 'On-site arrival'}

@@ -17,3 +17,8 @@
 .sim-corridor-results th:first-child { text-align: left; }
 .sim-corridor-results tbody th { font-weight: 500; }
 .sim-corridor [role='alert'] { padding: 8px 10px; color: var(--sim-danger, #a92b36); background: var(--sim-accent-soft, #fff0f0); border-radius: 8px; font-size: 12px; }
+
+.sim-expansion-review { padding: 8px 10px; border-radius: 8px; background: var(--sim-raised, #f5f6f8); font-size: 12px; }
+.sim-expansion-review ul { margin: 4px 0 0; padding-left: 18px; }
+.sim-existing-lane-comparison { margin-top: 12px; font-size: 12px; }
+.sim-existing-lane-comparison summary { cursor: pointer; margin-bottom: 8px; }

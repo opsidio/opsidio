@@ -230,6 +230,23 @@ export function projectCorridorPlan({ authoredPlan, activePlan, gateId, journeys
   return projection
 }
 
+/** Compare scan capacity under the proposal’s stated staffing and equipment assumptions. */
+export function projectExpansionCorridor(authoredPlan: unknown, activePlan: unknown, gateId: string, proposal: unknown): CorridorProjection {
+  const projection = projectCorridorPlan({ authoredPlan, activePlan, gateId })
+  const capacity = editableGates(proposal).find(gate => gate.id === gateId)?.lanes
+  if (capacity === undefined || capacity <= projection.startingLanes) throw new Error('Choose a layout proposal with additional staffed lanes.')
+  const { scan } = projection.document
+  const costPerLane = Number(scan.staff_cost_per_lane.amount) + Number(scan.scanner_cost_per_lane.amount)
+  return {
+    ...projection, authoredLanes: capacity,
+    document: {
+      ...projection.document, name: `${projection.gateLabel} · Proposed scan capacity`,
+      scan: { ...scan, physical_slots: capacity, available_staff: capacity, available_scanners: capacity },
+      budget: money(costPerLane * capacity),
+    },
+  }
+}
+
 /** Doni can increase one scan count. Reopen only complete, existing security and scan pairs. */
 export function applyCorridorCandidate(projection: CorridorProjection, candidateDocument: unknown): unknown {
   const source = projectionSources.get(projection)

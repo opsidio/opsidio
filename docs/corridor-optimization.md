@@ -10,6 +10,20 @@ The corridor preserves one authored walking path, the full release interval, mea
 V3 releases visitors uniformly across that interval. Queue results describe this representative corridor and its uniform arrival distribution.
 The 24-hour horizon and computation deadlines still apply.
 
+## Propose an expanded GBK layout
+
+In the workspace, open **Optimize**, select an entrance, and choose **Find lane and layout proposals**.
+The workspace compares the current plan and layouts from the GBK lane templates using the same modeled arrivals.
+Each proposal shows the change in lane count, modeled performance, and the space, staff, and equipment to confirm.
+Use **Preview layout on map** to inspect the geometry or save it as a new version for the full report.
+Custom gate geometry is kept as authored. A template expansion is available only where it matches the existing mapped corridor and passes the layout checks.
+
+**Check the proposed scan capacity with Doni** separately compares scan counts up to the selected layout’s proposed capacity.
+That check uses the current corridor path and assumes the proposed resources can be secured. Its results use V3’s uniform arrival distribution.
+Use the local proposal comparison for modeled security, ticket scanning, and geometry together.
+
+Regenerate the GBK templates with `node --experimental-strip-types tools/build-coldplay-demo.mjs --expansion-layouts`.
+
 ## Run locally
 
 Start the local Python bridge with `python3.11 -m api.simulation` and set `OPSIDIO_CORRIDOR_API_KEY` in its **server environment**. The default base is Doni's Opsidio Railway host; `OPSIDIO_CORRIDOR_API_URL` can override it for an authorized test environment. The browser calls same-origin `/api/simulation/corridor/health` and `/api/simulation/corridor/optimize`. Vite proxies these to the local bridge. The bridge sends the key as `X-API-Key` to Doni and never returns it to the browser. The legacy v1 bridge configuration stays separate.
