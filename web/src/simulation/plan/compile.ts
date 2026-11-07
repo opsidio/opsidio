@@ -113,7 +113,7 @@ export function compileSimulationPlan(input: unknown): CompiledSimulationPlan {
   const edges: NavigationEdge[] = list(navigation.edges, 'edges').map(item => {
     const from = name(item.from_node_id, 'edge.from_node_id'), to = name(item.to_node_id, 'edge.to_node_id')
     if (item.directed !== true || !nodeMap.has(from) || !nodeMap.has(to)) throw new Error(`Edge ${String(item.id)} needs existing endpoints and directed=true.`)
-    return { id: name(item.id, 'edge.id'), from, to }
+    return { id: name(item.id, 'edge.id'), from, to, ...(typeof item.basis === 'string' ? { basis: item.basis } : {}) }
   })
   unique(edges, 'edges')
   const outgoing = new Map(nodes.map(node => [node.id, [] as string[]]))
@@ -312,7 +312,7 @@ export function projectNorthLayout(input: unknown, layout: LayoutRevision): unkn
   })
   spatial.placements = [...list(spatial.placements, 'placements').filter(item => item.entry_area_id !== 'plaza_utara'), ...layout.placements.map(item => ({ id: item.id, label: item.label, preset_id: item.presetId, position_m: item.position, yaw_deg: item.yawDeg, entry_area_id: 'plaza_utara', ...(item.bays ? { parameters: { bays: item.bays } } : {}) }))]
   navigation.nodes = [...list(navigation.nodes, 'nodes').filter(item => item.entry_area_id !== 'plaza_utara'), ...layout.nodes.map(node => ({ id: node.id, role: node.role, entry_area_id: 'plaza_utara', ...(node.attachment ? { attachment: { placement_id: node.attachment.placementId, offset_m: node.attachment.offset } } : { position_m: node.position }) }))]
-  navigation.edges = [...retainedEdges, ...layout.edges.map(edge => ({ id: edge.id, from_node_id: edge.from, to_node_id: edge.to, directed: true }))]
+  navigation.edges = [...retainedEdges, ...layout.edges.map(edge => ({ id: edge.id, from_node_id: edge.from, to_node_id: edge.to, directed: true, ...(edge.basis ? { basis: edge.basis } : {}) }))]
   spatial.revision = layout.revision
   const resolved = compileSimulationPlan(plan)
   const northNodeIdsResolved = new Set(resolved.northLayout.nodes.map(node => node.id))

@@ -197,8 +197,13 @@ const groupShare = Math.round(groupVisitors / 70000 * 10000) / 100
 plan.demand.group_size_share_percent = { '2': 100 - groupShare, '4': groupShare }
 plan.behavior_context = behavior
 addArrivalNetwork(spatial, layout)
+const profileById = new Map(profiles.map(profile => [profile.id, profile]))
+const modeShare = originId => Math.round(100 * behavior.cohorts.reduce((sum, cohort) => sum + cohort.expected_attendees_estimate * profileById.get(cohort.segment_id).origin_share_percent[originId], 0) / 70000) / 100
+const mrtShare = modeShare('origin_mrt'), parkingShare = modeShare('origin_parking')
+plan.event.audience_profile.arrival_mode_percent = { mrt: mrtShare, private_car: parkingShare, ride_hailing_drop_off: Math.round((100 - mrtShare - parkingShare) * 100) / 100 }
+
 plan.meta.demo_assumptions.push('Local admission uses one FIFO server per bound operator, fixed typical step times, and the native gate opening/closing clock. Unprocessed people remain queued when processing closes. Only the queue front is rendered.')
-plan.meta.demo_assumptions.push('Arriving groups are assigned round-robin across the four open authored lanes. Queue waiting and shortest-queue selection require service-state simulation.')
+plan.meta.demo_assumptions.push('Arriving groups are assigned round-robin across the four open authored lanes. Queue waiting follows the local FIFO service schedule. Shortest-queue selection is outside the round-robin demo policy.')
 plan.meta.demo_assumptions.push('Behavior profiles, origin shares and category mixes are fictional inputs. The 76 category × behavior rows expand into 228 origin-specific runtime cohorts with exact attendee conservation. Category handovers remain near the admitted entrance endpoint until internal sector routes are reviewed.')
 plan.meta.demo_assumptions.push('MRT Exit B and drop-off coordinates use existing public OSM nodes. Parkir Timur uses a mapped polygon centroid with one explicitly proposed exit connector. Designating the parking entrance for taxi or app-based passenger drop-off is fictional; no vehicle movement is modeled.')
 writeFileSync(new URL('contracts/examples/coldplay-gbk-demo-plan.json', root), JSON.stringify(plan, null, 2) + '\n')

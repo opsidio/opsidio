@@ -17,7 +17,7 @@ function canonical(value: unknown): string {
 }
 
 /** Stable snapshot identity, not a security hash. Includes every config field. */
-export function createConfigHash(config: AbmConfig): string {
+export function createConfigHash(config: unknown): string {
   const text = canonical(config)
   let first = 2166136261
   let second = 2246822507
