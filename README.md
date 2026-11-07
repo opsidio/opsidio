@@ -32,6 +32,7 @@ python3.11 -m unittest discover -s api/tests -p 'test_*.py' -v
 - [Complete local V1 demo plan](contracts/examples/coldplay-gbk-demo-plan.json)
 - [Parallel integration checkpoint](docs/simulation-integration-checkpoint.md)
 - [ABM preview integration](docs/abm-preview.md)
+- [Category and behavior cohort handoff](docs/abm-cohort-handoff.md)
 - [Spatial and layout contract proposal](docs/spatial-layout-contract.md)
 - [Simulation handoff](docs/simulation-handoff.md)
 - [GBK demo plan and equipment references](docs/gbk-demo-implementation.md)
@@ -39,6 +40,6 @@ python3.11 -m unittest discover -s api/tests -p 'test_*.py' -v
 
 Wira can mount `web/src/scene/GbkCanvas.tsx` underneath the UI overlay. The scene props live in `web/src/simulation/types.ts`. The standalone bootstrap is separate from the renderer.
 
-The footprint and surrounding map features are sourced. Building heights, stadium architecture, and the temporary event layout are illustrative. Both JSON examples pass Doni's `PlanDocument` schema. The earlier draft retains unresolved inputs. The complete V1 adds explicit fictional sales/no-show, staffing, service-time, cost and layout assumptions. It contains 45 operators and 90 barrier panels. Four entry layouts are rotated copies of the North template and require site review. Walking playback represents journeys. Processing and queue metrics require engine results. Remote semantic validation remains pending.
+The footprint and surrounding map features are sourced. Building heights, stadium architecture, and the temporary event layout are illustrative. Both JSON examples pass Doni's `PlanDocument` schema. The earlier draft retains unresolved inputs. The complete V1 adds explicit fictional sales/no-show, staffing, service-time, cost and layout assumptions. It contains 45 operators and 75 barrier panels. Four entry layouts are rotated copies of the North template and require site review. The local worker models four lane routes per entry, FIFO scan/security queues and one visitor per operator using fixed typical process times. The front 32 people per queue are rendered, with the full queue count reported. Doni’s API performs optimization and DES verification. Help-desk exception arrivals and reviewed internal sector routes remain pending. Remote semantic validation remains pending.
 
 Rebuild the complete example with `node --experimental-strip-types tools/build-coldplay-demo.mjs`. The editor projects North coordinates, attachments and route distances into the same JSON snapshot used for export and optimization. A returned candidate whose staffing lacks matching spatial positions is rejected with a binding error for repair.

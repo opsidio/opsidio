@@ -1,3 +1,4 @@
+import { scheduleAdmission } from './admission.ts'
 import type { AbmConfig, AbmResult, AgentJourney, CohortDemand, NavigationNode } from '../runtime-types'
 import type { Point } from '../types'
 import type { AbmWorkerRequest, AbmWorkerResponse } from './worker-protocol'
@@ -61,10 +62,10 @@ function validateGraph(config: AbmConfig, issues: string[]): Graph | null {
 }
 
 /** Shortest geometric route on the authored directed graph; no obstacle or crowd model. */
-function shortestRoute(graph: Graph, origin: string, destination: string): Route | string {
+function shortestRoute(graph: Graph, origin: string, destination: string, internalOrigin = false): Route | string {
   if (!graph.nodes.has(origin)) return `arrival node "${origin}" is missing`
   if (!graph.nodes.has(destination)) return `destination node "${destination}" is missing`
-  if (graph.nodes.get(origin)!.role !== 'arrival') return `origin "${origin}" must have role "arrival"`
+  if (!internalOrigin && graph.nodes.get(origin)!.role !== 'arrival') return `origin "${origin}" must have role "arrival"`
   const distances = new Map<string, number>([[origin, 0]])
   const previous = new Map<string, string>()
   const visited = new Set<string>()
@@ -112,6 +113,8 @@ function validateCohort(cohort: CohortDemand, horizon: number): string[] {
   if (cohort.groupSize !== undefined && (!Number.isSafeInteger(cohort.groupSize) || cohort.groupSize < 1)) {
     issues.push('groupSize must be a positive safe integer')
   }
+  if (cohort.laneCheckpointIds !== undefined && (!Array.isArray(cohort.laneCheckpointIds) || !cohort.laneCheckpointIds.length || cohort.laneCheckpointIds.some(id => !validId(id)) || new Set(cohort.laneCheckpointIds).size !== cohort.laneCheckpointIds.length)) issues.push('laneCheckpointIds needs distinct authored checkpoint IDs')
+  if (cohort.walkSpeedMps !== undefined && (!finite(cohort.walkSpeedMps) || cohort.walkSpeedMps <= 0)) issues.push('walkSpeedMps must be finite and positive')
   if (!Array.isArray(cohort.windows) || cohort.windows.length === 0) {
     issues.push('at least one arrival window is required')
     return issues
@@ -153,8 +156,8 @@ function cohortRandom(seed: number, cohortId: string): () => number {
 }
 
 /**
- * Deterministic demand and walking preview only. DES owns queues, processing,
- * service rates, capacity, and operational outcomes. Input is never mutated.
+ * Seeded demand and authored-route movement, with optional fixed-time FIFO
+ * operator processing. Inputs are never mutated. Doni handles API optimization.
  */
 export function generateAbm(config: AbmConfig): AbmResult {
   const result: AbmResult = {
@@ -198,20 +201,27 @@ export function generateAbm(config: AbmConfig): AbmResult {
       result.issues.push(...issues.map(issue => `Cohort "${cohort.id ?? '(missing id)'}": ${issue}.`))
       continue
     }
-    const routeKey = JSON.stringify([cohort.arrivalNodeId, cohort.destinationNodeId])
-    let route = routes.get(routeKey)
-    if (!route) {
-      route = shortestRoute(graph, cohort.arrivalNodeId, cohort.destinationNodeId)
-      routes.set(routeKey, route)
+    const routeOptions: Route[] = []
+    for (const via of cohort.laneCheckpointIds ?? [null]) {
+      const routeKey = JSON.stringify([cohort.arrivalNodeId, via, cohort.destinationNodeId])
+      let route = routes.get(routeKey)
+      if (!route) {
+        if (via === null) route = shortestRoute(graph, cohort.arrivalNodeId, cohort.destinationNodeId)
+        else {
+          const before = shortestRoute(graph, cohort.arrivalNodeId, via)
+          const after = graph.nodes.get(via)?.role === 'checkpoint' ? shortestRoute(graph, via, cohort.destinationNodeId, true) : `lane node "${via}" must be a checkpoint`
+          if (typeof before === 'string') route = before
+          else if (typeof after === 'string') route = after
+          else route = { nodeIds: [...before.nodeIds, ...after.nodeIds.slice(1)], points: [...before.points, ...after.points.slice(1)], distance: before.distance + after.distance, checkpointDistance: before.checkpointDistance }
+        }
+        routes.set(routeKey, route)
+      }
+      if (typeof route === 'string') result.issues.push(`Cohort "${cohort.id}": ${route}.`)
+      else routeOptions.push(route)
     }
-    if (typeof route === 'string') {
-      result.issues.push(`Cohort "${cohort.id}": ${route}.`)
-      continue
-    }
-    const walkSeconds = route.distance / config.walkSpeedMps
-    const checkpointSeconds = route.checkpointDistance / config.walkSpeedMps
-    if (!Number.isFinite(walkSeconds) || !Number.isFinite(checkpointSeconds)
-      || !Number.isFinite(config.horizonSeconds + walkSeconds)) {
+    if (routeOptions.length !== (cohort.laneCheckpointIds?.length ?? 1)) continue
+    const walkSpeed = cohort.walkSpeedMps ?? config.walkSpeedMps
+    if (routeOptions.some(route => !Number.isFinite(config.horizonSeconds + route.distance / walkSpeed))) {
       result.issues.push(`Cohort "${cohort.id}": route travel time is not finite at the configured walk speed.`)
       continue
     }
@@ -234,6 +244,9 @@ export function generateAbm(config: AbmConfig): AbmResult {
     let personIndex = 0
     let groupIndex = 0
     while (personIndex < cohort.count) {
+      const route = routeOptions[groupIndex % routeOptions.length]
+      const walkSeconds = route.distance / walkSpeed
+      const checkpointSeconds = route.checkpointDistance / walkSpeed
       let draw = random() * totalShare
       let window = windows[windows.length - 1]
       for (const candidate of windows) {
@@ -260,6 +273,7 @@ export function generateAbm(config: AbmConfig): AbmResult {
     }
     result.arrivalBuckets.push(...[...buckets.values()].sort((a, b) => a.startSeconds - b.startSeconds))
   }
+  if (config.serviceStations?.length) scheduleAdmission(result.journeys, config.serviceStations)
   result.generatedCount = result.journeys.length
   result.issues = [...new Set(result.issues)].sort(compareIds)
   return result
