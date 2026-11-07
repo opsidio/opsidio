@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import PlanForm from "./PlanForm";
 import { RequiredMark, FieldMessage } from "./FormField";
-import { Badge, Brand, Button, Card, GbkDemoLink, Heading, Notice } from "./ui";
+import { Badge, Brand, BrandMark, Button, Card, GbkDemoLink, Heading, Notice } from "./ui";
 import { eventSimulationVersions, eventWorkspaceHref, readEventVersionPlan, saveEventFormVersion } from "../simulation/ui/useSimulationVersions";
 import {
   exportJSON,
@@ -334,7 +334,7 @@ export default function App() {
           aria-label="Opsidio home"
           onClick={() => navigate("/")}
         >
-          <span className="op-mark" />
+          <BrandMark />
         </button>
         <nav>
           {icons.map(({ id, icon: Icon, label, path }) => (
