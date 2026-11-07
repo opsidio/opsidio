@@ -65,9 +65,11 @@ export type RouteNode = {
   position: Point
 }
 
-export type SceneView = 'orbit' | 'layout'
+export type SceneView = 'orbit' | 'entry' | 'layout'
 
 export type SceneProps = {
+  debug?: boolean
+  showGuides?: boolean
   venue: VenuePack
   catalogue: readonly KitPreset[]
   placements: readonly Placement[]
