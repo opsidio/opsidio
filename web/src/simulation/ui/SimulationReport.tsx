@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, ReactNode } from 'react'
+import { ArrowDown, ArrowUp, Minus } from 'lucide-react'
 import type { CrowdSampleStats } from '../abm/sampling'
 import type { AbmStatus } from '../abm/useAbmWorker'
 import type { AbmResult } from '../runtime-types'
@@ -45,7 +46,6 @@ type ReportJob = {
 const count = (value: number) => value.toLocaleString('en-US')
 const minutes = (seconds: number) => `${(seconds / 60).toLocaleString('en-US', { maximumFractionDigits: 1 })} min`
 const format = (value: number | null | undefined, formatter = count) => value == null ? '—' : formatter(value)
-const signed = (value: number, formatter: (n: number) => string) => value === 0 ? formatter(0) : `${value > 0 ? '+' : '−'}${formatter(Math.abs(value))}`
 
 function PlaybackSnapshot({
   version, plannedCount, entryAreaCount, staffCount, revision, clockLabel, status, result, stats, error,
@@ -118,16 +118,31 @@ type ComparisonMetric = {
   reference?: number | null
   comparison?: number | null
   formatter?: (value: number) => string
+  preferredDirection?: 'up' | 'down'
 }
+
+function MetricDelta({ metric }: { metric: ComparisonMetric }) {
+  const { reference, comparison, formatter = count, preferredDirection } = metric
+  if (reference == null || comparison == null) return '—'
+
+  const difference = comparison - reference
+  if (difference === 0) return <span className="sim-report__delta"><Minus size={13} aria-hidden="true" />{formatter(0)}</span>
+
+  const direction = difference > 0 ? 'up' : 'down'
+  const Icon = direction === 'up' ? ArrowUp : ArrowDown
+  const tone = !preferredDirection ? 'informational' : direction === preferredDirection ? 'favorable' : 'unfavorable'
+  const magnitude = formatter(Math.abs(difference))
+  const change = magnitude === formatter(0) ? `≈ ${magnitude}` : `${direction === 'up' ? '+' : '−'}${magnitude}`
+  return <span className="sim-report__delta" data-tone={tone}><Icon size={13} aria-hidden="true" />{change}</span>
+}
+
 function MetricTable({ rows, reference, comparison }: { rows: ComparisonMetric[]; reference: string; comparison?: string }) {
   return <div className="sim-report__scroll"><table>
     <thead><tr><th scope="col">Metric</th><th scope="col">{reference}</th>{comparison && <><th scope="col">{comparison}</th><th scope="col">Change</th></>}</tr></thead>
     <tbody>{rows.map(metric => <tr key={metric.label}>
       <th scope="row">{metric.label}</th>
       <td>{format(metric.reference, metric.formatter)}</td>
-      {comparison && <><td>{format(metric.comparison, metric.formatter)}</td><td>{
-        metric.reference == null || metric.comparison == null ? '—' : signed(metric.comparison - metric.reference, metric.formatter ?? count)
-      }</td></>}
+      {comparison && <><td>{format(metric.comparison, metric.formatter)}</td><td><MetricDelta metric={metric} /></td></>}
     </tr>)}</tbody>
   </table></div>
 }
@@ -178,22 +193,22 @@ export default function SimulationReport(props: SimulationReportProps) {
   const oneWayAdmission = hasOneWayAdmission(reference.plan) && (!comparison || hasOneWayAdmission(comparison.plan))
   const changes = useMemo(() => comparison ? reportPlanChanges(reference.plan, comparison.plan) : [], [comparison, reference])
   const headline: ComparisonMetric[] = [
-    { label: 'Peak scan queue', reference: firstRun?.checkpoints.scan?.peak, comparison: secondRun?.checkpoints.scan?.peak },
-    { label: 'P90 gate wait', reference: firstRun?.p90GateWaitSeconds, comparison: secondRun?.p90GateWaitSeconds, formatter: minutes },
-    { label: 'Admitted by showtime', reference: firstRun?.admittedByShowtime, comparison: secondRun?.admittedByShowtime },
-    { label: 'Staff + equipment', reference: firstCosts.total, comparison: secondCosts?.total, formatter: money },
+    { label: 'Peak scan queue', reference: firstRun?.checkpoints.scan?.peak, comparison: secondRun?.checkpoints.scan?.peak, preferredDirection: 'down' },
+    { label: 'P90 gate wait', reference: firstRun?.p90GateWaitSeconds, comparison: secondRun?.p90GateWaitSeconds, formatter: minutes, preferredDirection: 'down' },
+    { label: 'Admitted by showtime', reference: firstRun?.admittedByShowtime, comparison: secondRun?.admittedByShowtime, preferredDirection: 'up' },
+    { label: 'Staff + equipment', reference: firstCosts.total, comparison: secondCosts?.total, formatter: money, preferredDirection: 'down' },
   ]
   const breakdown: ComparisonMetric[] = [
     { label: 'Staff headcount', reference: firstCosts.headcount, comparison: secondCosts?.headcount },
-    { label: 'Wages', reference: firstCosts.wages, comparison: secondCosts?.wages, formatter: money },
-    { label: 'Meal allowance', reference: firstCosts.meals, comparison: secondCosts?.meals, formatter: money },
-    { label: 'Committed equipment', reference: firstCosts.equipment, comparison: secondCosts?.equipment, formatter: money },
+    { label: 'Wages', reference: firstCosts.wages, comparison: secondCosts?.wages, formatter: money, preferredDirection: 'down' },
+    { label: 'Meal allowance', reference: firstCosts.meals, comparison: secondCosts?.meals, formatter: money, preferredDirection: 'down' },
+    { label: 'Committed equipment', reference: firstCosts.equipment, comparison: secondCosts?.equipment, formatter: money, preferredDirection: 'down' },
   ]
-  const checkpointRows = reportStages.flatMap(({ id, label }) => {
+  const checkpointRows = reportStages.flatMap<ComparisonMetric>(({ id, label }) => {
     const a = firstRun?.checkpoints[id], b = secondRun?.checkpoints[id]
     return [
-      { label: `${label} · peak queue`, reference: a?.peak, comparison: b?.peak },
-      { label: `${label} · P90 wait`, reference: a?.p90WaitSeconds, comparison: b?.p90WaitSeconds, formatter: minutes },
+      { label: `${label} · peak queue`, reference: a?.peak, comparison: b?.peak, preferredDirection: 'down' },
+      { label: `${label} · P90 wait`, reference: a?.p90WaitSeconds, comparison: b?.p90WaitSeconds, formatter: minutes, preferredDirection: 'down' },
       { label: `${label} · processed`, reference: a?.processed, comparison: b?.processed },
     ]
   })
@@ -231,8 +246,11 @@ export default function SimulationReport(props: SimulationReportProps) {
         {headline.map(metric => <div className="sim-report__card sim-report__kpi" key={metric.label}>
           <p>{metric.label}</p>
           <strong>{format(comparison ? metric.comparison : metric.reference, metric.formatter)}</strong>
-          <small>{comparison ? `${format(metric.reference, metric.formatter)} · ${reference.label}`
-            : metric.reference == null ? 'Awaiting data' : reference.label}</small>
+          <div className="sim-report__kpi-reference">
+            <small>{comparison ? `${format(metric.reference, metric.formatter)} · ${reference.label}`
+              : metric.reference == null ? 'Awaiting data' : reference.label}</small>
+            {comparison && metric.reference != null && metric.comparison != null && <MetricDelta metric={metric} />}
+          </div>
         </div>)}
       </div>
 
@@ -243,7 +261,7 @@ export default function SimulationReport(props: SimulationReportProps) {
             <MetricTable reference={reference.label} comparison={comparison?.label} rows={[
               ...headline,
               { label: 'Generated arrivals', reference: firstRun?.arrivals, comparison: secondRun?.arrivals },
-              { label: 'Admitted by run end', reference: firstRun?.admittedByRunEnd, comparison: secondRun?.admittedByRunEnd },
+              { label: 'Admitted by run end', reference: firstRun?.admittedByRunEnd, comparison: secondRun?.admittedByRunEnd, preferredDirection: 'up' },
             ]} />
             <p className="sim-report__note">Showtime {firstShowtime ? `${firstShowtime} WIB` : 'not specified'}{comparison && ` / ${secondShowtime ? `${secondShowtime} WIB` : 'not specified'}`}.</p>
             <p className="sim-report__note">P90 gate wait sums queue-entry-to-service time for attendees admitted by run end.
