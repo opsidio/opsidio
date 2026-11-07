@@ -13,7 +13,7 @@ npm run dev --prefix web -- --port 5173
 
 Open [the scene](http://127.0.0.1:5173/simulation). Use `?view=map&entries=1` for the proposed category-entry map. Add `?debug=1` to view renderer measurements and the provisional route guides.
 
-Select **Run V1 locally** to generate 70,000 fictional arrivals from `contracts/examples/coldplay-gbk-demo-plan.json`. All five entry areas have authored demo routes, operator positions and equipment. **Focus North layout** shows the queue barriers, scan operators, security officers and help agent. The area buttons focus the other entry areas. **Layout editor** edits the North equipment, attached checkpoints and directed waypoints with revisioned persistence and JSON import/export.
+Select **Run V1 locally** to generate 70,000 fictional arrivals from `contracts/examples/coldplay-gbk-demo-plan.json`. People walk from MRT Istora Mandiri Exit B, Parkir Timur or a proposed passenger drop-off to their assigned category entrance. **Focus North layout** shows the queue barriers, scan operators, security officers and help agent. The area buttons focus the other entry areas. **Layout editor** edits the North equipment, attached checkpoints and directed waypoints with revisioned persistence and JSON import/export.
 
 V1 is authored and played locally. **Optimize via Doni** submits the current plan snapshot for server validation and optimization. Start the local bridge with `python3.11 -m api.simulation` and configure `OPSIDIO_API_URL` and `OPSIDIO_API_KEY` in its server environment. The panel reports configuration, polls the remote job and offers returned candidates for V2. See [API setup and limitations](docs/des-bridge.md).
 
@@ -22,6 +22,7 @@ npm run build --prefix web
 node --test web/src/simulation/route.test.mjs tests/scenarios/coldplay.test.mjs web/src/simulation/layout/core.test.mjs
 node --experimental-strip-types --test web/src/simulation/abm/abm.test.mjs
 node --experimental-strip-types --test web/src/simulation/plan/compile.test.mjs
+node --experimental-strip-types --test tests/scenarios/mapped-arrivals.test.mjs
 python3.11 -m unittest discover -s api/tests -p 'test_*.py' -v
 ```
 
@@ -40,6 +41,6 @@ python3.11 -m unittest discover -s api/tests -p 'test_*.py' -v
 
 Wira can mount `web/src/scene/GbkCanvas.tsx` underneath the UI overlay. The scene props live in `web/src/simulation/types.ts`. The standalone bootstrap is separate from the renderer.
 
-The footprint and surrounding map features are sourced. Building heights, stadium architecture, and the temporary event layout are illustrative. Both JSON examples pass Doni's `PlanDocument` schema. The earlier draft retains unresolved inputs. The complete V1 adds explicit fictional sales/no-show, staffing, service-time, cost and layout assumptions. It contains 45 operators and 75 barrier panels. Four entry layouts are rotated copies of the North template and require site review. The local worker models four lane routes per entry, FIFO scan/security queues and one visitor per operator using fixed typical process times. The front 32 people per queue are rendered, with the full queue count reported. Doni’s API performs optimization and DES verification. Help-desk exception arrivals and reviewed internal sector routes remain pending. Remote semantic validation remains pending.
+The footprint and surrounding map features are sourced. Building heights, stadium architecture, and the temporary event layout are illustrative. The earlier draft retains unresolved inputs. V1 adds fictional sales/no-show, staffing, service-time and cost assumptions. Its five four-lane layouts follow mapped pedestrian and stadium-ring corridors, with 45 operators and 75 barrier panels. The local worker models FIFO scan/security queues and one visitor per operator using fixed typical process times. The front 32 people per queue are rendered, with the full queue count reported. See [arrival routing and site-review limits](data/venues/gbk/README.md#arrival-routing). Doni’s API performs optimization and DES verification. Help-desk exception arrivals and reviewed internal sector routes remain pending. Remote semantic validation remains pending.
 
 Rebuild the complete example with `node --experimental-strip-types tools/build-coldplay-demo.mjs`. The editor projects North coordinates, attachments and route distances into the same JSON snapshot used for export and optimization. A returned candidate whose staffing lacks matching spatial positions is rejected with a binding error for repair.
