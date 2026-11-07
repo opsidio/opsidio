@@ -67,3 +67,43 @@ npm run build --prefix web
 ```
 
 The focused suite covers the default graph, attachment transforms, moving checkpoints, dimensions, actual support feet, canopy overlap, barrier clearances, detector passage, unknown/duplicate/unreachable references, deletion protection, JSON recovery, persistence validation and mutation safety. The host must verify final overlay positioning and scene interaction after mounting it.
+
+## Multi-area plan editing
+
+For a complete plan, use `createPlanEditorLayout(source)` and pass the result plus
+`planEditorOptions(source)` into `useLayoutEditor`. Use a separate storage key from
+older North-only drafts. Project edits with `projectPlanEditorLayout(source, editor.layout)`.
+The adapter retains operational, staffing, source and route metadata. It updates
+all area equipment, authored nodes and directed edges, origin coordinates, revision,
+public-approach distances and native queue-to-gate distances. New moved source
+coordinates retain their reference and are labelled proposed user edits.
+
+`LayoutEditor` accepts `onAreaChange(area)` for the host camera. The controller
+exposes `activeAreaId`, `selectArea`, `visiblePlacements`, `visibleNodes` and
+`visibleEdges`. Scope filtering changes the UI only; validation always checks the
+whole graph, including connections between areas. `editor.layout.markers` are
+visual gate anchors; moving them does **not** move flow. `placementAreas` preserves
+stable equipment-to-area assignments. Both fields survive export/import and undo.
+
+Choose an entry area, select equipment and click the ground or edit X/Z/yaw. In
+**Waypoints**, select an existing arrival, checkpoint or destination to move it
+while preserving demand bindings. Choose **Shared origins / drop-off** and select
+`origin_dropoff`, `origin_mrt` or `origin_parking` to move its actual arrival node
+and matching origin definition. New waypoints/arrival/destination nodes require
+explicit one-way From → To connections and are not assigned demand automatically.
+A reverse connection must be authored separately. No routing fallback is generated.
+Gate-marker controls explicitly identify a visual sign rather than a flow anchor.
+
+Bound stations, queue nodes, operators and origins cannot be removed through this
+editor; operational changes belong in the plan workflow. An invalid draft must
+remain visible using its authored placements and resolved graph, while the host
+keeps playback disabled via `runnableGraph` and projection errors. The editing
+envelope is derived from existing coordinates with a 120 m margin; it is not a
+survey, walkability claim or a new site location.
+
+The pinned mapped demo explicitly flags one East public-approach overlap
+(`approach_417744527_417744522`) with the three `plaza_timur_row_2_*` barriers.
+Only this source-listed overlap, with its exact review basis and unchanged source
+endpoints/equipment geometry, is retained as a visible warning. Moving the edge or
+any of those barriers, changing its preset/bays, or adding another blocker restores
+the normal blocking error. No other collision receives this exception.

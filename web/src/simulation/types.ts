@@ -57,7 +57,9 @@ export type Placement = {
 export type RouteLine = {
   id: string
   points: readonly Point[]
-  kind: 'entry' | 'exception'
+  kind: 'entry' | 'exception' | 'connector' | 'public'
+  color?: string
+  segments?: boolean
 }
 
 export type RouteNode = {
@@ -79,6 +81,10 @@ export type EntryAreaMarker = {
 
 export type SceneProps = {
   children?: ReactNode
+  focusPosition?: Point
+  editBounds?: Bounds
+  inspectWaypoints?: boolean
+  focusYawDeg?: number
   entryAreas?: readonly EntryAreaMarker[]
   debug?: boolean
   autoRotate?: boolean

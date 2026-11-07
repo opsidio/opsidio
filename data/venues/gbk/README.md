@@ -44,10 +44,28 @@ The editable area is separate from public map data. Its routes, equipment and an
 - All road/path widths are **illustrative class-based values**. They must not be used as measured clearance, capacity, accessibility or permission to enter. Shared/closed/private paths can still appear as contextual geometry.
 - Tree positions, count, dimensions, species and crown shapes are **illustrative**. A seeded sampler plants only inside mapped woodland, park and lawn polygons, with exclusion clearances around buildings, water, sports fields, mapped path ribbons and the demo work envelope. The same input produces the same trees. No trees are treated as surveyed obstacles.
 - Palette, periwinkle landmark massing, roof-edge bands, pitch borders, graphic ground shadows and the circular presentation disk are styling. They are not architectural measurements or extra source features.
-- `LandscapeContext.tsx` merges geometry and instances trees. Overlapping ground polygons are placed in conservative depth-order batches, with `polygonOffset` and `renderOrder` keeping all ground at Y = 0. Ground layers do not receive shadow maps. Roof borders alone sit 0.06 m above the illustrative roof. This avoids moving the operational coordinate plane to fix rendering artifacts.
+- `LandscapeContext.tsx` merges geometry and instances trees. Ground polygons and roads stay at Y = 0 and draw in a stable order before 3D objects, with depth testing and depth writes disabled for those colour layers. The base terrain retains its normal depth. This prevents the road from covering tent legs and people at tilted camera angles. Graphic shadows use a small constant depth bias. Ground layers do not receive shadow maps. Roof borders sit 0.06 m above the illustrative roof.
 - Named-area labels use mean polygon vertices. These are label anchors, not entrances. Gate labels use OSM nodes; some gates have restricted or closed access tags and must not be presented as available entrances.
 
 OSM polygons can be approximate, incomplete or stale. This pack is a coordinate foundation for local visual prototyping; actual placement, access and routes still need event-specific verification.
+
+## Arrival routing
+
+[Arrival origin sources](arrival-origins.json) refer to the existing pinned OSM extract. MRT Istora Mandiri Exit B and the mapped parking entrance are shared network nodes; the latter is a **proposed** taxi and ride-hailing drop-off. Parkir Timur uses the centre of its mapped parking polygon. Its **82.6 m proposed walking connector** to the public network needs on-site confirmation. No vehicles are simulated.
+
+V1 joins the shortest walking routes from all three origins to the five entrance forecourts. The graph uses visible footways, pedestrian paths, steps, living streets and allowed service roads. Adjacency comes from shared OSM nodes. Restricted ways and gates, polygon outlines and off-map segments are excluded. Mapped approaches avoid the modeled pens except for one flagged East/Festival access leg, `approach_417744527_417744522` (OSM way 496569523). It remains connected for the demo and needs site review. Event access, closures and accessible routing remain unverified.
+
+North and West use mapped pedestrian corridors. The East, Southeast and Yellow four-lane layouts use separate sections of Jalan Lingkar Stadion: the original approaches there are too narrow for the illustrated lane spacing. `proposed_anchor_m` retains the original scenario marker, while `operational_anchor_m` is the illustrated security location. These positions are for the demo and do not identify confirmed gates. The tests sample all admission route legs against the 7.5 m rendered corridors and check all four security/scan sequences, barrier/table/detector footprints and operator positions. The illustrated 10 m shelters overhang the rendered corridor and require site review before equipment placement.
+
+CAT 4 visitors assigned to Pintu Kuning join the ring at the Jalan Plaza Selatan junction and share part of the road with Plaza Tenggara visitors who have already passed security. The junction lies 27.5 m beyond the Tenggara security tent centre and 19.5 m before its scan tent centre along the demo route. All Tenggara journeys use their own forecourt and security checkpoint. Closing the shared ring segment disconnects Pintu Kuning from all three origins in the current mapped graph, so the shared section still needs event review. [Mapped junction](https://www.openstreetmap.org/node/309878212)
+
+| Origin | Approach walk to entrance forecourt |
+| --- | ---: |
+| MRT Istora Mandiri Exit B | 1,245–2,576 m |
+| Parkir Timur | 581–1,911 m |
+| Proposed passenger drop-off | 1,311–2,641 m |
+
+Each entrance adds about 141 m of walking across its admission layout. For Doni's API, `demand.time_reference: origin_spawn` means arrivals are released at the selected origin; `venue.layout.walking_paths` contains the 15 origin-to-queue approach distances. Apply that walk once. The category × behavior rows remain at 76; local playback assigns the origin split while preserving all 70,000 visitors.
 
 ## Rebuild and checks
 

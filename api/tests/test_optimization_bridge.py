@@ -5,7 +5,7 @@ import unittest
 import urllib.request
 from api.simulation import BridgeConfig, BridgeError, SimulationBridge
 from api.simulation.__main__ import handler_for
-from test_des_bridge import StubClient, PLAN_RESPONSE, REQUEST, VALIDATION, local_server
+from api.tests.test_des_bridge import StubClient, PLAN_RESPONSE, REQUEST, VALIDATION, local_server
 
 OPT='opt_01JC9Y5N2B7C4D6F8G0H2J4K6M'
 CANDIDATE='pln_01JC9Z1P3Q5R7S9T1V3W5X7Y9Z'

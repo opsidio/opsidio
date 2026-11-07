@@ -1,13 +1,16 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { DynamicDrawUsage, Matrix4 } from 'three'
+import { Color, DynamicDrawUsage, Matrix4 } from 'three'
 import type { InstancedMesh } from 'three'
 import type { AbmResult } from '../runtime-types'
-import { prepareJourneySampler, sampleWalkingCrowd } from './sampling'
-import type { CrowdSampleStats } from './sampling'
+import { prepareJourneySampler, sampleJourneyPosition, sampleJourneyWaitSeconds, sampleWalkingCrowd } from './sampling'
+import type { CrowdSampleStats, JourneySampler } from './sampling'
+import { writeWaitColor } from './wait-visuals'
 
 export type CrowdPreviewProps = {
   result: AbmResult
+  /** Share the prepared timeline with queue annotations to avoid a second population buffer. */
+  sampler?: JourneySampler
   timeSeconds?: number
   /** Caller-owned simulation clock, read directly each frame for smooth playback. */
   clockRef?: { current: number }
@@ -19,16 +22,17 @@ export type CrowdPreviewProps = {
   onSampleStats?: (stats: Readonly<CrowdSampleStats>) => void
 }
 
-/** Illustrative walkers on authored routes. No queues, collisions, or occupancy claims. */
+/** Illustrative walking, waiting and processing from the authored journey timeline. */
 export function CrowdPreview({
-  result, timeSeconds = 0, clockRef, maxVisible = 5000, color = '#f4c66b', visualSpreadM = 0.65, onSampleStats,
+  result, sampler: suppliedSampler, timeSeconds = 0, clockRef, maxVisible = 5000, color = '#f4c66b', visualSpreadM = 0.65, onSampleStats,
 }: CrowdPreviewProps) {
-  const sampler = useMemo(() => prepareJourneySampler(result.journeys), [result])
+  const sampler = useMemo(() => suppliedSampler ?? prepareJourneySampler(result.journeys), [result, suppliedSampler])
   const capacity = Math.max(0, Math.min(sampler.count, Number.isFinite(maxVisible) ? Math.floor(maxVisible) : 5000))
   const buffers = useMemo(() => ({
     positions: new Float32Array(capacity * 3), indices: new Uint32Array(capacity),
-    stats: { visibleCount: 0, walkingCount: 0 }, matrix: new Matrix4(),
-    lastTime: NaN, lastNotifyTime: -Infinity, lastVisible: -1, lastWalking: -1,
+    stats: { visibleCount: 0, walkingCount: 0 } as CrowdSampleStats, matrix: new Matrix4(), color: new Color(),
+    lastTime: NaN, lastNotifyTime: -Infinity, lastVisible: -1, lastWalking: -1, lastWaiting: -1,
+    lastVisibleWaiting: -1, lastProcessing: -1, lastCompleted: -1,
   }), [sampler, capacity])
   const offsets = useMemo(() => {
     const values = new Float32Array(sampler.count * 2)
@@ -59,37 +63,49 @@ export function CrowdPreview({
       const spread = Number.isFinite(visualSpreadM) ? Math.max(0, visualSpreadM) : 0
       for (let slot = 0; slot < buffers.stats.visibleCount; slot++) {
         const index = buffers.indices[slot]
-        const x = buffers.positions[slot * 3] + offsets[index * 2] * spread
+        const phase = sampleJourneyPosition(sampler, index, seconds, buffers.positions, slot * 3)
+        if (phase === 'waiting') writeWaitColor(sampleJourneyWaitSeconds(sampler, index, seconds), buffers.color)
+        else buffers.color.set(phase === 'processing' ? '#359c9b' : color)
+        bodies.current.setColorAt(slot, buffers.color)
+        const walkingSpread = phase === 'walking' ? spread : 0
+        const x = buffers.positions[slot * 3] + offsets[index * 2] * walkingSpread
         const y = buffers.positions[slot * 3 + 1]
-        const z = buffers.positions[slot * 3 + 2] + offsets[index * 2 + 1] * spread
+        const z = buffers.positions[slot * 3 + 2] + offsets[index * 2 + 1] * walkingSpread
         buffers.matrix.makeTranslation(x, y + 0.8, z)
         bodies.current.setMatrixAt(slot, buffers.matrix)
-        buffers.matrix.makeTranslation(x, y + 1.55, z)
+        buffers.matrix.makeTranslation(x, y + 1.5, z)
         heads.current.setMatrixAt(slot, buffers.matrix)
       }
       bodies.current.count = buffers.stats.visibleCount
       heads.current.count = buffers.stats.visibleCount
+      if (bodies.current.instanceColor) bodies.current.instanceColor.needsUpdate = true
       bodies.current.instanceMatrix.needsUpdate = true
       heads.current.instanceMatrix.needsUpdate = true
       buffers.lastTime = seconds
     }
     if (onSampleStats && clock.elapsedTime - buffers.lastNotifyTime >= 0.25
-      && (buffers.lastVisible !== buffers.stats.visibleCount || buffers.lastWalking !== buffers.stats.walkingCount)) {
+      && (buffers.lastVisible !== buffers.stats.visibleCount || buffers.lastWalking !== buffers.stats.walkingCount
+        || buffers.lastWaiting !== buffers.stats.waitingCount || buffers.lastVisibleWaiting !== buffers.stats.visibleWaitingCount
+        || buffers.lastProcessing !== buffers.stats.processingCount || buffers.lastCompleted !== buffers.stats.completedCount)) {
       buffers.lastNotifyTime = clock.elapsedTime
       buffers.lastVisible = buffers.stats.visibleCount
       buffers.lastWalking = buffers.stats.walkingCount
+      buffers.lastWaiting = buffers.stats.waitingCount ?? 0
+      buffers.lastVisibleWaiting = buffers.stats.visibleWaitingCount ?? 0
+      buffers.lastProcessing = buffers.stats.processingCount ?? 0
+      buffers.lastCompleted = buffers.stats.completedCount ?? 0
       // Low-frequency notification copy; all per-frame geometry work reuses buffers.
-      onSampleStats({ visibleCount: buffers.stats.visibleCount, walkingCount: buffers.stats.walkingCount })
+      onSampleStats({ ...buffers.stats })
     }
   })
 
   return <group name="Illustrative ABM walking preview">
     <instancedMesh ref={bodies} args={[undefined, undefined, Math.max(1, capacity)]} frustumCulled={false}>
       <cylinderGeometry args={[0.22, 0.27, 1.15, 5]} />
-      <meshStandardMaterial color={color} roughness={0.9} />
+      <meshStandardMaterial color="#ffffff" roughness={0.9} />
     </instancedMesh>
     <instancedMesh ref={heads} args={[undefined, undefined, Math.max(1, capacity)]} frustumCulled={false}>
-      <sphereGeometry args={[0.22, 5, 3]} />
+      <sphereGeometry args={[0.2, 5, 3]} />
       <meshStandardMaterial color="#e7b890" roughness={0.9} />
     </instancedMesh>
   </group>

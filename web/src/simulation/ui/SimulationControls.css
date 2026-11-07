@@ -1,0 +1,218 @@
+.sim-map-controls {
+  position: absolute;
+  z-index: 35;
+  inset: 0;
+  --sim-map-drawer-offset: 0px;
+  pointer-events: none;
+}
+
+.standalone-scene[data-panel-open='true'] .sim-map-controls {
+  --sim-map-drawer-offset: 412px;
+}
+
+.sim-map-control-group {
+  position: absolute;
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+  border: 1px solid var(--sim-border, #e3e5ea);
+  border-radius: var(--sim-radius, 12px);
+  background: var(--sim-surface, #fff);
+  box-shadow: var(--sim-shadow, 0 8px 32px #1f23251a);
+  pointer-events: auto;
+}
+
+.sim-map-control-group-camera {
+  top: calc(var(--sim-toolbar-height, 66px) + 14px);
+  left: calc((100% - var(--sim-map-drawer-offset)) / 2);
+  transform: translateX(-50%);
+}
+
+.sim-map-control-group-navigation {
+  top: calc((100% + var(--sim-toolbar-height, 66px)) / 2);
+  left: 16px;
+  flex-direction: column;
+  transform: translateY(-50%);
+}
+
+.sim-map-control-group-navigation .sim-map-button span {
+  display: none;
+}
+
+.sim-map-control-group-layers {
+  right: calc(16px + var(--sim-map-drawer-offset));
+  bottom: 55px;
+}
+
+.sim-map-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--sim-text, #21242a);
+  font: 600 12px var(--sim-font, sans-serif);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sim-map-button svg,
+.sim-controls button svg {
+  flex: none;
+}
+
+.sim-map-button:hover {
+  background: var(--sim-raised, #f5f6f8);
+}
+
+.sim-map-button[aria-pressed='true'] {
+  border-color: var(--sim-accent-soft, #fff0f0);
+  background: var(--sim-accent-soft, #fff0f0);
+  color: var(--sim-accent-ink, #421217);
+}
+
+.sim-map-control-group-camera .sim-map-button[aria-pressed='true'],
+.sim-controls .sim-controls-run {
+  border-color: var(--sim-accent, #ff5a5e);
+  background: var(--sim-accent, #ff5a5e);
+  color: var(--sim-on-accent, #fff);
+  font-weight: 700;
+}
+
+.sim-map-button:focus-visible,
+.sim-controls :is(button, select, input):focus-visible {
+  outline: 2px solid var(--sim-accent, #ff5a5e);
+  outline-offset: 2px;
+}
+
+.sim-controls {
+  display: grid;
+  gap: 12px;
+  color: var(--sim-text, #21242a);
+  font-size: 13px;
+}
+
+.sim-controls-section {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sim-controls-section + .sim-controls-section {
+  padding-top: 12px;
+  border-top: 1px solid var(--sim-border, #e3e5ea);
+}
+
+.sim-controls-section h3 {
+  margin: 0;
+  color: var(--sim-text, #21242a);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.sim-controls-focus {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr));
+  gap: 8px;
+}
+
+.sim-controls-clock,
+.sim-controls-rate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.sim-controls-clock time {
+  color: var(--sim-muted, #5c626e);
+  font-variant-numeric: tabular-nums;
+}
+
+.sim-controls-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: var(--sim-muted, #5c626e);
+}
+
+.sim-controls-field.sim-controls-rate {
+  display: flex;
+}
+
+.sim-controls button,
+.sim-controls select {
+  min-width: 0;
+  min-height: 34px;
+  padding: 6px 9px;
+  border: 1px solid var(--sim-border, #e3e5ea);
+  border-radius: 7px;
+  background: var(--sim-raised, #f5f6f8);
+  color: var(--sim-text, #21242a);
+  font: inherit;
+  cursor: pointer;
+}
+
+.sim-controls button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.sim-controls button:disabled {
+  opacity: .55;
+  cursor: default;
+}
+
+.sim-controls-timeline {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--sim-accent, #ff5a5e);
+}
+
+@media (max-width: 1120px) {
+  .sim-map-button span {
+    display: none;
+  }
+}
+
+@media (max-width: 670px) {
+  .standalone-scene {
+    --sim-map-controls-clearance: 100px;
+  }
+
+  .sim-map-control-group-camera {
+    top: calc(var(--sim-toolbar-height, 91px) + 8px);
+    left: 50%;
+  }
+
+  .sim-map-control-group-navigation,
+  .sim-map-control-group-layers {
+    top: calc(var(--sim-toolbar-height, 91px) + 54px);
+    bottom: auto;
+  }
+
+  .sim-map-control-group-navigation {
+    left: 8px;
+    flex-direction: row;
+    transform: none;
+  }
+
+  .sim-map-control-group-layers {
+    right: 8px;
+  }
+
+  .sim-map-control-group {
+    padding: 3px;
+  }
+  .sim-map-button {
+    min-height: 34px;
+    min-width: 34px;
+  }
+}

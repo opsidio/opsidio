@@ -1,5 +1,15 @@
 # Local DES bridge
 
+## V1 and optimization
+
+The standalone scene uses a complete local V1 from `contracts/examples/coldplay-gbk-demo-plan.json`. Its worker generates all 70,000 fictional arrivals without calling the remote service. New operational assumptions are listed in `meta.demo_assumptions`. The earlier partial draft remains available.
+
+Selecting **Optimize V1** sends that snapshot to `POST /api/simulation/optimize`. The bridge checks upstream health, creates the plan, validates it, and starts `POST /v1/plans/{plan_id}/optimize`. The demo uses greedy search, a 60-second search limit, 40 kept moves and 20 DES verification replications. DES selection can add time after the search limit. Both plan creation and optimization use deterministic idempotency keys.
+
+`GET /api/simulation/optimizations/{id}` polls the upstream job. `GET /api/simulation/plans/{id}` retrieves a returned candidate. IDs are validated before upstream calls. The browser preserves actual job states and candidate scores. Loading a V2 candidate rechecks its spatial bindings. Changed staff counts require corresponding operator positions before the candidate can be displayed.
+
+Local V1 playback is verified. The new optimization flow passes mock tests. Live optimization still requires service credentials and remote semantic validation of the full GBK plan.
+
 This adapter calls Doni's existing flow/DES service using its [OpenAPI contract](../api/algorithm/openapi.yaml) and [quick start](../api/algorithm/api-quick-start.md). It contains no queue simulator. The repository has the service documentation and example documents, not the engine source or an importable engine hook.
 
 ## Start
