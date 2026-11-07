@@ -217,7 +217,25 @@ Keep Schemathesis settings in `schemathesis.toml` in the service folder:
 
 #### Railway state
 
-No service is deployed yet. After the first deploy of a service, add a table here with its Railway service, public URL, region, replicas, volume, variable names, and health check.
+The user authorized Phase 1 deployment on 2026-11-07 under project `opsidio`.
+Use this table for the deployed target; it overrides the copied `algorithm` project naming below.
+
+| Setting | Deployed value |
+| --- | --- |
+| Railway project | `opsidio` (`9baf9b83-09bb-46e8-8702-c79d21968ce2`) |
+| Railway service | `opsidio-api` (`5d0900c0-8976-4ae5-ab5c-ed5397b6e3f5`) |
+| Environment | `production` (`57de2987-9915-4ab6-9e13-09b960b94d13`) |
+| Public URL | `https://opsidio-api-production.up.railway.app` |
+| Build root | `api/algorithm/api/`, uploaded locally with `railway up` |
+| Region | Singapore, `asia-southeast1-eqsg3a` |
+| Replicas | One; serverless off |
+| Volume | `opsidio-api-volume`, mounted at `/data` |
+| Variables | Secret `API_KEY`; `DATABASE_PATH=/data/corridor.sqlite3`; Railway-provided `PORT` |
+| Health check | Public `GET /health`; `/v3` requires `X-API-Key` |
+
+Run Railway commands from `api/algorithm/api/`.
+Link each new checkout with `railway link --project opsidio --service opsidio-api --environment production`.
+See [deployment evidence](docs/deployments/2026-11-07-phase-1-railway.md) before changing the deployed service.
 
 #### Rules
 
