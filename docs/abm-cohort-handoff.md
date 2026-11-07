@@ -1,8 +1,21 @@
 # V1 ABM cohort handoff
 
-The complete input is `contracts/examples/coldplay-gbk-demo-plan.json`. The browser groups demand by ticket category, behavior segment and transport origin. Parameters are defined once per segment, and each generated journey inherits those parameters. The 76 authored category × behavior rows expand into 228 runtime cohorts when the three transport origins are declared, preserving all 70,000 people. Each entry has four active lanes. Legacy plans without transport origins retain their 76 behavior cohorts.
+The complete input is `contracts/examples/coldplay-gbk-demo-plan.json`. The browser groups demand by ticket category, behavior segment and transport origin. Parameters are defined once per segment, and each generated journey inherits those parameters. The 76 authored category × behavior rows expand into 228 runtime cohorts when the three transport origins are declared, preserving all 70,000 people. Legacy plans without transport origins retain their 76 behavior cohorts.
 
 All segment shares, arrival profiles, group sizes, speeds and local spawn offsets are fictional demo assumptions. Public category-to-entry routing is retained from the sourced admission scenario.
+
+## Revision 8 staffing
+
+| Entrance | Staffed lanes | Security | Scan | Help | Total staff |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Plaza Tenggara | 8 | 8 | 8 | 1 | 17 |
+| Plaza Barat | 4 | 4 | 4 | 1 | 9 |
+| Pintu Kuning | 5 | 5 | 5 | 1 | 11 |
+| Plaza Utara | 5 | 5 | 5 | 1 | 11 |
+| Plaza Timur | 8 | 8 | 8 | 1 | 17 |
+| **Total** | **30** | **30** | **30** | **5** | **65** |
+
+The demo's wage estimate is Rp24.25 million for one shift per person. Meals add Rp2.925 million, for Rp27.175 million against the Rp30 million staff cap. Each staffed lane uses one scanner and one detector wand. The baseline allocates 20 units on hand and ten rentals per device type. Committed equipment costs of Rp5 million plus Rp2.5 million in rentals give Rp7.5 million against the Rp30 million equipment cap. These calculations use the fixture's fictional inputs.
 
 ## Behavior profiles
 
@@ -43,7 +56,7 @@ Infinity retains its original 500 people and Plaza Tenggara arrival. Each of its
 
 ## Spawning and destinations
 
-The runtime path is transport origin → public approach → assigned entry forecourt → help desk → security queue and screening → ticket scan and wristband → one-way category handover. Four directed lane routes per entry distribute arriving groups round-robin. Each lane has its own scan and security checkpoint and bound operators. The local worker queues visitors FIFO, processes one visitor per operator, then continues the journey. It uses fixed typical times from the native process steps and native gate opening/closing clocks. Only groups selected by the editable `help_desk_visit_percent` stop at the help desk. The demo uses a fictional 1% in every profile.
+The runtime path is transport origin → public approach → assigned entry forecourt → help desk → security queue and screening → ticket scan and wristband → one-way category handover. Each entrance distributes arriving groups round-robin across its authored lanes. Each lane has its own scan and security checkpoint and bound operators. The local worker queues visitors FIFO, processes one visitor per operator, then continues the journey. It uses fixed typical times from the native process steps and native gate opening/closing clocks. Only groups selected by the editable `help_desk_visit_percent` stop at the help desk. The demo uses a fictional 1% in every profile.
 
 Every ticket category has a named destination node. These are post-security category handover points at its assigned entry area. Category handovers are spaced around that area's admitted endpoint until internal routes are reviewed. `viewing_tier` records the eventual seated or standing sector. `final_zone_route_status` is `pending_venue_review`. Seat blocks, stairs, accessible routes and stage-specific field destinations still need venue mapping.
 

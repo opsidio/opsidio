@@ -20,9 +20,13 @@ test('the actual JSON produces 70,000 journeys across all five authored entry ar
   assert.equal(result.generatedCount, 70000)
   assert.deepEqual(result.issues, [])
   assert.equal(plan.entryAreas.length, 5)
-  assert.equal(plan.operators.length, 45)
+  assert.deepEqual(Object.fromEntries(fixture.venue.layout.gates.map(gate => [gate.id, gate.lanes[0].count])), {
+    proposed_gate_plaza_tenggara: 8, proposed_gate_plaza_barat: 4, proposed_gate_pintu_kuning: 5,
+    proposed_gate_plaza_utara: 5, proposed_gate_plaza_timur: 8,
+  })
+  assert.equal(plan.operators.length, 65)
   const queueStations = plan.config.serviceStations.filter(station => station.queueStartNodeId)
-  assert.equal(queueStations.length, 20)
+  assert.equal(queueStations.length, 30)
   assert.ok(queueStations.every(station => station.admissionStage === 'security'))
   const firstJourney = result.journeys.find(journey => journey.serviceStops[0].queueStartDistanceM !== undefined)
   const firstStop = firstJourney.serviceStops[0]
@@ -47,7 +51,7 @@ test('the actual JSON produces 70,000 journeys across all five authored entry ar
   const validation = validateLayout(plan.northLayout, { bounds: venue.editBounds, catalogue })
   assert.deepEqual(validation.issues, [])
   assert.equal(validation.valid, true)
-  assert.equal(plan.placements.filter(item => item.presetId === 'barrier-230').length, 75)
+  assert.equal(plan.placements.filter(item => item.presetId === 'barrier-230').length, 105)
   assert.equal(plan.entryAreas.reduce((sum, item) => sum + item.attendees, 0), 70000)
 })
 test('JSON ticket edits drive attendance and no-show rounding conserves the expected total', () => {
@@ -109,26 +113,28 @@ const { prepareJourneySampler, sampleJourneyPosition, sampleWalkingCrowd } = awa
 function smallAdmissionConfig() {
   const config = compileSimulationPlan(fixture).config
   const cohort = config.cohorts.find(item => item.categoryId === 'cat5' && item.segmentId === 'early_fan')
-  return { ...config, cohorts: [{ ...cohort, helpDesk: { ...cohort.helpDesk, visitPercent: 0 }, count: 8, windows: [{ startSeconds: 0, endSeconds: .01, sharePercent: 100 }] }] }
+  const count = cohort.laneCheckpointIds.length * cohort.groupSize
+  return { ...config, cohorts: [{ ...cohort, helpDesk: { ...cohort.helpDesk, visitPercent: 0 }, count, windows: [{ startSeconds: 0, endSeconds: .01, sharePercent: 100 }] }] }
 }
-test('four lanes are used, groups stay together, and one person per operator is processed', () => {
+test('all authored lanes are used, groups stay together, and one person per operator is processed', () => {
   const config = smallAdmissionConfig()
   const result = generateAbm(config)
   assert.deepEqual(result.issues, [])
+  const laneCount = config.cohorts[0].laneCheckpointIds.length
   const securityStops = result.journeys.map(journey => journey.serviceStops[0])
-  assert.equal(new Set(securityStops.map(stop => stop.operatorId)).size, 4)
+  assert.equal(new Set(securityStops.map(stop => stop.operatorId)).size, laneCount)
   for (const journey of result.journeys) {
     const group = result.journeys.filter(item => item.groupId === journey.groupId)
     assert.ok(group.every(member => member.serviceStops[0].operatorId === journey.serviceStops[0].operatorId))
   }
   const sampler = prepareJourneySampler(result.journeys)
   const stats = sampleWalkingCrowd(sampler, 30601, new Float32Array(120), new Uint32Array(40))
-  assert.equal(stats.processingCount, 4)
-  assert.equal(stats.waitingCount, 4)
+  assert.equal(stats.processingCount, laneCount)
+  assert.equal(stats.waitingCount, result.generatedCount - laneCount)
   assert.equal(stats.completedCount, 0)
   const phases = result.journeys.map((_, index) => sampleJourneyPosition(sampler, index, 30601, new Float32Array(3)))
-  assert.equal(phases.filter(phase => phase === 'processing').length, 4)
-  assert.equal(phases.filter(phase => phase === 'waiting').length, 4)
+  assert.equal(phases.filter(phase => phase === 'processing').length, laneCount)
+  assert.equal(phases.filter(phase => phase === 'waiting').length, result.generatedCount - laneCount)
   for (const operator of new Set(securityStops.map(stop => stop.operatorId))) {
     const stops = securityStops.filter(stop => stop.operatorId === operator).sort((a, b) => a.startSeconds - b.startSeconds)
     assert.ok(stops[0].endSeconds <= stops[1].startSeconds)
@@ -140,13 +146,13 @@ test('closed processing leaves people pending in the queue, while security clear
   assert.ok(normal.journeys.every(journey => journey.serviceStops.length === 2 && journey.completionSeconds !== null))
   const sampler = prepareJourneySampler(normal.journeys)
   const completed = sampleWalkingCrowd(sampler, 31000, new Float32Array(120), new Uint32Array(40))
-  assert.equal(completed.completedCount, 8)
+  assert.equal(completed.completedCount, normal.generatedCount)
   assert.equal(completed.processingCount, 0)
   assert.equal(completed.waitingCount, 0)
   const closed = generateAbm({ ...config, serviceStations: config.serviceStations.map(station => ({ ...station, closesSeconds: 30605 })) })
   assert.ok(closed.journeys.every(journey => journey.completionSeconds === null && journey.serviceStops[0].startSeconds === null))
   const pending = sampleWalkingCrowd(prepareJourneySampler(closed.journeys), 30700, new Float32Array(120), new Uint32Array(40))
-  assert.equal(pending.waitingCount, 8)
+  assert.equal(pending.waitingCount, closed.generatedCount)
   assert.equal(pending.processingCount, 0)
 })
 
@@ -184,9 +190,9 @@ test('one-way plans reject bypasses and paths back to pre-entry after scan', () 
 })
 test('changing open lane options preserves seeded onsite demand', () => {
   const config = smallAdmissionConfig()
-  const four = generateAbm(config)
+  const full = generateAbm(config)
   const two = generateAbm({ ...config, cohorts: config.cohorts.map(cohort => ({ ...cohort, laneCheckpointIds: cohort.laneCheckpointIds.slice(0, 2) })) })
-  assert.deepEqual(four.journeys.map(item => item.onsiteArrivalSeconds), two.journeys.map(item => item.onsiteArrivalSeconds))
+  assert.deepEqual(full.journeys.map(item => item.onsiteArrivalSeconds), two.journeys.map(item => item.onsiteArrivalSeconds))
   assert.equal(new Set(two.journeys.map(item => item.serviceStops[0].operatorId)).size, 2)
 })
 

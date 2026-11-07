@@ -1,88 +1,118 @@
 import { readFileSync, writeFileSync } from 'node:fs'
-import { catalogue, initialDraft } from '../web/src/simulation/model.ts'
-import { createLayoutRevision, localToWorld } from '../web/src/simulation/layout/core.ts'
+import { catalogue } from '../web/src/simulation/model.ts'
+import { localToWorld } from '../web/src/simulation/layout/core.ts'
 import { admissionSpine, addArrivalNetwork, round } from './arrival-network.mjs'
 
 const root = new URL('../', import.meta.url)
 const draft = JSON.parse(readFileSync(new URL('contracts/examples/coldplay-gbk-plan-draft.json', root)))
 const source = draft.meta.source_scenario.snapshot
 const plan = structuredClone(draft)
-const baseline = createLayoutRevision(initialDraft().placements)
+const laneCounts = { plaza_tenggara: 8, plaza_barat: 4, pintu_kuning: 5, plaza_utara: 5, plaza_timur: 8 }
+const totalLanes = Object.values(laneCounts).reduce((sum, count) => sum + count, 0)
+const equipmentOnHand = 20
+const equipmentRentLimit = 10
+const equipmentRented = Math.max(0, totalLanes - equipmentOnHand)
+if (equipmentRented > equipmentRentLimit) throw new Error(`The demo has equipment for at most ${equipmentOnHand + equipmentRentLimit} staffed lanes.`)
 const laneSpacingM = 1.66
-const laneOffsets = [-2.49, -0.83, 0.83, 2.49]
-const laneSecurityIds = ['lane_1_security_checkpoint', 'security_checkpoint', 'lane_3_security_checkpoint', 'lane_4_security_checkpoint']
-const panelLengthM = catalogue.find(item => item.id === 'barrier-230').widthM
-const firstPanelZ = -286.65
+const { widthM: panelLengthM, depthM: panelDepthM } = catalogue.find(item => item.id === 'barrier-230')
+const firstPanelS = 30.35
 const panelPitchM = 2.5
-const lastPanelZ = firstPanelZ + 2 * panelPitchM
-const queueApproachZ = firstPanelZ - panelLengthM / 2 - 1.8
-const queueExitZ = lastPanelZ + panelLengthM / 2 + 0.4
+const panelsPerRow = 3
+const lastPanelS = firstPanelS + (panelsPerRow - 1) * panelPitchM
+const queueApproachS = firstPanelS - panelLengthM / 2 - 1.8
+const queueExitS = lastPanelS + panelLengthM / 2 + 0.4
 const waitInsetM = 0.4
-baseline.placements = baseline.placements.filter(item => !item.id.startsWith('row_5_'))
-for (const placement of baseline.placements) {
-  if (placement.id.startsWith('row_')) {
-    const [, row, panel] = placement.id.split('_')
-    placement.position = [8.68 + Number(row) * laneSpacingM, 0, firstPanelZ + Number(panel) * panelPitchM]
+const securityS = 42
+const lanePrefix = lane => lane === 1 ? '' : `lane_${lane + 1}_`
+const spines = new Map(source.entry_areas.map(area => [area.id, admissionSpine(area.id)]))
+
+function admissionTemplate(areaId, spine) {
+  const laneCount = laneCounts[areaId]
+  if (!laneCount) throw new Error(`No authored lane count for ${areaId}`)
+  const crosswise = laneCount > 5
+  const routeLengthM = spine.lengthM ?? spine.lengths.at(-1)
+  const compact = areaId === 'pintu_kuning' && routeLengthM < 120
+  // The 15 m canopies run across the lane bank with three standard Roder bays.
+  // Offset the lane bank slightly from the bay posts, preserving full lane widths.
+  const laneBiasM = crosswise ? 0.55 : 0
+  const railStartM = laneBiasM - laneCount * laneSpacingM / 2
+  const laneOffsets = Array.from({ length: laneCount }, (_, lane) => round(railStartM + (lane + 0.5) * laneSpacingM))
+  const queueWidthM = laneCount * laneSpacingM + panelDepthM
+  if (Math.max(Math.abs(railStartM), Math.abs(railStartM + laneCount * laneSpacingM)) + panelDepthM / 2 > spine.widthM / 2 + 0.001) {
+    throw new Error(`${areaId}: ${laneCount} authored lanes need ${round(queueWidthM)} m between the outer barrier feet.`)
   }
-  if (placement.id === 'security_tent') placement.position[2] = -275
-  if (placement.id === 'scan_tent') placement.position[2] = -228
-  if (placement.id === 'scan_table') { placement.position = [15.3, 0, -226]; placement.yawDeg = 90 }
-  if (placement.id === 'help_tent') placement.position = [15, 0, -300.9]
-  if (placement.id === 'help_table') { placement.position = [15.3, 0, -301.6]; placement.yawDeg = 90 }
-}
-for (const node of baseline.nodes) {
-  if (['queue', 'queue-exit', 'north-walkway'].includes(node.id)) node.position[0] = 11.17
-  if (node.id === 'queue') node.position[2] = queueApproachZ
-  if (node.id === 'queue-exit') node.position[2] = queueExitZ
-  if (['scan_checkpoint', 'security_checkpoint'].includes(node.id)) node.attachment.offset = [-0.83, 0, 0]
-  if (node.id === 'help_checkpoint') node.attachment.offset[0] = -0.8
-}
-baseline.nodes.push(
-  { id: 'help-pass', role: 'waypoint', position: [12, 0, -309] },
-  { id: 'help-release', role: 'waypoint', position: [14.2, 0, -298.25] },
-  { id: 'help-rejoin', role: 'waypoint', position: [12, 0, -297] },
-)
-baseline.edges = [
-  { id: 'help_pass', from: 'arrival', to: 'help-pass' },
-  { id: 'help_bypass', from: 'help-pass', to: 'help-rejoin' },
-  { id: 'help_approach', from: 'help-pass', to: 'help_checkpoint' },
-  { id: 'help_release', from: 'help_checkpoint', to: 'help-release' },
-  { id: 'help_return', from: 'help-release', to: 'help-rejoin' },
-  { id: 'admitted', from: 'entry-approach', to: 'destination' },
-]
-for (const [lane, offset] of laneOffsets.entries()) {
-  const prefix = lane === 1 ? '' : `lane_${lane + 1}_`
-  const approach = `${prefix}queue`, exit = lane === 1 ? 'queue-exit' : `${prefix}queue_exit`
-  const tail = `${prefix}queue_wait_tail`, head = `${prefix}queue_wait_head`
-  const walkway = lane === 1 ? 'north-walkway' : `${prefix}walkway`
-  if (lane !== 1) baseline.nodes.push(
-    { id: approach, role: 'waypoint', position: [12 + offset, 0, queueApproachZ] },
-    { id: exit, role: 'waypoint', position: [12 + offset, 0, queueExitZ] },
-    { id: walkway, role: 'waypoint', position: [12 + offset, 0, -249] },
-    { id: `${prefix}security_checkpoint`, role: 'checkpoint', position: [0, 0, 0], attachment: { placementId: 'security_tent', offset: [offset, 0, 0] } },
-    { id: `${prefix}scan_checkpoint`, role: 'checkpoint', position: [0, 0, 0], attachment: { placementId: 'scan_tent', offset: [offset, 0, 0] } },
-  )
-  // The panels face across the lane. Their local Z points right into the pen.
-  // Attach the waiting bounds to the first and last panels of its left rail.
+  const scanS = compact ? 64 : 89
+  const walkwayS = compact ? 52 : 68
+  const entryApproachS = Math.min(compact ? 86 : 122, routeLengthM - 4)
+  if (!(securityS < walkwayS && walkwayS < scanS && scanS + 5 < entryApproachS)) throw new Error(`${areaId} has insufficient length for its admission sequence.`)
+  const shelterYaw = crosswise ? 90 : 0
+  const stationOffset = (lateral, longitudinal = 0) => crosswise ? [-longitudinal, 0, lateral] : [lateral, 0, longitudinal]
+  const scanTableX = crosswise ? laneOffsets[0] - 0.81 : laneOffsets.at(-1) + 0.75
+  const placements = [
+    { id: 'security_tent', label: 'Security check', presetId: 'roder-10', position: [0, 0, securityS], yawDeg: shelterYaw, bays: crosswise ? 3 : compact ? 1 : 2 },
+    { id: 'scan_tent', label: 'Ticket scan', presetId: 'roder-10', position: [0, 0, scanS], yawDeg: shelterYaw, bays: crosswise ? 3 : compact ? 1 : 2 },
+    { id: 'help_tent', label: 'Ticket exceptions', presetId: 'pagoda-3', position: [3, 0, 16.1], yawDeg: 0 },
+    { id: 'scan_table', label: 'Scan counter', presetId: 'table-183', position: [scanTableX, 0, scanS + 2], yawDeg: 90 },
+    { id: 'help_table', label: 'Help desk', presetId: 'table-183', position: [3.3, 0, 15.4], yawDeg: 90 },
+    { id: 'security_detector', label: 'Security detector', presetId: 'detector-90', position: [laneOffsets.at(-1), 0, securityS], yawDeg: 0 },
+  ]
+  for (let row = 0; row <= laneCount; row++) for (let panel = 0; panel < panelsPerRow; panel++) {
+    placements.push({ id: `row_${row}_${panel}`, label: `Queue row ${row + 1} · panel ${panel + 1}`, presetId: 'barrier-230', position: [railStartM + row * laneSpacingM, 0, firstPanelS + panel * panelPitchM], yawDeg: 90 })
+  }
+  const nodes = [
+    { id: 'arrival', role: 'arrival', position: [0, 0, 0] },
+    { id: 'help-pass', role: 'waypoint', position: [0, 0, 8] },
+    { id: 'help_checkpoint', role: 'checkpoint', attachment: { placementId: 'help_tent', offset: [-0.8, 0, -2.1] } },
+    { id: 'help-release', role: 'waypoint', position: [2.2, 0, 18.75] },
+    { id: 'help-rejoin', role: 'waypoint', position: [0, 0, 20] },
+    { id: 'entry-approach', role: 'waypoint', position: [0, 0, entryApproachS] },
+    { id: 'destination', role: 'destination', position: [0, 0, routeLengthM] },
+  ]
+  const edges = [
+    { id: 'help_pass', from: 'arrival', to: 'help-pass' },
+    { id: 'help_bypass', from: 'help-pass', to: 'help-rejoin' },
+    { id: 'help_approach', from: 'help-pass', to: 'help_checkpoint' },
+    { id: 'help_release', from: 'help_checkpoint', to: 'help-release' },
+    { id: 'help_return', from: 'help-release', to: 'help-rejoin' },
+    { id: 'admitted', from: 'entry-approach', to: 'destination' },
+  ]
+  const laneSecurityIds = []
   const insetOffset = panelLengthM / 2 - waitInsetM
-  baseline.nodes.push(
-    { id: tail, role: 'waypoint', position: [0, 0, 0], attachment: { placementId: `row_${lane}_0`, offset: [insetOffset, 0, laneSpacingM / 2] } },
-    { id: head, role: 'waypoint', position: [0, 0, 0], attachment: { placementId: `row_${lane}_2`, offset: [-insetOffset, 0, laneSpacingM / 2] } },
-  )
-  const chain = ['help-rejoin', approach, tail, head, exit, `${prefix}security_checkpoint`, walkway, `${prefix}scan_checkpoint`, 'entry-approach']
-  chain.slice(0, -1).forEach((from, leg) => baseline.edges.push({ id: `${prefix}leg_${leg}`, from, to: chain[leg + 1] }))
+  for (const [lane, offset] of laneOffsets.entries()) {
+    const prefix = lanePrefix(lane)
+    const approach = `${prefix}queue`, exit = lane === 1 ? 'queue-exit' : `${prefix}queue_exit`
+    const tail = `${prefix}queue_wait_tail`, head = `${prefix}queue_wait_head`
+    const walkway = lane === 1 ? 'north-walkway' : `${prefix}walkway`
+    const security = `${prefix}security_checkpoint`, scan = `${prefix}scan_checkpoint`
+    laneSecurityIds.push(security)
+    nodes.push(
+      { id: approach, role: 'waypoint', position: [offset, 0, queueApproachS] },
+      { id: tail, role: 'waypoint', attachment: { placementId: `row_${lane}_0`, offset: [insetOffset, 0, laneSpacingM / 2] } },
+      { id: head, role: 'waypoint', attachment: { placementId: `row_${lane}_${panelsPerRow - 1}`, offset: [-insetOffset, 0, laneSpacingM / 2] } },
+      { id: exit, role: 'waypoint', position: [offset, 0, queueExitS] },
+      { id: security, role: 'checkpoint', attachment: { placementId: 'security_tent', offset: stationOffset(offset) } },
+      { id: walkway, role: 'waypoint', position: [offset, 0, walkwayS] },
+      { id: scan, role: 'checkpoint', attachment: { placementId: 'scan_tent', offset: stationOffset(offset) } },
+    )
+    // Keep each lane straight beyond the crosswise roof posts before merging.
+    const release = `${prefix}scan_release`
+    if (crosswise) nodes.push({ id: release, role: 'waypoint', position: [offset, 0, scanS + 6] })
+    const chain = ['help-rejoin', approach, tail, head, exit, security, walkway, scan, ...(crosswise ? [release] : []), 'entry-approach']
+    chain.slice(0, -1).forEach((from, leg) => edges.push({ id: `${prefix}leg_${leg}`, from, to: chain[leg + 1] }))
+  }
+  return { laneCount, laneOffsets, laneSecurityIds, queueWidthM, routeLengthM, stationOffset, placements, nodes, edges }
 }
 const windows = { '09:00-13:00': 10, '13:00-15:30': 30, '15:30-17:30': 45, '17:30-19:30': 15 }
 plan.meta.description = 'V1 local Coldplay-inspired GBK demo. Fictional operational assumptions are editable. Send this snapshot to the API when Optimize is selected.'
 plan.meta.version = 1
-plan.meta.revision = 7
+plan.meta.revision = 8
 plan.meta.readiness = { status: 'local_preview_ready', remote_semantic_validation: 'not_run' }
 plan.meta.unresolved = []
 plan.meta.demo_assumptions = [
   'The existing 70,000 expected arrivals are represented by fictional sold counts with zero no-shows for deterministic demo conservation.',
-  'Each proposed entry area uses an illustrative four-lane admission template with four scan operators, four security officers and one help agent.',
+  `V1 uses ${totalLanes} staffed lanes: ${source.entry_areas.map(area => `${laneCounts[area.id]} ${area.label}`).join(', ')}. Each lane has a scan operator and security officer. Each entry has one help agent.`,
   'Visitors pass the help desk before security and then ticket scan and wristband. The fictional help visit share is editable in each behavior profile.',
-  'Admission paths follow mapped 7.5 m pedestrian or stadium-ring corridors. East, southeast and northwest stations are relocated from the original illustrative anchors because their original roads cannot fit four lanes. Equipment, widths and operational use require site review; these are not confirmed event gates.',
+  'North and West retain their mapped centre lines. North uses a proposed 9 m operating envelope. East, Southeast and Yellow use marked, proposed event layouts. Wider layout envelopes and conditional event access require site review.',
   'Behavior profiles define fictional arrival windows, group sizes of two or four, and walking speeds from 1.0 to 1.25 m/s.',
   'Rates, queue dimensions, costs, capacity, staff genders, targets and opening policies are fictional demo inputs.',
   'The browser previews walking, FIFO waits and fixed-time admission service. Pedestrian interactions, crowd density and safe capacity are outside the local model.'
@@ -101,7 +131,7 @@ for (const category of plan.event.ticket_categories) {
 }
 const spatial = {
   schema_version: 'opsidio-layout/0.1', venue_id: 'gbk-osm-local', catalogue_version: 'research-v1',
-  layout_id: 'gbk-five-entry-v1', revision: 7, one_way_admission: true,
+  layout_id: 'gbk-five-entry-v1', revision: 8, one_way_admission: true,
   coordinate_frame: { units: 'm', origin_wgs84: { longitude_deg: 106.80255, latitude_deg: -6.21858 }, axes: { x: 'east', y: 'up', z: 'south' }, vertical_reference: 'local_ground' },
   placements: [], navigation: { nodes: [], edges: [] }, operational_bindings: [], entry_areas: [], cohort_routes: [], operators: [], service_stations: [],
   playback: { seed: 20261114, time_origin: '2026-11-14T09:00:00+07:00', horizon_seconds: 52200, walk_speed_mps: 1.2, group_size: 2 }
@@ -110,14 +140,27 @@ const layout = { basis: 'estimate', zones: [], service_points: [], gates: [], wa
 const roles = []
 for (const area of source.entry_areas) {
   const north = area.id === 'plaza_utara'
-  const spine = admissionSpine(area.id)
+  const spine = spines.get(area.id)
+  const baseline = admissionTemplate(area.id, spine)
+  const { laneCount, laneOffsets, laneSecurityIds, queueWidthM, routeLengthM, stationOffset } = baseline
   const key = id => north ? id : `${area.id}_${id}`
-  const transform = spine.transform
+  const transform = point => spine.sample(point[2], point[0])
   const gateId = `proposed_gate_${area.id}`
-  spatial.entry_areas.push({ id: area.id, label: area.label, gate_id: gateId, help_pass_node_id: key('help-pass'), help_checkpoint_node_id: key('help_checkpoint'), position_m: spine.sample(42), proposed_anchor_m: area.position, operational_anchor_m: spine.sample(42), color: area.color, basis: 'fictional_station_on_mapped_corridor', review_status: 'site_review_required', corridor: { osm_way_ids: spine.wayIds, illustrative_width_m: spine.widthM, lane_center_offsets_m: laneOffsets, spine_points_m: spine.points.map(point => point.map(round)), route_length_m: 141 } })
-  for (const item of baseline.placements) spatial.placements.push({ id: key(item.id), label: item.label, preset_id: item.presetId, position_m: transform(item.position), yaw_deg: round(item.yawDeg + spine.yaw(item.position[2] + 317)), ...(item.bays ? { parameters: { bays: item.bays } } : {}), entry_area_id: area.id, basis: 'fictional_scenario' })
-  // Visible detectors stand beside the central walking route, preserving its clearance.
-  spatial.placements.push({ id: key('security_detector'), label: 'Security detector', preset_id: 'detector-90', position_m: transform([14.49, 0, -275]), yaw_deg: round(spine.yaw(42)), entry_area_id: area.id, basis: 'fictional_scenario' })
+  const anchor = spine.sample(securityS)
+  spatial.entry_areas.push({
+    id: area.id, label: area.label, gate_id: gateId, help_pass_node_id: key('help-pass'), help_checkpoint_node_id: key('help_checkpoint'),
+    position_m: anchor, proposed_anchor_m: spine.requestedAnchor ?? area.position, operational_anchor_m: anchor,
+    admission_yaw_deg: round(spine.yaw(securityS)), color: area.color, basis: spine.placementBasis ?? 'fictional_station_on_mapped_corridor',
+    review_status: 'site_review_required',
+    corridor: {
+      osm_way_ids: spine.wayIds, illustrative_width_m: spine.widthM,
+      ...(spine.renderedWidthM === undefined ? {} : { rendered_width_m: spine.renderedWidthM }),
+      ...(spine.accessReview === undefined ? {} : { access_review: spine.accessReview }),
+      lane_center_offsets_m: laneOffsets, authored_lane_count: laneCount,
+      spine_points_m: spine.points.map(point => point.map(round)), route_length_m: round(routeLengthM),
+    },
+  })
+  for (const item of baseline.placements) spatial.placements.push({ id: key(item.id), label: item.label, preset_id: item.presetId, position_m: transform(item.position), yaw_deg: round(item.yawDeg + spine.yaw(item.position[2])), ...(item.bays ? { parameters: { bays: item.bays } } : {}), entry_area_id: area.id, basis: 'fictional_scenario' })
   for (const node of baseline.nodes) spatial.navigation.nodes.push({ id: key(node.id), role: node.role, entry_area_id: area.id, ...(node.attachment ? { attachment: { placement_id: key(node.attachment.placementId), offset_m: node.attachment.offset } } : { position_m: transform(node.position) }) })
   const originalPosition = id => {
     const node = baseline.nodes.find(item => item.id === id)
@@ -126,12 +169,12 @@ for (const area of source.entry_areas) {
   // Every mapped bend becomes a waypoint in each lane; do not cut across grass at curve chords.
   for (const edge of baseline.edges) {
     const from = originalPosition(edge.from), to = originalPosition(edge.to)
-    const begin = from[2] + 317, end = to[2] + 317
+    const begin = from[2], end = to[2]
     const stops = spine.lengths.filter(s => s > Math.min(begin, end) + 0.001 && s < Math.max(begin, end) - 0.001).sort((a, b) => begin < end ? a - b : b - a)
     let previous = key(edge.from)
     for (const [index, s] of stops.entries()) {
       const t = (s - begin) / (end - begin), nodeId = key(`${edge.id}_bend_${index}`)
-      spatial.navigation.nodes.push({ id: nodeId, role: 'waypoint', entry_area_id: area.id, position_m: spine.sample(s, from[0] - 12 + t * (to[0] - from[0])), basis: 'mapped_corridor_lane_bend' })
+      spatial.navigation.nodes.push({ id: nodeId, role: 'waypoint', entry_area_id: area.id, position_m: spine.sample(s, from[0] + t * (to[0] - from[0])), basis: 'mapped_corridor_lane_bend' })
       spatial.navigation.edges.push({ id: key(`${edge.id}_part_${index}`), from_node_id: previous, to_node_id: nodeId, directed: true })
       previous = nodeId
     }
@@ -142,27 +185,28 @@ for (const area of source.entry_areas) {
   const insideId = `inside_${area.id}`
   const helpId = `help_${area.id}`
   const helpZoneId = `help_zone_${area.id}`
-  layout.zones.push({ id: queueId, name: `${area.label} security queue`, type: 'queue', area_m2: 120, barricade_m: 15 * 2.3, switchback_rows: 4 }, { id: insideId, name: `${area.label} admitted area`, type: 'holding', area_m2: 1200 }, { id: helpZoneId, name: `${area.label} upstream help desk`, type: 'service' })
-  layout.gates.push({ id: gateId, name: area.label, queue_zone: queueId, leads_to: [insideId], opens: '17:30', closes: '21:00', frontage_m: 10, max_lanes: 4, serves_categories: categories.map(category => category.id), lanes: [{ group: 'general', count: 4, steps: ['security_inspection', 'eticket_scan', 'wristband_fit'], equipment_per_lane: { handheld_scanner: 1, metal_detector_wand: 1 } }] })
+  const queueLengthM = lastPanelS - firstPanelS + panelLengthM
+  layout.zones.push({ id: queueId, name: `${area.label} security queue`, type: 'queue', length_m: round(queueLengthM), area_m2: round(queueWidthM * queueLengthM), barricade_m: round((laneCount + 1) * panelsPerRow * panelLengthM), switchback_rows: laneCount }, { id: insideId, name: `${area.label} admitted area`, type: 'holding', area_m2: 1200 }, { id: helpZoneId, name: `${area.label} upstream help desk`, type: 'service' })
+  layout.gates.push({ id: gateId, name: area.label, queue_zone: queueId, leads_to: [insideId], opens: '17:30', closes: '21:00', frontage_m: spine.widthM, max_lanes: laneCount, serves_categories: categories.map(category => category.id), lanes: [{ group: 'general', count: laneCount, steps: ['security_inspection', 'eticket_scan', 'wristband_fit'], equipment_per_lane: { handheld_scanner: 1, metal_detector_wand: 1 } }] })
   layout.service_points.push({ id: helpId, name: `${area.label} ticket help`, zone: helpZoneId, queue_zone: helpZoneId, opens: '13:00', closes: '21:00', max_lanes: 1, lanes: [{ group: 'desk', count: 1, serves: 'visitors_with_exception', steps: ['help_desk_resolution'], equipment_per_lane: {} }] })
-  layout.walking_paths.push({ from: queueId, to: gateId, distance_m: 141 })
+  layout.walking_paths.push({ from: queueId, to: gateId, distance_m: round(routeLengthM) })
   for (const category of categories) spatial.cohort_routes.push({ category_id: category.id, arrival_node_id: key('arrival'), destination_node_id: key('destination'), lane_checkpoint_ids: laneSecurityIds.map(key) })
   for (const [kind, count, placement, steps, point, offsetZ] of [
-    ['scan', 4, 'scan_tent', ['eticket_scan', 'wristband_fit'], gateId, 0],
-    ['security', 4, 'security_tent', ['security_inspection'], gateId, 0],
+    ['scan', laneCount, 'scan_tent', ['eticket_scan', 'wristband_fit'], gateId, 0],
+    ['security', laneCount, 'security_tent', ['security_inspection'], gateId, 0],
     ['help', 1, 'help_tent', ['help_desk_resolution'], helpId, -0.5]
   ]) {
     const roleId = `${area.id}_${kind}`
     roles.push({ id: roleId, name: `${area.label} ${kind}`, basis: 'estimate', processing_role: true, count, gender: { female: Math.floor(count / 2), male: count - Math.floor(count / 2) }, shift: 'admission_shift', can_do: steps, rate_idr_per_shift: kind === 'security' ? 400000 : 350000, pool_limit_total: count * 2, assignment: [{ point, lane_group: kind === 'help' ? 'desk' : 'general', per_lane: 1, count }] })
-    for (let index = 0; index < count; index++) spatial.operators.push({ id: `${roleId}_${index + 1}`, label: `${kind === 'security' ? 'Security' : kind === 'help' ? 'Help agent' : 'Scan operator'} ${index + 1}`, role_id: roleId, point_id: point, entry_area_id: area.id, attachment: { placement_id: key(placement), offset_m: [count === 1 ? -0.3 : -2.49 + index * 1.66 + (kind === 'security' ? 0.8 : 0.65), 0, offsetZ] } })
+    for (let index = 0; index < count; index++) spatial.operators.push({ id: `${roleId}_${index + 1}`, label: `${kind === 'security' ? 'Security' : kind === 'help' ? 'Help agent' : 'Scan operator'} ${index + 1}`, role_id: roleId, point_id: point, entry_area_id: area.id, attachment: { placement_id: key(placement), offset_m: kind === 'help' ? [-0.3, 0, offsetZ] : stationOffset(laneOffsets[index] + (kind === 'security' ? 0.8 : 0.65), offsetZ) } })
     spatial.operational_bindings.push({ placement_id: key(placement), node_id: key(`${kind}_checkpoint`), point_id: point, lane_group: kind === 'help' ? 'desk' : 'general', queue_zone_id: kind === 'help' ? helpZoneId : queueId })
   }
 }
 for (const area of spatial.entry_areas) {
   const key = id => area.id === 'plaza_utara' ? id : `${area.id}_${id}`
   spatial.service_stations.push({ id: `${area.id}_help_service`, node_id: area.help_checkpoint_node_id, operator_id: `${area.id}_help_1`, point_id: `help_${area.id}`, step_ids: ['help_desk_resolution'] })
-  for (let lane = 0; lane < 4; lane++) {
-    const prefix = lane === 1 ? '' : `lane_${lane + 1}_`
+  for (let lane = 0; lane < area.corridor.authored_lane_count; lane++) {
+    const prefix = lanePrefix(lane)
     spatial.service_stations.push({ id: `${area.id}_security_${lane + 1}_service`, node_id: key(`${prefix}security_checkpoint`), operator_id: `${area.id}_security_${lane + 1}`, point_id: area.gate_id, step_ids: ['security_inspection'], queue_start_node_id: key(`${prefix}queue_wait_tail`), queue_end_node_id: key(`${prefix}queue_wait_head`) })
     spatial.service_stations.push({ id: `${area.id}_scan_${lane + 1}_service`, node_id: key(`${prefix}scan_checkpoint`), operator_id: `${area.id}_scan_${lane + 1}`, point_id: area.gate_id, step_ids: ['eticket_scan', 'wristband_fit'] })
   }
@@ -175,7 +219,7 @@ plan.process_steps = { basis: 'estimate', steps: [
   ['help_desk_resolution', 'Resolve ticket exception', 90, 240, 'help']
 ].map(([id, name, typical, slow, kind]) => ({ id, name, applies_to: kind === 'help' ? 'visitors_with_exception' : 'all_visitors', done_by: roles.filter(role => role.id.endsWith(`_${kind}`)).map(role => role.id), time_per_person_seconds: { typical, slow }, exceptions: [], ...(kind === 'help' ? { results: { resolved_percent: 100, refused_percent: 0 } } : {}) })) }
 plan.staff = { basis: 'estimate', meal_allowance_idr_per_person: 45000, shifts: [{ id: 'admission_shift', start: '12:30', end: '21:30', meal_break_minutes: 30 }], roles }
-plan.constraints = { budget: { basis: 'estimate', staff_cap_idr: 30000000, equipment_cap_idr: 30000000 }, service_targets: { basis: 'policy', gate_wait: { max_minutes: 20, for_share_of_visitors_percent: 90 }, longest_acceptable_wait_minutes: 45, inside_before_main_act_percent: 95 }, safety: { basis: 'policy', max_density_persons_per_m2: { queue_zones: 2, inner_concourse: 1.5 }, queues_must_stay_inside_queue_zones: true, emergency_lane_width_m: 3 }, equipment: { basis: 'estimate', items: [{ id: 'handheld_scanner', name: 'Ticket scanner', available: 20, extra_rentable: 10, extra_cost_idr_per_unit: 150000, lead_time_days: 3, committed_cost_idr: 3000000 }, { id: 'metal_detector_wand', name: 'Metal detector wand', available: 20, extra_rentable: 10, extra_cost_idr_per_unit: 100000, lead_time_days: 3, committed_cost_idr: 2000000 }] }, timing: { basis: 'policy', doors_open_earliest: '17:00', last_entry_latest: '21:00', venue_slot_end: '23:30' } }
+plan.constraints = { budget: { basis: 'estimate', staff_cap_idr: 30000000, equipment_cap_idr: 30000000 }, service_targets: { basis: 'policy', gate_wait: { max_minutes: 20, for_share_of_visitors_percent: 90 }, longest_acceptable_wait_minutes: 45, inside_before_main_act_percent: 95 }, safety: { basis: 'policy', max_density_persons_per_m2: { queue_zones: 2, inner_concourse: 1.5 }, queues_must_stay_inside_queue_zones: true, emergency_lane_width_m: 3 }, equipment: { basis: 'estimate', items: [{ id: 'handheld_scanner', name: 'Ticket scanner', available: equipmentOnHand, extra_rentable: equipmentRentLimit, extra_rented: equipmentRented, extra_cost_idr_per_unit: 150000, lead_time_days: 3, committed_cost_idr: 3000000 }, { id: 'metal_detector_wand', name: 'Metal detector wand', available: equipmentOnHand, extra_rentable: equipmentRentLimit, extra_rented: equipmentRented, extra_cost_idr_per_unit: 100000, lead_time_days: 3, committed_cost_idr: 2000000 }] }, timing: { basis: 'policy', doors_open_earliest: '17:00', last_entry_latest: '21:00', venue_slot_end: '23:30' } }
 plan.demand = { basis: 'estimate', time_reference: 'origin_spawn', walking_time_policy: 'Arrival windows specify release at MRT, parking or drop-off. Add exactly one spatial approach walk before the entrance; do not add a second transport or approach delay.', arrival_windows_percent: Object.fromEntries(plan.event.ticket_categories.map(category => [category.id, windows])), group_size_share_percent: { '2': 100 } }
 plan.spatial_context = spatial
 const profiles = [
@@ -185,12 +229,12 @@ const profiles = [
   { id: 'premium_package', label: 'Package holder', group_size: 2, walk_speed_mps: 1.1, shares: [5, 65, 28, 2], spawn: 'arrival_package', offset_m: 3, behavior: 'Uses the package category entry area and an earlier arrival profile.' },
   { id: 'social_group', label: 'Social group', group_size: 4, walk_speed_mps: 1.0, shares: [10, 35, 45, 10], spawn: 'arrival_group', offset_m: -3, behavior: 'Arrives together and shares a slower group walking speed.' },
 ].map((profile, index) => ({ ...profile, help_desk_visit_percent: 1, origin_share_percent: Object.fromEntries(['origin_mrt', 'origin_parking', 'origin_dropoff'].map((id, i) => [id, [[60, 15, 25], [45, 25, 30], [20, 10, 70], [10, 40, 50], [25, 45, 30]][index][i]])), arrival_windows_percent: Object.fromEntries(Object.keys(windows).map((key, index) => [key, profile.shares[index]])) }))
-const behavior = { schema_version: 'opsidio-behavior/0.1', basis: 'fictional_demo_assumptions', unit: 'category_x_behavior_cohort', profiles, cohorts: [], destination_scope: 'Post-security category handover at the assigned entrance. Internal routes to seats and standing sectors require venue review.', spawn_scope: 'Pedestrians spawn at mapped MRT Istora Mandiri Exit B, mapped Parkir Timur centroid or a fictional passenger drop-off at a mapped parking entrance. No vehicle traffic is modeled. Legacy entrance arrival IDs remain fallback bindings.', time_reference: 'origin_spawn' }
+const behavior = { schema_version: 'opsidio-behavior/0.1', basis: 'fictional_demo_assumptions', unit: 'category_x_behavior_cohort', profiles, cohorts: [], destination_scope: 'Post-scan category handover at the assigned entrance. Internal routes to seats and standing sectors require venue review.', spawn_scope: 'Pedestrians spawn at mapped MRT Istora Mandiri Exit B, mapped Parkir Timur centroid or a fictional passenger drop-off at a mapped parking entrance. No vehicle traffic is modeled. Legacy entrance arrival IDs remain fallback bindings.', time_reference: 'origin_spawn' }
 for (const area of spatial.entry_areas) {
   const north = area.id === 'plaza_utara'
   const key = id => north ? id : `${area.id}_${id}`
   const arrival = spatial.navigation.nodes.find(node => node.id === key('arrival'))
-  const radians = admissionSpine(area.id).yaw(0) * Math.PI / 180
+  const radians = spines.get(area.id).yaw(0) * Math.PI / 180
   for (const profile of profiles.filter(item => item.spawn !== 'arrival')) {
     const position = [...arrival.position_m]
     position[0] += Math.cos(radians) * Math.sign(profile.offset_m) * Math.min(1.2, Math.abs(profile.offset_m))
@@ -206,7 +250,8 @@ for (const category of plan.event.ticket_categories) {
   const destinationId = `destination_${category.id}`
   const sector = category.viewing_tier === 'festival' ? 0 : Number(category.viewing_tier.replace('cat', ''))
   const lateralOffset = (sector - 4.5) * 0.65
-  const handover = admissionSpine(area.id).sample(141, lateralOffset)
+  const spine = spines.get(area.id)
+  const handover = spine.sample(spine.lengthM ?? spine.lengths.at(-1), lateralOffset)
   spatial.navigation.nodes.push({ id: destinationId, role: 'destination', entry_area_id: area.id, position_m: handover, label: `${category.name} handover`, viewing_tier: category.viewing_tier, final_zone_route_status: 'pending_venue_review' })
   spatial.navigation.edges.push({ id: `handover_${category.id}`, from_node_id: key('destination'), to_node_id: destinationId, directed: true })
   spatial.cohort_routes.find(route => route.category_id === category.id).destination_node_id = destinationId
@@ -236,7 +281,8 @@ const mrtShare = modeShare('origin_mrt'), parkingShare = modeShare('origin_parki
 plan.event.audience_profile.arrival_mode_percent = { mrt: mrtShare, private_car: parkingShare, ride_hailing_drop_off: Math.round((100 - mrtShare - parkingShare) * 100) / 100 }
 
 plan.meta.demo_assumptions.push('Each bound operator serves one person at a time in FIFO order using typical step times and the configured operating hours. Security waits use the authored barrier pens. Overflow and waits without an authored pen appear in queue counts. People still waiting after closing remain queued.')
-plan.meta.demo_assumptions.push('Arriving groups are assigned round-robin across four authored lanes and keep that assignment through admission.')
+plan.meta.demo_assumptions.push('Arriving groups are assigned round-robin across their entrance’s authored lanes and keep that assignment through admission.')
+plan.meta.demo_assumptions.push(`The fictional baseline has ${equipmentOnHand} units on hand and allocates ${equipmentRented} rented units per device type.`)
 plan.meta.demo_assumptions.push('Behavior profiles, origin shares and category mixes are fictional inputs. The 76 category × behavior rows expand into 228 origin-specific runtime cohorts with exact attendee conservation. Category handovers remain near the admitted entrance endpoint until internal sector routes are reviewed.')
 plan.meta.demo_assumptions.push('MRT Exit B and drop-off coordinates use existing public OSM nodes. Parkir Timur uses a mapped polygon centroid with one explicitly proposed exit connector. Designating the parking entrance for taxi or app-based passenger drop-off is fictional; no vehicle movement is modeled.')
 writeFileSync(new URL('contracts/examples/coldplay-gbk-demo-plan.json', root), JSON.stringify(plan, null, 2) + '\n')

@@ -1,0 +1,64 @@
+.sim-first-person {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--sim-border, #e3e5ea);
+  border-radius: var(--sim-radius, 12px);
+  background: var(--sim-surface, #fff);
+  color: var(--sim-text, #21242a);
+  font: 12px/1.45 var(--sim-font, system-ui, sans-serif);
+}
+
+.sim-first-person-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px 10px;
+}
+
+.sim-first-person h3,
+.sim-first-person p,
+.sim-first-person dl,
+.sim-first-person dd { margin: 0; }
+.sim-first-person h3 { font-size: 14px; }
+.sim-first-person-heading p,
+.sim-first-person-note,
+.sim-first-person dt { color: var(--sim-muted, #5c626e); }
+
+.sim-first-person-phase {
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--sim-raised, #f5f6f8);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.sim-first-person dl { display: grid; gap: 5px; }
+.sim-first-person dl > div { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 6px; }
+.sim-first-person dd { font-weight: 600; overflow-wrap: anywhere; }
+
+.sim-first-person-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.sim-first-person-actions button {
+  min-height: 32px;
+  padding: 4px 9px;
+  border: 1px solid var(--sim-border, #e3e5ea);
+  border-radius: 8px;
+  background: var(--sim-surface, #fff);
+  color: var(--sim-text, #21242a);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sim-first-person-actions button:focus-visible {
+  outline: 2px solid var(--sim-accent, #ff5a5e);
+  outline-offset: 2px;
+}
+
+.sim-first-person-actions .sim-first-person-next {
+  border-color: var(--sim-accent, #ff5a5e);
+  background: var(--sim-accent, #ff5a5e);
+  color: var(--sim-on-accent, #fff);
+  font-weight: 700;
+}
