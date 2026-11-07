@@ -1,0 +1,2406 @@
+{
+  "sourceRetrievedAt": "2026-11-07T03:27:13.294751+00:00",
+  "sourceSha256": "7950827354f521559188f1cb5c070da16e8c175da0eac4c0b3a050b03519defc",
+  "license": "https://opendatacommons.org/licenses/odbl/1-0/",
+  "mapBoundsMetres": {
+    "minX": -480,
+    "maxX": 480,
+    "minZ": -550,
+    "maxZ": 450
+  },
+  "editBoundsBasis": "Fictional demo work envelope north of stadium; includes unverified ground beyond narrow mapped pedestrian plaza",
+  "coordinateSystem": "WGS84 lon/lat to local equirectangular metres: X east, Y up=0, Z south; R=6378137 m; rounded to 0.01 m (not accuracy)",
+  "features": [
+    {
+      "id": "osm-way-18057922",
+      "sourceUrl": "https://www.openstreetmap.org/way/18057922",
+      "sourceVersion": 32,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "bicycle": "use_sidepath",
+        "highway": "primary",
+        "name": "Jalan Gerbang Pemuda",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-28212629",
+      "sourceUrl": "https://www.openstreetmap.org/way/28212629",
+      "sourceVersion": 8,
+      "sourceTimestamp": "2025-05-24T11:09:59Z",
+      "tags": {
+        "highway": "pedestrian"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-28213026",
+      "sourceUrl": "https://www.openstreetmap.org/way/28213026",
+      "sourceVersion": 12,
+      "sourceTimestamp": "2022-11-18T09:25:33Z",
+      "tags": {
+        "access": "private",
+        "highway": "service",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-29026803",
+      "sourceUrl": "https://www.openstreetmap.org/way/29026803",
+      "sourceVersion": 6,
+      "sourceTimestamp": "2026-07-01T05:59:31Z",
+      "tags": {
+        "leisure": "pitch",
+        "name": "Lapangan Panahan",
+        "name:en": "Archery Field",
+        "source": "HOT_InAWARESurvey_2017",
+        "sport": "archery",
+        "surface": "grass"
+      },
+      "labelPositionBasis": "Mean of mapped way vertices; not an entrance"
+    },
+    {
+      "id": "osm-way-29203124",
+      "sourceUrl": "https://www.openstreetmap.org/way/29203124",
+      "sourceVersion": 10,
+      "sourceTimestamp": "2026-06-22T07:38:40Z",
+      "tags": {
+        "building": "stadium",
+        "building:levels": "6",
+        "leisure": "stadium",
+        "name": "Indonesia Arena",
+        "source": "local knowledge",
+        "sport": "multi"
+      },
+      "heightBasis": "Illustrative estimate: mapped levels × 3 m; not measured height",
+      "labelPositionBasis": "Mean of mapped way vertices; not an entrance"
+    },
+    {
+      "id": "osm-way-48036677",
+      "sourceUrl": "https://www.openstreetmap.org/way/48036677",
+      "sourceVersion": 11,
+      "sourceTimestamp": "2024-06-20T13:58:48Z",
+      "tags": {
+        "highway": "unclassified",
+        "name": "Jalan Manila",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-119772933",
+      "sourceUrl": "https://www.openstreetmap.org/way/119772933",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2017-05-26T07:27:01Z",
+      "tags": {
+        "building": "yes",
+        "building:levels": "11",
+        "name": "Wisma Fajar"
+      },
+      "heightBasis": "Illustrative estimate: mapped levels × 3 m; not measured height"
+    },
+    {
+      "id": "osm-way-119772934",
+      "sourceUrl": "https://www.openstreetmap.org/way/119772934",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2026-06-01T01:22:55Z",
+      "tags": {
+        "building": "government_office",
+        "building:levels": "12",
+        "name": "Pusat Pengelolaan Komplek Gelora Bung Karno",
+        "source": "HOT_InAWARESurvey_2017"
+      },
+      "heightBasis": "Illustrative estimate: mapped levels × 3 m; not measured height"
+    },
+    {
+      "id": "osm-way-121870617",
+      "sourceUrl": "https://www.openstreetmap.org/way/121870617",
+      "sourceVersion": 18,
+      "sourceTimestamp": "2025-05-29T07:47:50Z",
+      "tags": {
+        "highway": "primary",
+        "name": "Jalan Gerbang Pemuda",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-153303501",
+      "sourceUrl": "https://www.openstreetmap.org/way/153303501",
+      "sourceVersion": 12,
+      "sourceTimestamp": "2026-03-10T19:59:19Z",
+      "tags": {
+        "building": "stadium",
+        "building:levels": "2",
+        "name": "Tennis Indoor Stadium",
+        "source": "HOT_InAWARESurvey_2017",
+        "sport": "tennis"
+      },
+      "heightBasis": "Illustrative estimate: mapped levels × 3 m; not measured height",
+      "labelPositionBasis": "Mean of mapped way vertices; not an entrance"
+    },
+    {
+      "id": "osm-way-167044070",
+      "sourceUrl": "https://www.openstreetmap.org/way/167044070",
+      "sourceVersion": 8,
+      "sourceTimestamp": "2026-03-10T19:59:19Z",
+      "tags": {
+        "highway": "footway"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-167044074",
+      "sourceUrl": "https://www.openstreetmap.org/way/167044074",
+      "sourceVersion": 10,
+      "sourceTimestamp": "2022-02-24T08:41:02Z",
+      "tags": {
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-403720828",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720828",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2017-06-22T07:55:47Z",
+      "tags": {
+        "natural": "water"
+      }
+    },
+    {
+      "id": "osm-way-403720832",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720832",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "natural": "wood"
+      }
+    },
+    {
+      "id": "osm-way-403720833",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720833",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2019-12-13T18:33:21Z",
+      "tags": {
+        "natural": "wood"
+      }
+    },
+    {
+      "id": "osm-way-403720841",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720841",
+      "sourceVersion": 12,
+      "sourceTimestamp": "2026-09-23T08:38:11Z",
+      "tags": {
+        "leisure": "pitch",
+        "source": "HOT_InAWARESurvey_2017",
+        "sport": "soccer",
+        "surface": "grass"
+      }
+    },
+    {
+      "id": "osm-way-403720843",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720843",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2025-07-31T01:46:10Z",
+      "tags": {
+        "natural": "wood"
+      }
+    },
+    {
+      "id": "osm-way-403720853",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720853",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2026-03-10T19:59:19Z",
+      "tags": {
+        "leisure": "pitch",
+        "source": "HOT_InAWARESurvey_2017",
+        "sport": "tennis",
+        "surface": "concrete"
+      }
+    },
+    {
+      "id": "osm-way-403720857",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720857",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2026-03-10T19:59:19Z",
+      "tags": {
+        "leisure": "pitch",
+        "source": "HOT_InAWARESurvey_2017",
+        "sport": "tennis",
+        "surface": "concrete"
+      }
+    },
+    {
+      "id": "osm-way-403720858",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720858",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2025-07-31T01:46:10Z",
+      "tags": {
+        "natural": "wood"
+      }
+    },
+    {
+      "id": "osm-way-403720870",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720870",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2016-03-14T21:37:01Z",
+      "tags": {
+        "natural": "wood"
+      }
+    },
+    {
+      "id": "osm-way-403720875",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720875",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2026-07-05T01:41:30Z",
+      "tags": {
+        "natural": "wood"
+      }
+    },
+    {
+      "id": "osm-way-403720878",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720878",
+      "sourceVersion": 6,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "natural": "wood"
+      }
+    },
+    {
+      "id": "osm-way-403720879",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720879",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2025-05-24T11:09:59Z",
+      "tags": {
+        "natural": "wood"
+      }
+    },
+    {
+      "id": "osm-way-403720880",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720880",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2016-03-14T21:37:02Z",
+      "tags": {
+        "natural": "wood"
+      }
+    },
+    {
+      "id": "osm-way-403720881",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720881",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2019-12-13T18:33:21Z",
+      "tags": {
+        "natural": "wood"
+      }
+    },
+    {
+      "id": "osm-way-403720892",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720892",
+      "sourceVersion": 9,
+      "sourceTimestamp": "2026-06-01T01:22:55Z",
+      "tags": {
+        "building": "stadium",
+        "building:levels": "2",
+        "leisure": "stadium",
+        "name": "Istana Olahraga Gelora Bung Karno",
+        "source": "HOT_InAWARESurvey_2017",
+        "sport": "badminton"
+      },
+      "heightBasis": "Illustrative estimate: mapped levels × 3 m; not measured height",
+      "labelPositionBasis": "Mean of mapped way vertices; not an entrance"
+    },
+    {
+      "id": "osm-way-403720897",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720897",
+      "sourceVersion": 6,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "leisure": "park",
+        "name": "Taman Kridaloka",
+        "name:en": "Kridaloka Park",
+        "natural": "wood"
+      },
+      "labelPositionBasis": "Mean of mapped way vertices; not an entrance"
+    },
+    {
+      "id": "osm-way-403720900",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720900",
+      "sourceVersion": 4,
+      "sourceTimestamp": "2019-12-13T18:33:21Z",
+      "tags": {
+        "leisure": "pitch",
+        "name": "Lapangan Basket A",
+        "source": "HOT_InAWARESurvey_2017",
+        "sport": "basketball"
+      }
+    },
+    {
+      "id": "osm-way-403720901",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720901",
+      "sourceVersion": 4,
+      "sourceTimestamp": "2019-12-13T18:33:21Z",
+      "tags": {
+        "leisure": "pitch",
+        "name": "Lapangan Basket B",
+        "source": "HOT_InAWARESurvey_2017",
+        "sport": "basketball"
+      }
+    },
+    {
+      "id": "osm-way-403720902",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720902",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2017-05-29T05:22:54Z",
+      "tags": {
+        "leisure": "pitch",
+        "name": "Lapangan Basket C",
+        "source": "HOT_InAWARESurvey_2017",
+        "sport": "basketball"
+      }
+    },
+    {
+      "id": "osm-way-403720904",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720904",
+      "sourceVersion": 9,
+      "sourceTimestamp": "2018-03-12T06:01:21Z",
+      "tags": {
+        "leisure": "pitch",
+        "source": "HOT_InAWARESurvey_2017",
+        "sport": "multi"
+      }
+    },
+    {
+      "id": "osm-way-403720906",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720906",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2017-05-29T05:22:55Z",
+      "tags": {
+        "leisure": "pitch",
+        "name": "Lapangan Sepak Bola A",
+        "source": "HOT_InAWARESurvey_2017",
+        "sport": "soccer"
+      },
+      "labelPositionBasis": "Mean of mapped way vertices; not an entrance"
+    },
+    {
+      "id": "osm-way-403720907",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720907",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2017-05-29T05:22:55Z",
+      "tags": {
+        "leisure": "pitch",
+        "name": "Lapangan Sepak Bola B",
+        "source": "HOT_InAWARESurvey_2017",
+        "sport": "soccer"
+      },
+      "labelPositionBasis": "Mean of mapped way vertices; not an entrance"
+    },
+    {
+      "id": "osm-way-403720908",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720908",
+      "sourceVersion": 4,
+      "sourceTimestamp": "2022-06-01T20:03:30Z",
+      "tags": {
+        "leisure": "pitch",
+        "name": "Lapangan Sepak Bola C",
+        "source": "HOT_InAWARESurvey_2017",
+        "sport": "soccer"
+      },
+      "labelPositionBasis": "Mean of mapped way vertices; not an entrance"
+    },
+    {
+      "id": "osm-way-403720915",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720915",
+      "sourceVersion": 10,
+      "sourceTimestamp": "2025-07-29T09:30:58Z",
+      "tags": {
+        "highway": "primary_link",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-403720916",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720916",
+      "sourceVersion": 10,
+      "sourceTimestamp": "2025-07-29T09:30:45Z",
+      "tags": {
+        "highway": "primary_link",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-403720919",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720919",
+      "sourceVersion": 6,
+      "sourceTimestamp": "2026-08-16T00:37:11Z",
+      "tags": {
+        "highway": "footway",
+        "name": "Jalan Plaza Selatan",
+        "surface": "concrete"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-403720931",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720931",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2016-03-14T21:37:06Z",
+      "tags": {
+        "building": "yes"
+      },
+      "heightBasis": "Illustrative 8 m default; no mapped height or levels"
+    },
+    {
+      "id": "osm-way-403720944",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720944",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2016-03-14T21:37:07Z",
+      "tags": {
+        "building": "yes"
+      },
+      "heightBasis": "Illustrative 8 m default; no mapped height or levels"
+    },
+    {
+      "id": "osm-way-403720975",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720975",
+      "sourceVersion": 8,
+      "sourceTimestamp": "2026-03-10T19:59:19Z",
+      "tags": {
+        "highway": "footway",
+        "name": "Jalan Plaza Selatan"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-403720982",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720982",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2022-11-02T12:51:12Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-403720984",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720984",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2022-11-02T12:54:48Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-403720993",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720993",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2022-11-02T12:54:48Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-403720999",
+      "sourceUrl": "https://www.openstreetmap.org/way/403720999",
+      "sourceVersion": 9,
+      "sourceTimestamp": "2023-09-25T16:38:32Z",
+      "tags": {
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-403721014",
+      "sourceUrl": "https://www.openstreetmap.org/way/403721014",
+      "sourceVersion": 4,
+      "sourceTimestamp": "2026-03-10T19:59:19Z",
+      "tags": {
+        "highway": "footway",
+        "name": "Jalan Plaza Selatan"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-403721028",
+      "sourceUrl": "https://www.openstreetmap.org/way/403721028",
+      "sourceVersion": 9,
+      "sourceTimestamp": "2026-06-11T07:15:46Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-403721029",
+      "sourceUrl": "https://www.openstreetmap.org/way/403721029",
+      "sourceVersion": 11,
+      "sourceTimestamp": "2023-09-25T16:38:32Z",
+      "tags": {
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-403721031",
+      "sourceUrl": "https://www.openstreetmap.org/way/403721031",
+      "sourceVersion": 12,
+      "sourceTimestamp": "2023-09-25T16:38:32Z",
+      "tags": {
+        "highway": "service",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-403721033",
+      "sourceUrl": "https://www.openstreetmap.org/way/403721033",
+      "sourceVersion": 8,
+      "sourceTimestamp": "2023-09-25T16:38:32Z",
+      "tags": {
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-403721034",
+      "sourceUrl": "https://www.openstreetmap.org/way/403721034",
+      "sourceVersion": 9,
+      "sourceTimestamp": "2022-11-18T09:25:33Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-403721035",
+      "sourceUrl": "https://www.openstreetmap.org/way/403721035",
+      "sourceVersion": 11,
+      "sourceTimestamp": "2026-08-16T00:37:21Z",
+      "tags": {
+        "access": "yes",
+        "highway": "service",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-403721036",
+      "sourceUrl": "https://www.openstreetmap.org/way/403721036",
+      "sourceVersion": 9,
+      "sourceTimestamp": "2022-11-18T09:25:33Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-403721042",
+      "sourceUrl": "https://www.openstreetmap.org/way/403721042",
+      "sourceVersion": 8,
+      "sourceTimestamp": "2024-05-29T17:44:59Z",
+      "tags": {
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-403721045",
+      "sourceUrl": "https://www.openstreetmap.org/way/403721045",
+      "sourceVersion": 11,
+      "sourceTimestamp": "2025-09-29T08:39:49Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-403721047",
+      "sourceUrl": "https://www.openstreetmap.org/way/403721047",
+      "sourceVersion": 8,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-403721048",
+      "sourceUrl": "https://www.openstreetmap.org/way/403721048",
+      "sourceVersion": 11,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "highway": "service",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-403721330",
+      "sourceUrl": "https://www.openstreetmap.org/way/403721330",
+      "sourceVersion": 10,
+      "sourceTimestamp": "2026-02-19T17:38:12Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-403721331",
+      "sourceUrl": "https://www.openstreetmap.org/way/403721331",
+      "sourceVersion": 9,
+      "sourceTimestamp": "2025-03-26T18:28:39Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-403722793",
+      "sourceUrl": "https://www.openstreetmap.org/way/403722793",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2016-03-14T21:55:10Z",
+      "tags": {
+        "building": "yes"
+      },
+      "heightBasis": "Illustrative 8 m default; no mapped height or levels"
+    },
+    {
+      "id": "osm-way-461155029",
+      "sourceUrl": "https://www.openstreetmap.org/way/461155029",
+      "sourceVersion": 14,
+      "sourceTimestamp": "2026-08-16T00:30:53Z",
+      "tags": {
+        "highway": "service",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-461155034",
+      "sourceUrl": "https://www.openstreetmap.org/way/461155034",
+      "sourceVersion": 13,
+      "sourceTimestamp": "2026-08-16T00:30:56Z",
+      "tags": {
+        "highway": "service",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-461157157",
+      "sourceUrl": "https://www.openstreetmap.org/way/461157157",
+      "sourceVersion": 11,
+      "sourceTimestamp": "2026-08-16T00:30:39Z",
+      "tags": {
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-496025671",
+      "sourceUrl": "https://www.openstreetmap.org/way/496025671",
+      "sourceVersion": 14,
+      "sourceTimestamp": "2025-04-01T03:41:04Z",
+      "tags": {
+        "highway": "service",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-496025672",
+      "sourceUrl": "https://www.openstreetmap.org/way/496025672",
+      "sourceVersion": 10,
+      "sourceTimestamp": "2025-04-29T10:30:38Z",
+      "tags": {
+        "highway": "service",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-496025711",
+      "sourceUrl": "https://www.openstreetmap.org/way/496025711",
+      "sourceVersion": 6,
+      "sourceTimestamp": "2024-06-20T13:58:48Z",
+      "tags": {
+        "highway": "unclassified",
+        "name": "Jalan Jakarta",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-496569523",
+      "sourceUrl": "https://www.openstreetmap.org/way/496569523",
+      "sourceVersion": 11,
+      "sourceTimestamp": "2026-09-23T08:38:11Z",
+      "tags": {
+        "access": "yes",
+        "bicycle": "yes",
+        "foot": "yes",
+        "highway": "service",
+        "motor_vehicle": "no",
+        "name": "Jalan Lingkar Stadion",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-502605659",
+      "sourceUrl": "https://www.openstreetmap.org/way/502605659",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2019-12-13T18:33:21Z",
+      "tags": {
+        "landuse": "grass",
+        "leisure": "pitch",
+        "name": "Lapangan Rugby",
+        "source": "HOT_InAWARESurvey_2017",
+        "sport": "rugby_union"
+      }
+    },
+    {
+      "id": "osm-way-504950088",
+      "sourceUrl": "https://www.openstreetmap.org/way/504950088",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2026-03-10T20:47:33Z",
+      "tags": {
+        "bicycle": "yes",
+        "foot": "yes",
+        "highway": "service",
+        "name": "Jalan Plaza Barat",
+        "surface": "paving_stones"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-506643608",
+      "sourceUrl": "https://www.openstreetmap.org/way/506643608",
+      "sourceVersion": 9,
+      "sourceTimestamp": "2026-06-01T01:22:59Z",
+      "tags": {
+        "leisure": "stadium",
+        "name": "Stadion Madya Gelora Bung Karno",
+        "name:en": "Madya Stadium Gelora Bung Karno",
+        "source": "HOT_InAWARESurvey_2017",
+        "sport": "multi"
+      },
+      "labelPositionBasis": "Mean of mapped way vertices; not an entrance"
+    },
+    {
+      "id": "osm-way-537039719",
+      "sourceUrl": "https://www.openstreetmap.org/way/537039719",
+      "sourceVersion": 8,
+      "sourceTimestamp": "2025-05-29T07:48:41Z",
+      "tags": {
+        "highway": "primary_link",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-537039787",
+      "sourceUrl": "https://www.openstreetmap.org/way/537039787",
+      "sourceVersion": 12,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "foot": "no",
+        "highway": "primary_link",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-554816256",
+      "sourceUrl": "https://www.openstreetmap.org/way/554816256",
+      "sourceVersion": 8,
+      "sourceTimestamp": "2022-11-02T14:14:27Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-554816260",
+      "sourceUrl": "https://www.openstreetmap.org/way/554816260",
+      "sourceVersion": 10,
+      "sourceTimestamp": "2022-11-02T12:51:12Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-555817842",
+      "sourceUrl": "https://www.openstreetmap.org/way/555817842",
+      "sourceVersion": 9,
+      "sourceTimestamp": "2026-09-23T08:38:11Z",
+      "tags": {
+        "bicycle": "yes",
+        "foot": "designated",
+        "highway": "cycleway"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-555817845",
+      "sourceUrl": "https://www.openstreetmap.org/way/555817845",
+      "sourceVersion": 6,
+      "sourceTimestamp": "2025-05-24T11:09:59Z",
+      "tags": {
+        "area": "yes",
+        "highway": "pedestrian"
+      }
+    },
+    {
+      "id": "osm-way-555901293",
+      "sourceUrl": "https://www.openstreetmap.org/way/555901293",
+      "sourceVersion": 6,
+      "sourceTimestamp": "2026-03-10T19:59:19Z",
+      "tags": {
+        "highway": "footway",
+        "name": "Jalan Plaza Timur",
+        "surface": "paving_stones"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-555901296",
+      "sourceUrl": "https://www.openstreetmap.org/way/555901296",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2022-11-02T12:51:12Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-555901298",
+      "sourceUrl": "https://www.openstreetmap.org/way/555901298",
+      "sourceVersion": 11,
+      "sourceTimestamp": "2026-03-10T20:47:33Z",
+      "tags": {
+        "bicycle": "yes",
+        "foot": "yes",
+        "highway": "pedestrian"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-555901302",
+      "sourceUrl": "https://www.openstreetmap.org/way/555901302",
+      "sourceVersion": 4,
+      "sourceTimestamp": "2026-03-10T19:59:19Z",
+      "tags": {
+        "highway": "footway"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-555901305",
+      "sourceUrl": "https://www.openstreetmap.org/way/555901305",
+      "sourceVersion": 4,
+      "sourceTimestamp": "2026-03-10T19:59:19Z",
+      "tags": {
+        "highway": "footway"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-555901307",
+      "sourceUrl": "https://www.openstreetmap.org/way/555901307",
+      "sourceVersion": 9,
+      "sourceTimestamp": "2025-05-24T11:09:59Z",
+      "tags": {
+        "highway": "footway"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-555901310",
+      "sourceUrl": "https://www.openstreetmap.org/way/555901310",
+      "sourceVersion": 4,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "foot": "designated",
+        "highway": "footway",
+        "surface": "concrete"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-555901312",
+      "sourceUrl": "https://www.openstreetmap.org/way/555901312",
+      "sourceVersion": 7,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "foot": "designated",
+        "highway": "footway",
+        "surface": "concrete"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-555901316",
+      "sourceUrl": "https://www.openstreetmap.org/way/555901316",
+      "sourceVersion": 16,
+      "sourceTimestamp": "2026-08-16T00:30:43Z",
+      "tags": {
+        "highway": "service",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-555901321",
+      "sourceUrl": "https://www.openstreetmap.org/way/555901321",
+      "sourceVersion": 6,
+      "sourceTimestamp": "2026-02-19T17:38:12Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-557537629",
+      "sourceUrl": "https://www.openstreetmap.org/way/557537629",
+      "sourceVersion": 8,
+      "sourceTimestamp": "2024-06-20T13:58:48Z",
+      "tags": {
+        "highway": "unclassified",
+        "name": "Jalan Jakarta",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-557537630",
+      "sourceUrl": "https://www.openstreetmap.org/way/557537630",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2022-11-02T12:46:30Z",
+      "tags": {
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-557560288",
+      "sourceUrl": "https://www.openstreetmap.org/way/557560288",
+      "sourceVersion": 4,
+      "sourceTimestamp": "2026-07-05T01:48:28Z",
+      "tags": {
+        "access": "private",
+        "highway": "service",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-557560289",
+      "sourceUrl": "https://www.openstreetmap.org/way/557560289",
+      "sourceVersion": 9,
+      "sourceTimestamp": "2022-11-02T12:46:30Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-592594105",
+      "sourceUrl": "https://www.openstreetmap.org/way/592594105",
+      "sourceVersion": 4,
+      "sourceTimestamp": "2022-02-24T09:00:34Z",
+      "tags": {
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-592594107",
+      "sourceUrl": "https://www.openstreetmap.org/way/592594107",
+      "sourceVersion": 7,
+      "sourceTimestamp": "2024-06-20T13:58:48Z",
+      "tags": {
+        "highway": "unclassified",
+        "name": "Jalan Jakarta",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-651704786",
+      "sourceUrl": "https://www.openstreetmap.org/way/651704786",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2022-11-18T09:25:33Z",
+      "tags": {
+        "access": "private",
+        "highway": "service",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-651853116",
+      "sourceUrl": "https://www.openstreetmap.org/way/651853116",
+      "sourceVersion": 9,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "bicycle": "use_sidepath",
+        "highway": "primary",
+        "name": "Jalan Asia Afrika",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-651853357",
+      "sourceUrl": "https://www.openstreetmap.org/way/651853357",
+      "sourceVersion": 10,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "bicycle": "use_sidepath",
+        "highway": "primary",
+        "name": "Jalan Asia Afrika",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-651853358",
+      "sourceUrl": "https://www.openstreetmap.org/way/651853358",
+      "sourceVersion": 8,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "bicycle": "use_sidepath",
+        "highway": "primary",
+        "name": "Jalan Asia Afrika",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-651853359",
+      "sourceUrl": "https://www.openstreetmap.org/way/651853359",
+      "sourceVersion": 8,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "bicycle": "use_sidepath",
+        "highway": "primary",
+        "name": "Jalan Asia Afrika",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-651857019",
+      "sourceUrl": "https://www.openstreetmap.org/way/651857019",
+      "sourceVersion": 14,
+      "sourceTimestamp": "2026-03-03T21:13:56Z",
+      "tags": {
+        "foot": "no",
+        "highway": "primary",
+        "name": "Jalan Asia Afrika",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-651857489",
+      "sourceUrl": "https://www.openstreetmap.org/way/651857489",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "highway": "primary",
+        "name": "Jalan Asia Afrika",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-651862344",
+      "sourceUrl": "https://www.openstreetmap.org/way/651862344",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2024-05-04T22:28:36Z",
+      "tags": {
+        "highway": "primary",
+        "name": "Jalan Asia Afrika",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-651865187",
+      "sourceUrl": "https://www.openstreetmap.org/way/651865187",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2021-01-08T23:29:01Z",
+      "tags": {
+        "foot": "no",
+        "highway": "primary",
+        "name": "Jalan Asia Afrika",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-651865188",
+      "sourceUrl": "https://www.openstreetmap.org/way/651865188",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2024-05-20T15:23:07Z",
+      "tags": {
+        "highway": "secondary",
+        "name": "Jalan Pintu Satu Senayan",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-651867474",
+      "sourceUrl": "https://www.openstreetmap.org/way/651867474",
+      "sourceVersion": 9,
+      "sourceTimestamp": "2024-05-20T15:23:07Z",
+      "tags": {
+        "highway": "primary_link",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-651867475",
+      "sourceUrl": "https://www.openstreetmap.org/way/651867475",
+      "sourceVersion": 4,
+      "sourceTimestamp": "2020-06-19T07:12:05Z",
+      "tags": {
+        "highway": "secondary",
+        "name": "Jalan Pintu Satu Senayan",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-651867884",
+      "sourceUrl": "https://www.openstreetmap.org/way/651867884",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2024-05-04T22:28:44Z",
+      "tags": {
+        "highway": "primary",
+        "name": "Jalan Asia Afrika",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-651870812",
+      "sourceUrl": "https://www.openstreetmap.org/way/651870812",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2025-05-28T09:42:40Z",
+      "tags": {
+        "highway": "primary",
+        "name": "Jalan Asia Afrika",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-651874735",
+      "sourceUrl": "https://www.openstreetmap.org/way/651874735",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2025-05-28T09:42:46Z",
+      "tags": {
+        "highway": "primary",
+        "name": "Jalan Asia Afrika",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-651878443",
+      "sourceUrl": "https://www.openstreetmap.org/way/651878443",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2025-05-29T07:47:28Z",
+      "tags": {
+        "highway": "primary",
+        "name": "Jalan Asia Afrika",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-651878444",
+      "sourceUrl": "https://www.openstreetmap.org/way/651878444",
+      "sourceVersion": 8,
+      "sourceTimestamp": "2024-05-20T15:23:07Z",
+      "tags": {
+        "highway": "primary_link",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-652158384",
+      "sourceUrl": "https://www.openstreetmap.org/way/652158384",
+      "sourceVersion": 9,
+      "sourceTimestamp": "2022-11-04T19:37:14Z",
+      "tags": {
+        "highway": "secondary",
+        "name": "Jalan Pintu Satu Senayan",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-652158385",
+      "sourceUrl": "https://www.openstreetmap.org/way/652158385",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2023-08-26T06:24:14Z",
+      "tags": {
+        "highway": "secondary",
+        "name": "Jalan Pintu Satu Senayan",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-652160560",
+      "sourceUrl": "https://www.openstreetmap.org/way/652160560",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2024-06-20T13:58:48Z",
+      "tags": {
+        "highway": "unclassified",
+        "name": "Jalan Jakarta",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-652160561",
+      "sourceUrl": "https://www.openstreetmap.org/way/652160561",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2024-06-20T13:58:48Z",
+      "tags": {
+        "highway": "unclassified",
+        "name": "Jalan Jakarta",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-652304278",
+      "sourceUrl": "https://www.openstreetmap.org/way/652304278",
+      "sourceVersion": 7,
+      "sourceTimestamp": "2022-11-04T19:37:14Z",
+      "tags": {
+        "highway": "secondary",
+        "name": "Jalan Pintu Satu Senayan",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-669706575",
+      "sourceUrl": "https://www.openstreetmap.org/way/669706575",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2022-11-01T16:44:25Z",
+      "tags": {
+        "highway": "footway"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-674345095",
+      "sourceUrl": "https://www.openstreetmap.org/way/674345095",
+      "sourceVersion": 7,
+      "sourceTimestamp": "2026-07-05T01:41:33Z",
+      "tags": {
+        "access": "yes",
+        "highway": "service",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-676268084",
+      "sourceUrl": "https://www.openstreetmap.org/way/676268084",
+      "sourceVersion": 6,
+      "sourceTimestamp": "2025-10-15T06:54:30Z",
+      "tags": {
+        "highway": "service",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-679209748",
+      "sourceUrl": "https://www.openstreetmap.org/way/679209748",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2019-12-13T18:33:21Z",
+      "tags": {
+        "leisure": "pitch",
+        "name": "Lapangan Baseball",
+        "sport": "baseball"
+      }
+    },
+    {
+      "id": "osm-way-682984153",
+      "sourceUrl": "https://www.openstreetmap.org/way/682984153",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2026-06-01T01:23:05Z",
+      "tags": {
+        "leisure": "stadium",
+        "name": "Stadion Utama Gelora Bung Karno",
+        "name:en": "Gelora Bung Karno Main Stadium",
+        "source": "HOT_InAWARESurvey_2017",
+        "sport": "multi"
+      },
+      "labelPositionBasis": "Mean of mapped way vertices; not an entrance"
+    },
+    {
+      "id": "osm-way-689861289",
+      "sourceUrl": "https://www.openstreetmap.org/way/689861289",
+      "sourceVersion": 11,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "highway": "secondary",
+        "name": "Jalan Lapangan Tembak Senayan",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-691845868",
+      "sourceUrl": "https://www.openstreetmap.org/way/691845868",
+      "sourceVersion": 15,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "highway": "secondary",
+        "name": "Jalan Gerbang Pemuda",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-706910856",
+      "sourceUrl": "https://www.openstreetmap.org/way/706910856",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2024-09-08T00:35:43Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-727640009",
+      "sourceUrl": "https://www.openstreetmap.org/way/727640009",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "bicycle": "use_sidepath",
+        "highway": "primary",
+        "name": "Jalan Gerbang Pemuda",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-751462759",
+      "sourceUrl": "https://www.openstreetmap.org/way/751462759",
+      "sourceVersion": 10,
+      "sourceTimestamp": "2025-05-29T07:48:28Z",
+      "tags": {
+        "highway": "primary",
+        "name": "Jalan Gerbang Pemuda",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-751463432",
+      "sourceUrl": "https://www.openstreetmap.org/way/751463432",
+      "sourceVersion": 7,
+      "sourceTimestamp": "2025-05-29T07:48:31Z",
+      "tags": {
+        "highway": "primary",
+        "name": "Jalan Gerbang Pemuda",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-754512460",
+      "sourceUrl": "https://www.openstreetmap.org/way/754512460",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2019-12-11T08:35:32Z",
+      "tags": {
+        "natural": "wood"
+      }
+    },
+    {
+      "id": "osm-way-754512470",
+      "sourceUrl": "https://www.openstreetmap.org/way/754512470",
+      "sourceVersion": 8,
+      "sourceTimestamp": "2023-09-25T16:38:33Z",
+      "tags": {
+        "highway": "service",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-754513755",
+      "sourceUrl": "https://www.openstreetmap.org/way/754513755",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2019-12-11T08:45:01Z",
+      "tags": {
+        "natural": "water"
+      }
+    },
+    {
+      "id": "osm-way-754513757",
+      "sourceUrl": "https://www.openstreetmap.org/way/754513757",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2022-11-02T12:46:30Z",
+      "tags": {
+        "access": "private",
+        "highway": "path"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-754513758",
+      "sourceUrl": "https://www.openstreetmap.org/way/754513758",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2022-11-02T12:46:30Z",
+      "tags": {
+        "access": "private",
+        "highway": "path"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-754513759",
+      "sourceUrl": "https://www.openstreetmap.org/way/754513759",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2022-11-02T12:46:30Z",
+      "tags": {
+        "access": "private",
+        "highway": "path"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-754513760",
+      "sourceUrl": "https://www.openstreetmap.org/way/754513760",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2022-11-02T12:46:30Z",
+      "tags": {
+        "access": "private",
+        "highway": "path"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-754513761",
+      "sourceUrl": "https://www.openstreetmap.org/way/754513761",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2022-11-02T12:46:30Z",
+      "tags": {
+        "access": "private",
+        "highway": "path"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-754513762",
+      "sourceUrl": "https://www.openstreetmap.org/way/754513762",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2022-11-02T12:46:30Z",
+      "tags": {
+        "access": "private",
+        "highway": "path"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-754513763",
+      "sourceUrl": "https://www.openstreetmap.org/way/754513763",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2022-11-02T12:46:30Z",
+      "tags": {
+        "access": "private",
+        "highway": "path"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-754513766",
+      "sourceUrl": "https://www.openstreetmap.org/way/754513766",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2022-11-02T12:46:30Z",
+      "tags": {
+        "access": "private",
+        "highway": "path"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-754516397",
+      "sourceUrl": "https://www.openstreetmap.org/way/754516397",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2024-05-29T17:44:59Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-754516399",
+      "sourceUrl": "https://www.openstreetmap.org/way/754516399",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2019-12-11T08:59:39Z",
+      "tags": {
+        "building": "yes"
+      },
+      "heightBasis": "Illustrative 8 m default; no mapped height or levels"
+    },
+    {
+      "id": "osm-way-755282356",
+      "sourceUrl": "https://www.openstreetmap.org/way/755282356",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2026-03-10T19:59:19Z",
+      "tags": {
+        "access": "private",
+        "highway": "path"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-755282357",
+      "sourceUrl": "https://www.openstreetmap.org/way/755282357",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2022-11-02T12:51:12Z",
+      "tags": {
+        "access": "private",
+        "highway": "path"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-755282358",
+      "sourceUrl": "https://www.openstreetmap.org/way/755282358",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2022-11-02T12:51:12Z",
+      "tags": {
+        "access": "private",
+        "highway": "path"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-755282361",
+      "sourceUrl": "https://www.openstreetmap.org/way/755282361",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2019-12-13T18:33:21Z",
+      "tags": {
+        "leisure": "pitch",
+        "name": "Lapangan Basket D",
+        "source": "HOT_InAWARESurvey_2017",
+        "sport": "basketball"
+      }
+    },
+    {
+      "id": "osm-way-755282377",
+      "sourceUrl": "https://www.openstreetmap.org/way/755282377",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2019-12-13T18:33:21Z",
+      "tags": {
+        "natural": "wood"
+      }
+    },
+    {
+      "id": "osm-way-755282381",
+      "sourceUrl": "https://www.openstreetmap.org/way/755282381",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2019-12-13T18:33:21Z",
+      "tags": {
+        "leisure": "park",
+        "name": "Taman Kridaloka",
+        "name:en": "Kridaloka Park",
+        "natural": "wood"
+      }
+    },
+    {
+      "id": "osm-way-755282394",
+      "sourceUrl": "https://www.openstreetmap.org/way/755282394",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2019-12-13T18:33:21Z",
+      "tags": {
+        "building": "yes",
+        "name": "Masjid al-Bina"
+      },
+      "heightBasis": "Illustrative 8 m default; no mapped height or levels"
+    },
+    {
+      "id": "osm-way-760255195",
+      "sourceUrl": "https://www.openstreetmap.org/way/760255195",
+      "sourceVersion": 11,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "highway": "primary",
+        "name": "Jalan Gerbang Pemuda",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-760257806",
+      "sourceUrl": "https://www.openstreetmap.org/way/760257806",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "highway": "footway",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-802367420",
+      "sourceUrl": "https://www.openstreetmap.org/way/802367420",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2022-11-02T12:54:48Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-802367421",
+      "sourceUrl": "https://www.openstreetmap.org/way/802367421",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2023-11-03T03:08:57Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-802367422",
+      "sourceUrl": "https://www.openstreetmap.org/way/802367422",
+      "sourceVersion": 6,
+      "sourceTimestamp": "2023-11-03T03:08:57Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-802367423",
+      "sourceUrl": "https://www.openstreetmap.org/way/802367423",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-802367424",
+      "sourceUrl": "https://www.openstreetmap.org/way/802367424",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-890486799",
+      "sourceUrl": "https://www.openstreetmap.org/way/890486799",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2021-01-04T18:02:09Z",
+      "tags": {
+        "highway": "footway"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-973422374",
+      "sourceUrl": "https://www.openstreetmap.org/way/973422374",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2022-11-02T12:51:12Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-973909201",
+      "sourceUrl": "https://www.openstreetmap.org/way/973909201",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2022-11-02T12:51:12Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-978672856",
+      "sourceUrl": "https://www.openstreetmap.org/way/978672856",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "bicycle": "use_sidepath",
+        "highway": "primary",
+        "name": "Jalan Gerbang Pemuda",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1034097413",
+      "sourceUrl": "https://www.openstreetmap.org/way/1034097413",
+      "sourceVersion": 4,
+      "sourceTimestamp": "2024-05-29T17:44:59Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1054148526",
+      "sourceUrl": "https://www.openstreetmap.org/way/1054148526",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2022-07-29T17:26:55Z",
+      "tags": {
+        "highway": "footway"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1054148527",
+      "sourceUrl": "https://www.openstreetmap.org/way/1054148527",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2022-07-29T17:26:55Z",
+      "tags": {
+        "highway": "footway"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1054148528",
+      "sourceUrl": "https://www.openstreetmap.org/way/1054148528",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2022-07-29T17:26:55Z",
+      "tags": {
+        "highway": "footway"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1054148529",
+      "sourceUrl": "https://www.openstreetmap.org/way/1054148529",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2022-07-29T17:26:55Z",
+      "tags": {
+        "highway": "footway"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1054148530",
+      "sourceUrl": "https://www.openstreetmap.org/way/1054148530",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2022-08-01T18:30:37Z",
+      "tags": {
+        "highway": "footway"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1054148531",
+      "sourceUrl": "https://www.openstreetmap.org/way/1054148531",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2022-07-29T17:26:55Z",
+      "tags": {
+        "highway": "footway"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1054159839",
+      "sourceUrl": "https://www.openstreetmap.org/way/1054159839",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2022-07-29T17:26:55Z",
+      "tags": {
+        "highway": "footway"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1054159840",
+      "sourceUrl": "https://www.openstreetmap.org/way/1054159840",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2022-07-29T17:26:55Z",
+      "tags": {
+        "highway": "footway"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1054159841",
+      "sourceUrl": "https://www.openstreetmap.org/way/1054159841",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2022-07-29T17:26:55Z",
+      "tags": {
+        "highway": "footway"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1109613970",
+      "sourceUrl": "https://www.openstreetmap.org/way/1109613970",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2022-11-02T12:46:30Z",
+      "tags": {
+        "highway": "secondary",
+        "name": "Jalan Pintu Satu Senayan",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1109614893",
+      "sourceUrl": "https://www.openstreetmap.org/way/1109614893",
+      "sourceVersion": 8,
+      "sourceTimestamp": "2026-09-23T08:38:11Z",
+      "tags": {
+        "access": "yes",
+        "bicycle": "yes",
+        "foot": "designated",
+        "highway": "service",
+        "motor_vehicle": "no",
+        "name": "Jalan Lingkar Stadion",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1110377162",
+      "sourceUrl": "https://www.openstreetmap.org/way/1110377162",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2022-11-04T19:37:14Z",
+      "tags": {
+        "highway": "secondary_link"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1115170420",
+      "sourceUrl": "https://www.openstreetmap.org/way/1115170420",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2026-09-23T08:38:11Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1115170421",
+      "sourceUrl": "https://www.openstreetmap.org/way/1115170421",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2022-11-18T09:25:33Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1115170422",
+      "sourceUrl": "https://www.openstreetmap.org/way/1115170422",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2025-11-10T02:46:26Z",
+      "tags": {
+        "access": "private",
+        "highway": "service",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1115170423",
+      "sourceUrl": "https://www.openstreetmap.org/way/1115170423",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2026-09-23T08:38:11Z",
+      "tags": {
+        "access": "private",
+        "highway": "service",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1115170424",
+      "sourceUrl": "https://www.openstreetmap.org/way/1115170424",
+      "sourceVersion": 4,
+      "sourceTimestamp": "2026-09-23T08:38:11Z",
+      "tags": {
+        "access": "private",
+        "highway": "service",
+        "motor_vehicle": "no"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1115170425",
+      "sourceUrl": "https://www.openstreetmap.org/way/1115170425",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2025-03-07T07:20:00Z",
+      "tags": {
+        "access": "private",
+        "highway": "service",
+        "motor_vehicle": "no"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1232511856",
+      "sourceUrl": "https://www.openstreetmap.org/way/1232511856",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2024-05-20T15:23:07Z",
+      "tags": {
+        "highway": "primary_link",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1281358308",
+      "sourceUrl": "https://www.openstreetmap.org/way/1281358308",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2026-08-16T00:32:13Z",
+      "tags": {
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1281358311",
+      "sourceUrl": "https://www.openstreetmap.org/way/1281358311",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2026-08-16T00:32:44Z",
+      "tags": {
+        "access": "yes",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1287759401",
+      "sourceUrl": "https://www.openstreetmap.org/way/1287759401",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2024-05-29T17:44:59Z",
+      "tags": {
+        "access": "private",
+        "highway": "service"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1304058464",
+      "sourceUrl": "https://www.openstreetmap.org/way/1304058464",
+      "sourceVersion": 5,
+      "sourceTimestamp": "2026-03-03T21:13:56Z",
+      "tags": {
+        "highway": "primary",
+        "name": "Jalan Asia Afrika",
+        "source": "HOT_InAWARESurvey_2017",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1371873077",
+      "sourceUrl": "https://www.openstreetmap.org/way/1371873077",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2026-03-10T18:14:02Z",
+      "tags": {
+        "highway": "footway"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1390073977",
+      "sourceUrl": "https://www.openstreetmap.org/way/1390073977",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "highway": "footway",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1408594491",
+      "sourceUrl": "https://www.openstreetmap.org/way/1408594491",
+      "sourceVersion": 3,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "highway": "footway",
+        "surface": "concrete"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1471797446",
+      "sourceUrl": "https://www.openstreetmap.org/way/1471797446",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2026-01-27T20:55:39Z",
+      "tags": {
+        "highway": "footway"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1475004320",
+      "sourceUrl": "https://www.openstreetmap.org/way/1475004320",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2026-03-10T19:59:19Z",
+      "tags": {
+        "highway": "pedestrian"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1475004324",
+      "sourceUrl": "https://www.openstreetmap.org/way/1475004324",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "foot": "designated",
+        "highway": "footway"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1475004325",
+      "sourceUrl": "https://www.openstreetmap.org/way/1475004325",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "bicycle": "designated",
+        "highway": "cycleway",
+        "surface": "concrete"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1475004326",
+      "sourceUrl": "https://www.openstreetmap.org/way/1475004326",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2026-03-03T21:13:56Z",
+      "tags": {
+        "highway": "footway",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1475004327",
+      "sourceUrl": "https://www.openstreetmap.org/way/1475004327",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "foot": "designated",
+        "highway": "footway",
+        "surface": "concrete"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1475004328",
+      "sourceUrl": "https://www.openstreetmap.org/way/1475004328",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "foot": "designated",
+        "highway": "footway",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1475004329",
+      "sourceUrl": "https://www.openstreetmap.org/way/1475004329",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2026-02-07T12:06:57Z",
+      "tags": {
+        "highway": "footway",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1480803774",
+      "sourceUrl": "https://www.openstreetmap.org/way/1480803774",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2026-02-19T17:38:12Z",
+      "tags": {
+        "highway": "footway"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1480803775",
+      "sourceUrl": "https://www.openstreetmap.org/way/1480803775",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2026-02-19T17:38:12Z",
+      "tags": {
+        "highway": "footway"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1480852673",
+      "sourceUrl": "https://www.openstreetmap.org/way/1480852673",
+      "sourceVersion": 2,
+      "sourceTimestamp": "2026-07-05T01:41:31Z",
+      "tags": {
+        "highway": "footway",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1480852674",
+      "sourceUrl": "https://www.openstreetmap.org/way/1480852674",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2026-02-19T18:36:49Z",
+      "tags": {
+        "highway": "footway"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1487298446",
+      "sourceUrl": "https://www.openstreetmap.org/way/1487298446",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2026-03-10T18:14:02Z",
+      "tags": {
+        "highway": "footway"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1487298447",
+      "sourceUrl": "https://www.openstreetmap.org/way/1487298447",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2026-03-10T18:14:02Z",
+      "tags": {
+        "highway": "footway"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1487319432",
+      "sourceUrl": "https://www.openstreetmap.org/way/1487319432",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2026-03-10T19:59:19Z",
+      "tags": {
+        "leisure": "pitch",
+        "sport": "tennis"
+      }
+    },
+    {
+      "id": "osm-way-1487319433",
+      "sourceUrl": "https://www.openstreetmap.org/way/1487319433",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2026-03-10T19:59:19Z",
+      "tags": {
+        "leisure": "pitch",
+        "sport": "tennis"
+      }
+    },
+    {
+      "id": "osm-way-1487319438",
+      "sourceUrl": "https://www.openstreetmap.org/way/1487319438",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2026-03-10T19:59:19Z",
+      "tags": {
+        "highway": "path"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1487319439",
+      "sourceUrl": "https://www.openstreetmap.org/way/1487319439",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2026-03-10T19:59:19Z",
+      "tags": {
+        "highway": "path"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1487319440",
+      "sourceUrl": "https://www.openstreetmap.org/way/1487319440",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2026-03-10T19:59:19Z",
+      "tags": {
+        "highway": "path"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1487330973",
+      "sourceUrl": "https://www.openstreetmap.org/way/1487330973",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2026-03-10T20:47:33Z",
+      "tags": {
+        "bicycle": "yes",
+        "foot": "yes",
+        "highway": "footway",
+        "name": "Jalan Plaza Barat",
+        "surface": "paving_stones"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1528397251",
+      "sourceUrl": "https://www.openstreetmap.org/way/1528397251",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2026-06-11T07:15:46Z",
+      "tags": {
+        "highway": "service",
+        "surface": "asphalt"
+      },
+      "geometryTreatment": "Polyline clipped to local context bounds; widths and access are not modeled"
+    },
+    {
+      "id": "osm-way-1561538022",
+      "sourceUrl": "https://www.openstreetmap.org/way/1561538022",
+      "sourceVersion": 1,
+      "sourceTimestamp": "2026-09-23T08:38:11Z",
+      "tags": {
+        "leisure": "pitch",
+        "source": "HOT_InAWARESurvey_2017",
+        "sport": "multi"
+      }
+    },
+    {
+      "id": "osm-node-7044588762",
+      "sourceUrl": "https://www.openstreetmap.org/node/7044588762",
+      "tags": {
+        "barrier": "gate",
+        "entrance": "yes",
+        "name": "10",
+        "ref": "10"
+      },
+      "note": "Mapped gate location only; current access is unverified"
+    },
+    {
+      "id": "osm-node-7047415793",
+      "sourceUrl": "https://www.openstreetmap.org/node/7047415793",
+      "tags": {
+        "access": "no",
+        "barrier": "gate",
+        "name": "11",
+        "ref": "11"
+      },
+      "note": "Mapped gate location only; current access is unverified"
+    },
+    {
+      "id": "osm-node-7048980920",
+      "sourceUrl": "https://www.openstreetmap.org/node/7048980920",
+      "tags": {
+        "access": "no",
+        "barrier": "gate",
+        "name": "12",
+        "ref": "12"
+      },
+      "note": "Mapped gate location only; current access is unverified"
+    },
+    {
+      "id": "osm-node-7059433344",
+      "sourceUrl": "https://www.openstreetmap.org/node/7059433344",
+      "tags": {
+        "access": "permissive",
+        "barrier": "gate",
+        "name": "4",
+        "ref": "4"
+      },
+      "note": "Mapped gate location only; current access is unverified"
+    },
+    {
+      "id": "osm-node-7059770842",
+      "sourceUrl": "https://www.openstreetmap.org/node/7059770842",
+      "tags": {
+        "access": "permissive",
+        "barrier": "gate",
+        "name": "2",
+        "ref": "2"
+      },
+      "note": "Mapped gate location only; current access is unverified"
+    }
+  ]
+}
