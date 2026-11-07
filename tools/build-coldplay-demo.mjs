@@ -46,15 +46,14 @@ function stadiumHandover(spine, offset = 0) {
   ]
 }
 
-function admissionTemplate(areaId, spine) {
-  const laneCount = laneCounts[areaId]
+function admissionTemplate(areaId, spine, laneCount) {
   if (!laneCount) throw new Error(`No authored lane count for ${areaId}`)
   const crosswise = laneCount > 5
   const routeLengthM = spine.lengthM ?? spine.lengths.at(-1)
   const compact = areaId === 'pintu_kuning' && routeLengthM < 120
   // The 15 m canopies run across the lane bank with three standard Roder bays.
   // Offset the lane bank slightly from the bay posts, preserving full lane widths.
-  const laneBiasM = crosswise ? 0.55 : 0
+  const laneBiasM = laneCount === 9 ? 0.83 : laneCount === 6 || laneCount === 8 ? 0.55 : 0
   const railStartM = laneBiasM - laneCount * laneSpacingM / 2
   const laneOffsets = Array.from({ length: laneCount }, (_, lane) => round(railStartM + (lane + 0.5) * laneSpacingM))
   const queueWidthM = laneCount * laneSpacingM + panelDepthM
@@ -69,8 +68,8 @@ function admissionTemplate(areaId, spine) {
   const stationOffset = (lateral, longitudinal = 0) => crosswise ? [-longitudinal, 0, lateral] : [lateral, 0, longitudinal]
   const scanTableX = crosswise ? laneOffsets[0] - 0.81 : laneOffsets.at(-1) + 0.75
   const placements = [
-    { id: 'security_tent', label: 'Security check', presetId: 'roder-10', position: [0, 0, securityS], yawDeg: shelterYaw, bays: crosswise ? 3 : compact ? 1 : 2 },
-    { id: 'scan_tent', label: 'Ticket scan', presetId: 'roder-10', position: [0, 0, scanS], yawDeg: shelterYaw, bays: crosswise ? 3 : compact ? 1 : 2 },
+    { id: 'security_tent', label: 'Security check', presetId: 'roder-10', position: [0, 0, securityS], yawDeg: shelterYaw, bays: crosswise ? (laneCount > 8 ? 4 : 3) : compact ? 1 : 2 },
+    { id: 'scan_tent', label: 'Ticket scan', presetId: 'roder-10', position: [0, 0, scanS], yawDeg: shelterYaw, bays: crosswise ? (laneCount > 8 ? 4 : 3) : compact ? 1 : 2 },
     { id: 'help_tent', label: 'Ticket exceptions', presetId: 'pagoda-3', position: [3, 0, 16.1], yawDeg: 0 },
     { id: 'scan_table', label: 'Scan counter', presetId: 'table-183', position: [scanTableX, 0, scanS + 2], yawDeg: 90 },
     { id: 'help_table', label: 'Help desk', presetId: 'table-183', position: [3.3, 0, 15.4], yawDeg: 90 },
@@ -158,10 +157,9 @@ const spatial = {
 }
 const layout = { basis: 'estimate', zones: [], service_points: [], gates: [], walking_paths: [], visitor_flow: [{ order: 1, point: 'entry_gate_of_category', required: true }] }
 const roles = []
-for (const area of source.entry_areas) {
+function buildEntrance(area, spine, count, spatial, layout, roles) {
   const north = area.id === 'plaza_utara'
-  const spine = spines.get(area.id)
-  const baseline = admissionTemplate(area.id, spine)
+  const baseline = admissionTemplate(area.id, spine, count)
   const { laneCount, laneOffsets, laneSecurityIds, queueWidthM, routeLengthM, stationOffset } = baseline
   const key = id => north ? id : `${area.id}_${id}`
   const transform = point => spine.sample(point[2], point[0])
@@ -229,16 +227,15 @@ for (const area of source.entry_areas) {
     for (let index = 0; index < count; index++) spatial.operators.push({ id: `${roleId}_${index + 1}`, label: `${kind === 'security' ? 'Security' : kind === 'help' ? 'Help agent' : 'Scan operator'} ${index + 1}`, role_id: roleId, point_id: point, entry_area_id: area.id, attachment: { placement_id: key(placement), offset_m: kind === 'help' ? [-0.3, 0, offsetZ] : stationOffset(laneOffsets[index] + (kind === 'security' ? 0.8 : 0.65), offsetZ) } })
     spatial.operational_bindings.push({ placement_id: key(placement), node_id: key(`${kind}_checkpoint`), point_id: point, lane_group: kind === 'help' ? 'desk' : 'general', queue_zone_id: kind === 'help' ? helpZoneId : queueId })
   }
-}
-for (const area of spatial.entry_areas) {
-  const key = id => area.id === 'plaza_utara' ? id : `${area.id}_${id}`
-  spatial.service_stations.push({ id: `${area.id}_help_service`, node_id: area.help_checkpoint_node_id, operator_id: `${area.id}_help_1`, point_id: `help_${area.id}`, step_ids: ['help_desk_resolution'] })
-  for (let lane = 0; lane < area.corridor.authored_lane_count; lane++) {
+  const entry = spatial.entry_areas.at(-1)
+  spatial.service_stations.push({ id: `${area.id}_help_service`, node_id: entry.help_checkpoint_node_id, operator_id: `${area.id}_help_1`, point_id: `help_${area.id}`, step_ids: ['help_desk_resolution'] })
+  for (let lane = 0; lane < laneCount; lane++) {
     const prefix = lanePrefix(lane)
-    spatial.service_stations.push({ id: `${area.id}_security_${lane + 1}_service`, node_id: key(`${prefix}security_checkpoint`), operator_id: `${area.id}_security_${lane + 1}`, point_id: area.gate_id, step_ids: ['security_inspection'], queue_start_node_id: key(`${prefix}queue_wait_tail`), queue_end_node_id: key(`${prefix}queue_wait_head`) })
-    spatial.service_stations.push({ id: `${area.id}_scan_${lane + 1}_service`, node_id: key(`${prefix}scan_checkpoint`), operator_id: `${area.id}_scan_${lane + 1}`, point_id: area.gate_id, step_ids: ['eticket_scan', 'wristband_fit'] })
+    spatial.service_stations.push({ id: `${area.id}_security_${lane + 1}_service`, node_id: key(`${prefix}security_checkpoint`), operator_id: `${area.id}_security_${lane + 1}`, point_id: gateId, step_ids: ['security_inspection'], queue_start_node_id: key(`${prefix}queue_wait_tail`), queue_end_node_id: key(`${prefix}queue_wait_head`) })
+    spatial.service_stations.push({ id: `${area.id}_scan_${lane + 1}_service`, node_id: key(`${prefix}scan_checkpoint`), operator_id: `${area.id}_scan_${lane + 1}`, point_id: gateId, step_ids: ['eticket_scan', 'wristband_fit'] })
   }
 }
+for (const area of source.entry_areas) buildEntrance(area, spines.get(area.id), laneCounts[area.id], spatial, layout, roles)
 plan.venue = { ...plan.venue, id: 'gbk-osm-local', name: 'Stadion Utama Gelora Bung Karno', layout }
 plan.process_steps = { basis: 'estimate', steps: [
   ['eticket_scan', 'Scan e-ticket and match ID', 5, 12, 'scan'],
@@ -313,5 +310,25 @@ plan.meta.demo_assumptions.push('Arriving groups are assigned round-robin across
 plan.meta.demo_assumptions.push(`The fictional baseline has ${equipmentOnHand} units on hand and allocates ${equipmentRented} rented units per device type.`)
 plan.meta.demo_assumptions.push('Behavior profiles, origin shares and category mixes are fictional inputs. The 76 category × behavior rows expand into 228 origin-specific runtime cohorts with exact attendee conservation. Post-scan links and category handovers are proposed at the stadium threshold. Confirm the access paths and internal sector routes on site.')
 plan.meta.demo_assumptions.push('MRT Exit B and drop-off coordinates use existing public OSM nodes. Parkir Timur uses a mapped polygon centroid with one explicitly proposed exit connector. Designating the parking entrance for taxi or app-based passenger drop-off is fictional; no vehicle movement is modeled.')
-writeFileSync(new URL('contracts/examples/coldplay-gbk-demo-plan.json', root), JSON.stringify(plan, null, 2) + '\n')
+if (process.argv.includes('--expansion-layouts')) {
+  const alternatives = {}
+  for (const area of source.entry_areas) {
+    alternatives[area.id] = [0, 1, 2].map(extra => {
+      const count = laneCounts[area.id] + extra
+      const spine = spines.get(area.id)
+      const widthM = extra === 0 ? spine.widthM : Math.max(spine.widthM, count > 8 ? 20.3 : count > 5 ? 15.3 : 10.3,
+        round(count * laneSpacingM + panelDepthM))
+      const draft = { placements: [], navigation: { nodes: [], edges: [] }, operational_bindings: [], entry_areas: [], cohort_routes: [], operators: [], service_stations: [] }
+      const native = { zones: [], gates: [], service_points: [], walking_paths: [] }
+      buildEntrance(area, { ...spine, widthM }, count, draft, native, [])
+      const { cohort_routes, ...geometry } = draft
+      return { count, widthM, queue: native.zones[0], ...geometry, laneIds: cohort_routes[0].lane_checkpoint_ids }
+    })
+  }
+  const serialized = Object.entries(alternatives).map(([id, variants]) =>
+    `  ${JSON.stringify(id)}: [\n${variants.map(variant => `    ${JSON.stringify(variant)}`).join(',\n')}\n  ]`).join(',\n')
+  writeFileSync(new URL('web/src/simulation/plan/gbk-expansion-layouts.json', root), `{\n${serialized}\n}\n`)
+} else {
+  writeFileSync(new URL('contracts/examples/coldplay-gbk-demo-plan.json', root), JSON.stringify(plan, null, 2) + '\n')
+}
 console.log(`Wrote V1 with ${plan.event.ticket_categories.length} categories, ${spatial.entry_areas.length} entry areas, ${spatial.operators.length} operators and ${spatial.placements.length} equipment placements. Catalogue has ${catalogue.length} presets.`)

@@ -11,7 +11,8 @@ export type CorridorOptimizationPanelProps = {
   onGateChange: (id: string) => void
   planKey: string
   project: (gateId: string) => CorridorProjection
-  onApply: (projection: CorridorProjection, candidateDocument: unknown) => void | Promise<void>
+  onApply?: (projection: CorridorProjection, candidateDocument: unknown) => void | Promise<void>
+  proposedCapacity?: boolean
   disabled?: boolean
   active?: boolean
 }
@@ -37,7 +38,7 @@ function readRun(input: unknown): CorridorRun {
     || typeof input.snapshot_hash !== 'string' || !isObject(input.output)) throw invalidComparison()
   const { population, scan, costs, checks } = input.output
   if (!isObject(population) || !isCount(population.total) || !isCount(population.admitted) || !isCount(population.unfinished)
-    || population.admitted + population.unfinished !== population.total || !isObject(scan) || !isCount(scan.lanes) || scan.lanes < 1 || scan.lanes > 8
+    || population.admitted + population.unfinished !== population.total || !isObject(scan) || !isCount(scan.lanes) || scan.lanes < 1
     || !isCount(scan.peak_queue) || scan.peak_queue > population.total || (scan.wait_p90_seconds !== null && (typeof scan.wait_p90_seconds !== 'number' || !Number.isFinite(scan.wait_p90_seconds) || scan.wait_p90_seconds < 0))
     || !isObject(costs) || !isObject(costs.total) || costs.total.currency !== 'IDR' || typeof costs.total.amount !== 'string' || !/^\d+\.\d{2}$/.test(costs.total.amount)
     || !isObject(checks) || typeof checks.queue_target_met !== 'boolean' || typeof checks.budget_met !== 'boolean') throw invalidComparison()
@@ -107,7 +108,7 @@ const rupiah = (amount: string) => {
 const wait = (seconds: number | null) => seconds === null ? '—' : `${count.format(Math.round(seconds * 10) / 10)} s`
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'The corridor comparison failed.'
 
-export default function CorridorOptimizationPanel({ gates, gateId, onGateChange, planKey, project, onApply, disabled, active = true }: CorridorOptimizationPanelProps) {
+export default function CorridorOptimizationPanel({ gates, gateId, onGateChange, planKey, project, onApply, proposedCapacity, disabled, active = true }: CorridorOptimizationPanelProps) {
   const [connection, setConnection] = useState<'checking' | 'configured' | 'unconfigured' | 'unreachable'>('checking')
   const [result, setResult] = useState<Result | null>(null)
   const [apply, setApply] = useState<ApplyState | null>(null)
@@ -171,7 +172,7 @@ export default function CorridorOptimizationPanel({ gates, gateId, onGateChange,
   }
 
   async function applyCandidate() {
-    if (!comparison?.candidate || disabled || visibleApply?.status === 'saving' || visibleApply?.status === 'saved') return
+    if (!onApply || !comparison?.candidate || disabled || visibleApply?.status === 'saving' || visibleApply?.status === 'saved') return
     setApply({ key, status: 'saving' })
     try {
       await onApply(comparison.projection, comparison.candidate)
@@ -186,18 +187,18 @@ export default function CorridorOptimizationPanel({ gates, gateId, onGateChange,
     .map(seconds => sampleClock.format(new Date(Date.parse(comparison.projection.timeOrigin) + seconds * 1000))).join('–') : null
 
   return <section className="sim-corridor" aria-label="Doni corridor comparison">
-    <p className="sim-corridor-scope"><strong>All entrance visitors · one scan checkpoint</strong><span>Compare scan lanes on one entrance corridor. The full admission simulation stays in Control Panel.</span></p>
-    <label className="sim-corridor-field">Entrance
+    <p className="sim-corridor-scope"><strong>All entrance visitors · one scan checkpoint</strong><span>{proposedCapacity ? 'Assumes the proposal’s space, scanners, staff and funding are available. Doni models a uniform arrival stream on the current route.' : 'Compare scan lanes on one entrance corridor. The full admission simulation stays in Control Panel.'}</span></p>
+    {!proposedCapacity && <label className="sim-corridor-field">Entrance
       <select value={gateId} onChange={event => onGateChange(event.currentTarget.value)} disabled={!gates.length}>
         {!gates.some(gate => gate.id === gateId) && <option value="">Select an entrance</option>}
         {gates.map(gate => <option key={gate.id} value={gate.id}>{gate.label}</option>)}
       </select>
-    </label>
-    {selected && <p className="sim-corridor-note">{selected.lanes} active / {selected.maxLanes} authored lanes</p>}
+    </label>}
+    {selected && <p className="sim-corridor-note">{selected.lanes} active / {selected.maxLanes} {proposedCapacity ? 'proposed' : 'authored'} lanes</p>}
     {!gates.length && <p className="sim-corridor-note">This version has no supported entrance corridor.</p>}
     {selected && !hasSpareLane && <p className="sim-corridor-note">There’s no spare lane in this scope. In Editor → Staffing &amp; hours, reduce the active lanes, then choose the editor draft to compare against an authored spare lane.</p>}
     <div className="sim-corridor-connection"><span role="status" data-configured={connection === 'configured'}>{connectionLabel}</span><button type="button" onClick={() => void refreshConnection()} disabled={connection === 'checking'}>Refresh</button></div>
-    <button type="button" className="sim-corridor-primary" disabled={disabled || !hasSpareLane || connection !== 'configured' || visibleResult?.status === 'pending' || visibleApply?.status === 'saving'} onClick={() => void compare()}>{visibleResult?.status === 'pending' ? 'Comparing lanes…' : 'Compare lanes with Doni'}</button>
+    <button type="button" className="sim-corridor-primary" disabled={disabled || !hasSpareLane || connection !== 'configured' || visibleResult?.status === 'pending' || visibleApply?.status === 'saving'} onClick={() => void compare()}>{visibleResult?.status === 'pending' ? 'Comparing lanes…' : proposedCapacity ? 'Check proposed lanes with Doni' : 'Compare lanes with Doni'}</button>
     {visibleResult?.status === 'error' && <p role="alert">{visibleResult.message}</p>}
     {comparison && <div className="sim-corridor-results" aria-live="polite">
       <h3>{comparison.projection.gateLabel} comparison</h3>
@@ -210,8 +211,8 @@ export default function CorridorOptimizationPanel({ gates, gateId, onGateChange,
         <tr><th scope="row">Corridor cost</th><td>{rupiah(comparison.baseline.cost)}</td><td>{rupiah(comparison.best.cost)}</td></tr>
       </tbody></table>
       {comparison.timedOut && <p className="sim-corridor-note">The search reached its time limit. This table shows the best completed comparison.</p>}
-      {comparison.candidate ? <button type="button" className="sim-corridor-primary" disabled={disabled || visibleApply?.status === 'saving' || visibleApply?.status === 'saved'} onClick={() => void applyCandidate()}>{visibleApply?.status === 'saving' ? 'Saving…' : visibleApply?.status === 'saved' ? 'Version saved' : 'Save candidate as new version'}</button>
-        : <p className="sim-corridor-note">Doni found no improving candidate among the completed comparisons.</p>}
+      {comparison.candidate && onApply ? <button type="button" className="sim-corridor-primary" disabled={disabled || visibleApply?.status === 'saving' || visibleApply?.status === 'saved'} onClick={() => void applyCandidate()}>{visibleApply?.status === 'saving' ? 'Saving…' : visibleApply?.status === 'saved' ? 'Version saved' : 'Save candidate as new version'}</button>
+        : !comparison.candidate && <p className="sim-corridor-note">Doni found no improving candidate among the completed comparisons.</p>}
       {visibleApply?.status === 'error' && <p role="alert">{visibleApply.message}</p>}
     </div>}
   </section>

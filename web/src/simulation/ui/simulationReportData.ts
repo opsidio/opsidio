@@ -93,6 +93,14 @@ export function reportPlanChanges(from: unknown, to: unknown): string[] {
   const previousSpatial = row(previous.spatial_context), currentSpatial = row(current.spatial_context)
   if (different(previousSpatial.placements, currentSpatial.placements)) changes.push('Equipment placement changed.')
   if (different(previousSpatial.navigation, currentSpatial.navigation)) changes.push('Routes or waypoints changed.')
+  const proposal = row(row(current.meta).expansion_proposal)
+  if (typeof proposal.required_width_m === 'number' && typeof proposal.gate_id === 'string') {
+    const gate = rows(currentLayout.gates).find(item => item.id === proposal.gate_id)
+    if (gate) changes.push(`${gate.name} proposed operating width · ${proposal.required_width_m} m.`)
+  }
+  if (Array.isArray(proposal.review)) for (const item of proposal.review) {
+    if (typeof item === 'string') changes.push(item)
+  }
   return changes
 }
 
