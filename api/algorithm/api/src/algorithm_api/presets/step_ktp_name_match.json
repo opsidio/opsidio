@@ -1,0 +1,58 @@
+{
+  "id": "ktp_name_match",
+  "step": {
+    "id": "ktp_name_match",
+    "name": "KTP name match",
+    "what_happens": "Crew checks that the name on the original ID matches the ticket holder and that the photo matches the visitor.",
+    "done_by": [
+      "ticketing_crew",
+      "ticketing_supervisor",
+      "help_desk_agent"
+    ],
+    "equipment": [],
+    "applies_to": "all_visitors",
+    "time_per_person_seconds": {
+      "typical": 8,
+      "slow": 30
+    },
+    "slow_when": [
+      "The ID is deep in a wallet or a bag.",
+      "The name on the ticket has a different spelling.",
+      "The visitor first shows a photo of the ID on a phone."
+    ],
+    "rules": [
+      "Only original physical IDs are accepted.",
+      "A visitor aged 12 to 16 shows the companion's ID and ticket."
+    ],
+    "exceptions": [
+      {
+        "id": "proxy_with_documents",
+        "what": "Someone redeems for the buyer and brings the proxy documents.",
+        "share_percent": 1.5,
+        "outcome": "help_desk",
+        "extra_minutes": 1
+      },
+      {
+        "id": "name_mismatch_no_documents",
+        "what": "The name does not match and there are no proxy documents.",
+        "share_percent": 0.4,
+        "outcome": "refuse_entry",
+        "extra_minutes": 3
+      },
+      {
+        "id": "no_physical_id",
+        "what": "The visitor has no original ID.",
+        "share_percent": 0.8,
+        "outcome": "help_desk",
+        "extra_minutes": 1
+      },
+      {
+        "id": "minor_with_companion",
+        "what": "A minor arrives with a companion whose ID and ticket must be checked too.",
+        "share_percent": 1,
+        "outcome": "continue",
+        "extra_minutes": 1
+      }
+    ]
+  }
+}

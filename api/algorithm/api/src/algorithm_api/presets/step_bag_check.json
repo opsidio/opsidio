@@ -1,0 +1,47 @@
+{
+  "id": "bag_check",
+  "step": {
+    "id": "bag_check",
+    "name": "Bag check",
+    "what_happens": "An officer opens the bag on the table, checks it by hand and by eye, and removes the caps from plastic bottles.",
+    "done_by": [
+      "security_officer",
+      "security_supervisor"
+    ],
+    "equipment": [
+      "bag_check_table"
+    ],
+    "applies_to": "visitors_with_bag",
+    "time_per_person_seconds": {
+      "typical": 8,
+      "slow": 30
+    },
+    "slow_when": [
+      "The bag is full or has many pockets.",
+      "The visitor carries merchandise or a power bank with cables."
+    ],
+    "exceptions": [
+      {
+        "id": "prohibited_item_binned",
+        "what": "A prohibited item is found and the visitor drops it in the amnesty bin.",
+        "share_percent": 4,
+        "outcome": "continue",
+        "extra_minutes": 1
+      },
+      {
+        "id": "prohibited_item_to_locker",
+        "what": "A prohibited item is found and the visitor wants to keep it.",
+        "share_percent": 2,
+        "outcome": "locker_point",
+        "extra_minutes": 1
+      },
+      {
+        "id": "bag_larger_than_a4",
+        "what": "The bag is larger than A4.",
+        "share_percent": 1.5,
+        "outcome": "locker_point",
+        "extra_minutes": 1
+      }
+    ]
+  }
+}

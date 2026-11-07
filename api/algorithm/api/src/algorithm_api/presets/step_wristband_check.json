@@ -1,0 +1,48 @@
+{
+  "id": "wristband_check",
+  "step": {
+    "id": "wristband_check",
+    "name": "Wristband check at the gate",
+    "what_happens": "Door crew scans the wristband QR code. The scan counts the entry and confirms that the category matches the gate.",
+    "done_by": [
+      "door_crew",
+      "ticketing_crew",
+      "security_supervisor"
+    ],
+    "equipment": [
+      "handheld_scanner"
+    ],
+    "applies_to": "all_visitors",
+    "time_per_person_seconds": {
+      "typical": 3,
+      "slow": 10
+    },
+    "slow_when": [
+      "The wristband is under a sleeve.",
+      "The scanner loses its network link and works offline."
+    ],
+    "exceptions": [
+      {
+        "id": "wrong_gate",
+        "what": "The ticket category belongs to another gate.",
+        "share_percent": 2,
+        "outcome": "redirect_to_correct_gate",
+        "extra_minutes": 0.5
+      },
+      {
+        "id": "wristband_unreadable",
+        "what": "The QR code on the wristband does not scan.",
+        "share_percent": 0.5,
+        "outcome": "continue",
+        "extra_minutes": 1
+      },
+      {
+        "id": "no_wristband",
+        "what": "The visitor skipped the redemption tent.",
+        "share_percent": 0.3,
+        "outcome": "back_to_redemption",
+        "extra_minutes": 0.5
+      }
+    ]
+  }
+}

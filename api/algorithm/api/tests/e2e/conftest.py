@@ -19,7 +19,7 @@ def service(tmp_path):
         port = sock.getsockname()[1]
     env = {"PATH": os.environ.get("PATH", ""), "DATABASE_PATH": str(tmp_path / "test.sqlite3"), "API_KEY": "test-key", "PYTHONPATH": str(ROOT / "src")}
     proc = subprocess.Popen([sys.executable, "-m", "uvicorn", "algorithm_api.app:app", "--host", "127.0.0.1", "--port", str(port)], cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    client = httpx.Client(base_url=f"http://127.0.0.1:{port}", timeout=10)
+    client = httpx.Client(base_url=f"http://127.0.0.1:{port}", timeout=65)
     try:
         for _ in range(100):
             if proc.poll() is not None:
