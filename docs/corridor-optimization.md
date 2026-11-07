@@ -8,7 +8,11 @@ The workspace projects a busy wave from actual generated arrivals for the select
 
 Start the local Python bridge with `python3.11 -m api.simulation` and set `OPSIDIO_CORRIDOR_API_KEY` in its **server environment**. The default base is Doni's Opsidio Railway host; `OPSIDIO_CORRIDOR_API_URL` can override it for an authorized test environment. The browser calls same-origin `/api/simulation/corridor/health` and `/api/simulation/corridor/optimize`. Vite proxies these to the local bridge. The bridge sends the key as `X-API-Key` to Doni and never returns it to the browser. The legacy v1 bridge configuration stays separate.
 
-A hosted workspace needs the Python bridge and a same-origin `/api/simulation/*` proxy. Static frontend hosting alone cannot authenticate to the optimization API. The legacy dashboard's `/simulation` flow is separate; use `/simulation/workspace` for the V3 comparison.
+## Enable on Vercel
+
+The Vercel project with root directory `web` serves the two same-origin corridor routes from `web/api`. Add `OPSIDIO_CORRIDOR_API_KEY` as a sensitive server environment variable for the intended deployment environment and redeploy. The function sends the key only to Doni’s production Railway endpoint. Use Vercel Firewall to rate limit `/api/simulation/corridor/optimize` on a public demo deployment.
+
+Check `/api/simulation/corridor/health` after deployment. `configured: true` confirms that the function has a key. A successful comparison verifies access to Doni’s API. Open `/simulation/workspace` for V3 comparisons. The original dashboard simulation uses the separate V1 API.
 
 ## Produce and review a second version
 
