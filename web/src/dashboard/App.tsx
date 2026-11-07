@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import PlanForm from "./PlanForm";
+import stadiumIllustration from "./assets/login-stadium-lines.svg";
 import PlanAssistant from "./PlanAssistant";
 import { RequiredMark, FieldMessage } from "./FormField";
 import { Badge, Brand, BrandMark, Button, Card, GbkDemoLink, Heading, Notice } from "./ui";
@@ -725,7 +726,7 @@ function Login({ onLogin }: { onLogin: () => void }) {
     <main className="op-login">
       <section className="op-login-story">
         <Brand mark />
-        <div>
+        <div className="op-login-story-content">
           <Badge tone="coral">PLAN WITH CONFIDENCE</Badge>
           <h1>
             See the crowd.
@@ -739,13 +740,16 @@ function Login({ onLogin }: { onLogin: () => void }) {
             <br />
             for the moments that matter.
           </p>
-          <div className="op-stadium-art" aria-hidden="true">
-            <div />
-            <div />
-            <div />
-            <span>GBK · JAKARTA</span>
-          </div>
         </div>
+        <figure className="op-stadium-art">
+          <img
+            src={stadiumIllustration}
+            alt="Isometric stadium drawn in coral lines, with seating tiers and entrance gates"
+            width={640}
+            height={350}
+            decoding="async"
+          />
+        </figure>
         <small>Better planning. Smoother entrances.</small>
       </section>
       <section className="op-login-form">

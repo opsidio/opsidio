@@ -16,7 +16,7 @@ export function BrandMark() {
   );
 }
 
-export function Brand({ mark = true }: { mark?: boolean }) {
+export function Brand({ mark = false }: { mark?: boolean }) {
   return (
     <span className="op-brand" role="img" aria-label="Opsidio">
       {mark && <BrandMark />}

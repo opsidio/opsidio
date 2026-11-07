@@ -869,73 +869,55 @@ summary {
 .op-login-story {
   background: #25292e;
   color: #fff;
-  padding: 48px 64px;
+  padding: 40px 48px 32px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   overflow: hidden;
   position: relative;
-  min-height: 780px;
+  min-height: 100dvh;
+  gap: 24px;
 }
 .op-login-story > .op-brand {
   position: relative;
   z-index: 1;
 }
-.op-login-story > div {
-  margin: 64px 0 32px;
+.op-login-story-content {
   position: relative;
+  z-index: 1;
 }
 .op-login-story h1 {
-  font-size: 44px;
+  font-size: clamp(32px, 3.1vw, 44px);
   line-height: 1.15;
-  margin: 24px 0;
+  margin: 16px 0;
 }
 .op-login-story p {
   color: #bdc0c4;
-  font-size: 15px;
+  font-size: 14px;
+  margin: 0;
 }
 .op-login-story small {
   color: #a7acb2;
   font-size: 12px;
 }
 .op-stadium-art {
-  height: 240px;
+  width: calc(100% + 40px);
+  max-width: 640px;
+  height: clamp(240px, 36vh, 340px);
   position: relative;
-  margin: 24px -100px -20px;
-  overflow: hidden;
-  transform: rotate(-12deg);
+  flex: 0 0 auto;
+  align-self: center;
+  margin: -12px -20px -4px;
 }
-.op-stadium-art div {
-  position: absolute;
-  border: 1px solid #ff5a5f55;
-  width: 470px;
-  height: 195px;
-  border-radius: 50%;
-  left: 50%;
-  top: 10px;
-  transform: translateX(-50%);
+.op-stadium-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
-.op-stadium-art div:nth-child(2) {
-  width: 420px;
-  height: 160px;
-  top: 28px;
-  border-width: 12px;
-  border-color: #ff5a5f18;
-}
-.op-stadium-art div:nth-child(3) {
-  width: 365px;
-  height: 125px;
-  top: 46px;
-  border: 20px double #ff5a5f30;
-}
-.op-stadium-art span {
-  position: absolute;
-  top: 110px;
-  left: 50%;
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  color: #ff9da0;
-  transform: translateX(-50%);
+.op-login-story > small {
+  position: relative;
+  z-index: 1;
 }
 .op-login-form {
   display: grid;
@@ -1612,6 +1594,7 @@ summary {
     padding: 24px;
   }
   .op-login-story > div,
+  .op-login-story > .op-stadium-art,
   .op-login-story > small {
     display: none;
   }
