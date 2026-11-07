@@ -18,7 +18,7 @@ function bounds(points: readonly Point[]) {
 }
 
 function CameraRig(props: SceneProps) {
-  const { venue, view } = props
+  const { venue, view, followCamera } = props
   const { set, size } = useThree()
   const controls = useRef<OrbitControlsImpl>(null)
   const perspective = useMemo(() => new THREE.PerspectiveCamera(42, 1, 2, 4000), [])
@@ -40,6 +40,7 @@ function CameraRig(props: SceneProps) {
   }, [size.width, size.height, view, orthographic, perspective, props.entryAreas?.length])
 
   useEffect(() => {
+    if (followCamera) return
     const stadium = bounds(venue.stadiumOutline)
     const cx = (stadium.minX + stadium.maxX) / 2
     const cz = (stadium.minZ + stadium.maxZ) / 2
@@ -63,8 +64,9 @@ function CameraRig(props: SceneProps) {
       controls.current.target.copy(target)
       controls.current.update()
     }
-  }, [camera, flat, set, venue.id, view, props.focusPosition?.[0], props.focusPosition?.[2], props.focusYawDeg])
+  }, [camera, flat, followCamera, set, venue.id, view, props.focusPosition?.[0], props.focusPosition?.[2], props.focusYawDeg])
 
+  if (followCamera) return null
   return <OrbitControls ref={controls} camera={camera} makeDefault
     minDistance={6} maxDistance={2400} minZoom={0.5} maxZoom={30}
     maxPolarAngle={Math.PI / 2 - 0.04}

@@ -28,3 +28,5 @@ html, body, #root, .standalone-scene { margin: 0; width: 100%; height: 100%; ove
   .scene-navigation { display: none; }
   .scene-credit { font-size: 8px; }
 }
+.sim-first-person-dock { position: absolute; z-index: 44; left: 16px; bottom: 32px; width: min(295px, calc(100% - 32px)); box-shadow: var(--sim-shadow); border-radius: var(--sim-radius); }
+.sim-follow-notice { position: absolute; z-index: 44; left: 16px; bottom: 32px; max-width: min(295px, calc(100% - 32px)); margin: 0; padding: 8px 12px; font-size: 12px; background: var(--sim-surface); color: var(--sim-text); border: 1px solid var(--sim-border); border-radius: 8px; }

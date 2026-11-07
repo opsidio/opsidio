@@ -16,6 +16,9 @@ import SimulationControls, { SimulationMapControls } from './ui/SimulationContro
 import SimulationReport from './ui/SimulationReport'
 import WaypointTrace, { waypointLabel } from './ui/WaypointTrace'
 import { traceWaypoint } from './ui/traceWaypoint'
+import FirstPersonPanel from './ui/FirstPersonPanel'
+import AdmissionFootprints, { admissionFootprints } from '../scene/AdmissionFootprints'
+import FirstPersonFollow, { pickVisibleJourney, type FirstPersonStatus } from '../scene/FirstPersonFollow'
 import { SimulationDrawer, SimulationToolbar, type SimulationTool } from './ui/SimulationChrome'
 import { prepareJourneySampler, type CrowdSampleStats } from './abm/sampling'
 import type { Point, RouteLine, RouteNode, SceneView, VenuePack } from './types'
@@ -98,6 +101,7 @@ function SimulationWorkspace({ catalog }: { catalog: VersionCatalog }) {
   }, [hasDraft, saved, source, editor.layout, initialLayout, base.config.seed, gateDraft, seed])
   const resolved = useDraft ? draft : saved
   const compiled = resolved.compiled
+  const footprints = useMemo(() => admissionFootprints(resolved.plan), [resolved.plan])
   const params = new URLSearchParams(location.search)
   const requestedView = params.get('view')
   const canvasOnly = params.get('canvas') === '1'
@@ -122,12 +126,28 @@ function SimulationWorkspace({ catalog }: { catalog: VersionCatalog }) {
   const [waypointId, setWaypointId] = useState<string | null>(null)
   const [showTrace, setShowTrace] = useState(true)
   const [traceOrigin, setTraceOrigin] = useState<string | null>(null)
+  const [followIndex, setFollowIndex] = useState<number | null>(null)
+  const [followStatus, setFollowStatus] = useState<FirstPersonStatus | null>(null)
+  const [followNotice, setFollowNotice] = useState<string | null>(null)
   const clockRef = useRef(7 * 3600)
   const [clockSeconds, setClockSeconds] = useState(clockRef.current)
   const [crowdStats, setCrowdStats] = useState<CrowdSampleStats>({ visibleCount: 0, walkingCount: 0 })
   const config = !resolved.error && (!useDraft || editor.runnableGraph) ? compiled.config : null
   const abm = useAbmWorker(config, compiled.layoutRevision)
   const sampler = useMemo(() => abm.result ? prepareJourneySampler(abm.result.journeys) : null, [abm.result])
+  useEffect(() => { setFollowIndex(null); setFollowStatus(null); setFollowNotice(null) }, [abm.result])
+  const followed = followIndex === null ? null : abm.result?.journeys[followIndex] ?? null
+  const followedCohort = followed && compiled.config.cohorts.find(cohort => cohort.id === followed.cohortId)
+  const followedOrigin = followed && compiled.arrivalOrigins.find(origin => origin.id === (followedCohort?.originId ?? followed.routeNodeIds[0]))
+  const followedCategory = (resolved.plan as { event?: { ticket_categories?: { id: string; name?: string }[] } }).event?.ticket_categories?.find(category => category.id === followedCohort?.categoryId)
+  const followedStation = compiled.config.serviceStations?.find(station => station.id === followStatus?.stationId)
+  const followedNode = compiled.nodes.find(node => node.id === (followedStation?.nodeId ?? followStatus?.nextNodeId))
+  const followedArea = compiled.entryAreas.find(area => area.id === followedNode?.entryAreaId)
+  const followedDestination = followed && compiled.nodes.find(node => node.id === followed.routeNodeIds.at(-1))
+  const followedDestinationArea = compiled.entryAreas.find(area => area.id === followedDestination?.entryAreaId)
+  const followedLocation = followedNode?.entryAreaId === 'approach_network' && followedDestinationArea && followedNode.id !== 'approach_osm_309878212'
+    ? `Public approach to ${followedDestinationArea.label}`
+    : followedNode ? `${followedArea ? `${followedArea.label} · ` : ''}${waypointLabel(followedNode)}` : '—'
   const total = compiled.config.cohorts.reduce((sum, cohort) => sum + cohort.count, 0)
   const originClock = Number(compiled.config.timeOrigin.slice(11, 13)) * 3600 + Number(compiled.config.timeOrigin.slice(14, 16)) * 60
   const localClock = Math.floor((originClock + clockSeconds) % 86400)
@@ -174,6 +194,7 @@ function SimulationWorkspace({ catalog }: { catalog: VersionCatalog }) {
     const next = tool === activeTool ? null : tool
     if (activeTool === 'editor' && next !== 'editor') setView(priorEditorView.current)
     if (next === 'editor') {
+      stopFollowing()
       priorEditorView.current = view
       setEditorTab('layout')
       setPlaying(false)
@@ -187,7 +208,20 @@ function SimulationWorkspace({ catalog }: { catalog: VersionCatalog }) {
     else url.searchParams.delete('panel')
     window.history.replaceState(window.history.state, '', url)
   }
+  function stopFollowing() { setFollowIndex(null); setFollowStatus(null); setFollowNotice(null) }
+  function nextAttendee() {
+    const next = sampler ? pickVisibleJourney(sampler, clockRef.current, followIndex) : null
+    if (next === null) { setFollowNotice(followIndex === null ? 'No attendee is visible at this time. Try a different playback time.' : 'No other attendee is visible at this time.'); return }
+    setFollowStatus(null)
+    setFollowNotice(null)
+    setFollowIndex(next)
+  }
+  function toggleFirstPerson() {
+    if (followIndex !== null) stopFollowing()
+    else { if (activeTool) selectTool(null); nextAttendee() }
+  }
   function changeView(next: SceneView) {
+    stopFollowing()
     setView(next)
     setAutoRotate(next === 'orbit')
     setPanMode(false)
@@ -211,6 +245,7 @@ function SimulationWorkspace({ catalog }: { catalog: VersionCatalog }) {
     if (node) focusPoint(node.position)
   }
   function focusPoint(position: Point, yawDeg = 0) {
+    stopFollowing()
     setFocusPosition(position)
     setFocusYawDeg(yawDeg)
     setView('entry')
@@ -220,12 +255,15 @@ function SimulationWorkspace({ catalog }: { catalog: VersionCatalog }) {
     const area = compiled.entryAreas.find(item => item.id === areaId)
     const prefix = areaId === 'plaza_utara' ? '' : `${areaId}_`
     const station = compiled.placements.find(placement => placement.id === `${prefix}${oneWayAdmission ? 'security' : 'scan'}_tent`)
+    const areas = (resolved.plan as { spatial_context?: { entry_areas?: { id: string; admission_yaw_deg?: number }[] } }).spatial_context?.entry_areas
+    const yaw = areas?.find(item => item.id === areaId)?.admission_yaw_deg
     if (area && editorOpen) {
       editor.selectArea(areaId)
       focusEditorArea(area)
-    } else if (area) focusPoint(area.position, station?.yawDeg)
+    } else if (area) focusPoint(area.position, yaw ?? station?.yawDeg)
   }
   function runLocal() {
+    stopFollowing()
     clockRef.current = Math.min(compiled.config.horizonSeconds, 8 * 3600 + 40 * 60)
     setClockSeconds(clockRef.current)
     if (activeTool !== 'report' && activeTool !== 'controls') selectTool('controls')
@@ -263,14 +301,16 @@ function SimulationWorkspace({ catalog }: { catalog: VersionCatalog }) {
     <Suspense fallback={<div className="scene-loading">Loading GBK…</div>}>
       <GbkCanvas venue={venue} catalogue={catalogue} placements={editorOpen ? editor.layout.placements : compiled.placements} editBounds={editorOpen ? editOptions.bounds : undefined}
         routes={[...(editorOpen || showRoutes ? routes : []), ...traceRoutes]} nodes={guides ? guideNodes : []} inspectWaypoints={inspector}
-        view={view} focusPosition={focusPosition} focusYawDeg={focusYawDeg} autoRotate={autoRotate} panMode={panMode} showLabels={showLabels}
+        view={view} followCamera={followed !== null} focusPosition={focusPosition} focusYawDeg={focusYawDeg} autoRotate={autoRotate} panMode={panMode} showLabels={showLabels}
         onCameraInteraction={() => setAutoRotate(false)} debug={debug} showGuides={guides}
         selectedId={editorOpen ? editor.selectedId : inspector ? waypointId : null} onSelect={editorOpen ? editor.onSelect : id => { if (inspector && id) selectWaypoint(id) }} onMove={editorOpen ? editor.onMove : () => {}}>
         <PlaybackClock clockRef={clockRef} playing={playing && abm.result !== null} rate={playbackRate} duration={compiled.config.horizonSeconds} onTick={setClockSeconds} onEnd={() => setPlaying(false)} />
         <Suspense fallback={null}>
-          {abm.result && sampler && <CrowdPreview result={abm.result} sampler={sampler} clockRef={clockRef} maxVisible={5000} visualSpreadM={0.1} onSampleStats={setCrowdStats} />}
+          {abm.result && sampler && <CrowdPreview result={abm.result} sampler={sampler} clockRef={clockRef} maxVisible={5000} hiddenJourneyIndex={followIndex} visualSpreadM={0.1} onSampleStats={setCrowdStats} />}
           {sampler && showOperations && <OperatorQueueBars sampler={sampler} operators={compiled.operators} clockRef={clockRef} showLabels={showLabels} />}
         </Suspense>
+        {followed && sampler && followIndex !== null && <FirstPersonFollow sampler={sampler} journeyIndex={followIndex} journey={followed} clockRef={clockRef} onStatus={setFollowStatus} />}
+        {(showOperations || editorOpen) && footprints.length > 0 && <AdmissionFootprints footprints={footprints} />}
         {showOperations && <OperationsLayer operators={compiled.operators} placements={compiled.placements} catalogue={catalogue} entryAreas={compiled.entryAreas} showLabels={showLabels} />}
         {compiled.arrivalOrigins.length > 0 && <ArrivalOrigins origins={compiled.arrivalOrigins} showLabels={showLabels} />}
       </GbkCanvas>
@@ -283,7 +323,7 @@ function SimulationWorkspace({ catalog }: { catalog: VersionCatalog }) {
         panMode={panMode} onTogglePan={() => { setPanMode(!panMode); setAutoRotate(false) }}
         showRoutes={showRoutes} onToggleRoutes={() => setShowRoutes(!showRoutes)}
         showOperations={showOperations} onToggleOperations={() => setShowOperations(!showOperations)}
-        showLabels={showLabels} onToggleLabels={() => setShowLabels(!showLabels)} />}
+        showLabels={showLabels} onToggleLabels={() => setShowLabels(!showLabels)} onFollowPerson={toggleFirstPerson} following={followed !== null} followDisabled={!abm.result} />}
       <SimulationDrawer tool="editor" active={activeTool === 'editor'} description="Place equipment, edit routes, and staff entry lanes." onClose={() => selectTool(null)}>
         {activeTool === 'editor' && <>
           <div className="sim-version-editor">
@@ -332,8 +372,12 @@ function SimulationWorkspace({ catalog }: { catalog: VersionCatalog }) {
         {draftSelector}
         <OptimizationPanel plan={resolved.plan} baseSeed={compiled.config.seed} disabled={!config} onLoad={next => catalog.addVersion(next, 'optimized')} />
       </SimulationDrawer>
-      {showOperations && <div className="operations-legend"><strong>Map legend</strong><span style={{ color: '#2867d5' }}>● Scan operators</span><span style={{ color: '#a92b36' }}>● Security</span><span style={{ color: '#167451' }}>● Help</span><span style={{ color: '#217b7a' }}>● Processing</span><span>Queue wait</span><span className="queue-wait-gradient" aria-label="Wait color from yellow to red" /><small>0 · 5 · 15+ min</small><span>Bar height · queue size</span>{showRoutes && <><span style={{ color: '#4d6f9f' }}>┅ Public approach</span><span style={{ color: '#167b74' }}>━ Admission lane</span>{routes[2].points.length > 0 && <span style={{ color: '#7252a3' }}>┅ Proposed connector</span>}</>}</div>}
-      <span className="scene-navigation">Drag to {panMode || ['map', 'isometric', 'layout'].includes(view) ? 'pan' : 'orbit'} · scroll to zoom</span>
+      {followed && followIndex !== null && <div className="sim-first-person-dock"><FirstPersonPanel
+        attendeeLabel={`Attendee ${followIndex + 1}${followedCategory?.name ? ` · ${followedCategory.name}` : ''}`} originLabel={followedOrigin?.label ?? 'On-site arrival'}
+        locationLabel={followedLocation} status={followStatus} notice={followNotice} onNext={nextAttendee} onExit={stopFollowing} /></div>}
+      {!followed && followNotice && <p role="status" className="sim-follow-notice">{followNotice}</p>}
+      {!followed && showOperations && <div className="operations-legend"><strong>Map legend</strong><span style={{ color: '#2867d5' }}>● Scan operators</span><span style={{ color: '#a92b36' }}>● Security</span><span style={{ color: '#167451' }}>● Help</span><span style={{ color: '#217b7a' }}>● Processing</span><span>Queue wait</span><span className="queue-wait-gradient" aria-label="Wait color from yellow to red" /><small>0 · 5 · 15+ min</small><span>Bar height · queue size</span>{footprints.length > 0 && <span style={{ color: '#75551f' }}>▰ Proposed gate footprint</span>}{showRoutes && <><span style={{ color: '#4d6f9f' }}>┅ Public approach</span><span style={{ color: '#167b74' }}>━ Admission lane</span>{routes[2].points.length > 0 && <span style={{ color: '#7252a3' }}>┅ Proposed connector</span>}</>}</div>}
+      {!followed && <span className="scene-navigation">Drag to {panMode || ['map', 'isometric', 'layout'].includes(view) ? 'pan' : 'orbit'} · scroll to zoom</span>}
     </>}
     <a className="scene-credit" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors · Illustrative structures and event layout</a>
   </main>

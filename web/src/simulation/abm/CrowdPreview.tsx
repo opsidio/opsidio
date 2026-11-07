@@ -15,6 +15,8 @@ export type CrowdPreviewProps = {
   /** Caller-owned simulation clock, read directly each frame for smooth playback. */
   clockRef?: { current: number }
   maxVisible?: number
+  /** Hide the followed avatar and co-located people who would intersect its view. */
+  hiddenJourneyIndex?: number | null
   color?: string
   /** Small decorative separation of overlapping group members; not a density model. */
   visualSpreadM?: number
@@ -24,7 +26,7 @@ export type CrowdPreviewProps = {
 
 /** Illustrative walking, waiting and processing from the authored journey timeline. */
 export function CrowdPreview({
-  result, sampler: suppliedSampler, timeSeconds = 0, clockRef, maxVisible = 5000, color = '#f4c66b', visualSpreadM = 0.65, onSampleStats,
+  result, sampler: suppliedSampler, timeSeconds = 0, clockRef, maxVisible = 5000, hiddenJourneyIndex, color = '#f4c66b', visualSpreadM = 0.65, onSampleStats,
 }: CrowdPreviewProps) {
   const sampler = useMemo(() => suppliedSampler ?? prepareJourneySampler(result.journeys), [result, suppliedSampler])
   const capacity = Math.max(0, Math.min(sampler.count, Number.isFinite(maxVisible) ? Math.floor(maxVisible) : 5000))
@@ -53,7 +55,7 @@ export function CrowdPreview({
       mesh.instanceMatrix.setUsage(DynamicDrawUsage)
     }
     buffers.lastTime = NaN
-  }, [buffers, visualSpreadM])
+  }, [buffers, hiddenJourneyIndex, visualSpreadM])
 
   useFrame(({ clock }) => {
     const seconds = clockRef?.current ?? timeSeconds
@@ -61,23 +63,33 @@ export function CrowdPreview({
     if (buffers.lastTime !== seconds) {
       sampleWalkingCrowd(sampler, seconds, buffers.positions, buffers.indices, buffers.stats)
       const spread = Number.isFinite(visualSpreadM) ? Math.max(0, visualSpreadM) : 0
+      const followedSlot = hiddenJourneyIndex == null ? -1 : buffers.indices.subarray(0, buffers.stats.visibleCount).indexOf(hiddenJourneyIndex)
+      const followedPhase = followedSlot < 0 ? null : sampleJourneyPosition(sampler, buffers.indices[followedSlot], seconds, buffers.positions, followedSlot * 3)
+      const eyeX = followedSlot < 0 ? 0 : buffers.positions[followedSlot * 3]
+      const eyeZ = followedSlot < 0 ? 0 : buffers.positions[followedSlot * 3 + 2]
+      const eyeClearanceM = followedPhase === 'walking' ? 1.2 : 0.4
+      let instance = 0
       for (let slot = 0; slot < buffers.stats.visibleCount; slot++) {
         const index = buffers.indices[slot]
+        if (index === hiddenJourneyIndex) continue
         const phase = sampleJourneyPosition(sampler, index, seconds, buffers.positions, slot * 3)
         if (phase === 'waiting') writeWaitColor(sampleJourneyWaitSeconds(sampler, index, seconds), buffers.color)
         else buffers.color.set(phase === 'processing' ? '#359c9b' : color)
-        bodies.current.setColorAt(slot, buffers.color)
         const walkingSpread = phase === 'walking' ? spread : 0
         const x = buffers.positions[slot * 3] + offsets[index * 2] * walkingSpread
         const y = buffers.positions[slot * 3 + 1]
         const z = buffers.positions[slot * 3 + 2] + offsets[index * 2 + 1] * walkingSpread
+        // Walkers share paths without collision avoidance. In queues, preserve the authored 0.8 m spacing.
+        if (followedSlot >= 0 && (x - eyeX) ** 2 + (z - eyeZ) ** 2 < eyeClearanceM ** 2) continue
+        bodies.current.setColorAt(instance, buffers.color)
         buffers.matrix.makeTranslation(x, y + 0.8, z)
-        bodies.current.setMatrixAt(slot, buffers.matrix)
+        bodies.current.setMatrixAt(instance, buffers.matrix)
         buffers.matrix.makeTranslation(x, y + 1.5, z)
-        heads.current.setMatrixAt(slot, buffers.matrix)
+        heads.current.setMatrixAt(instance, buffers.matrix)
+        instance++
       }
-      bodies.current.count = buffers.stats.visibleCount
-      heads.current.count = buffers.stats.visibleCount
+      bodies.current.count = instance
+      heads.current.count = instance
       if (bodies.current.instanceColor) bodies.current.instanceColor.needsUpdate = true
       bodies.current.instanceMatrix.needsUpdate = true
       heads.current.instanceMatrix.needsUpdate = true

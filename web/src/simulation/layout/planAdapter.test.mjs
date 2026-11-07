@@ -27,7 +27,7 @@ test('whole-plan snapshot retains five area layouts, origins, directed cross-are
   const restored = importLayoutJSON(JSON.stringify(layout), { ...options, catalogue })
   assert.ok(restored.layout)
   assert.equal(restored.validation.valid, true, JSON.stringify(restored.validation.issues.filter(issue => issue.severity === 'error').slice(0, 10)))
-  assert.equal(restored.validation.issues.filter(issue => issue.code === 'reviewed_demo_overlap').length, 1)
+  assert.deepEqual(restored.validation.issues.filter(issue => issue.code === 'reviewed_demo_overlap'), [])
   assert.deepEqual(restored.layout.markers, layout.markers)
 })
 
