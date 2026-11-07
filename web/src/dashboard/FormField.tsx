@@ -3,8 +3,9 @@ import {
   useContext,
   useEffect,
   useId,
-  useRef,
+  type KeyboardEvent,
   type ReactNode,
+  type WheelEvent,
 } from "react";
 import { CircleAlert } from "lucide-react";
 import { isRequiredField, type Issue, type Plan } from "./model";
@@ -14,8 +15,6 @@ export type FormValidation = {
   submitted: boolean;
   focusPath: string;
   attempt: number;
-  touched: Set<string>;
-  touch: (path: string) => void;
 };
 export const FormValidationContext = createContext<FormValidation | null>(null);
 export const useFormValidation = () => useContext(FormValidationContext);
@@ -75,7 +74,8 @@ type Control = {
   "aria-required": boolean;
   "aria-invalid": boolean;
   "aria-describedby"?: string;
-  onBlur: () => void;
+  onKeyDown: (event: KeyboardEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  onWheel: (event: WheelEvent<HTMLInputElement | HTMLSelectElement>) => void;
 };
 type Props = {
   label: string;
@@ -96,13 +96,10 @@ export default function FormField({
   children,
 }: Props) {
   const context = useFormValidation(),
-    id = useId(),
-    ref = useRef<HTMLDivElement>(null);
+    id = useId();
   const mandatory =
     required ?? (path && context ? isRequiredField(path, context.plan) : false);
-  const show = Boolean(
-    context && (context.submitted || (path && context.touched.has(path))),
-  );
+  const show = context?.submitted ?? false;
   const issue =
     show && path
       ? context?.issues.find((i) => i.path === path)?.message
@@ -112,15 +109,15 @@ export default function FormField({
     (value === null ||
       value === undefined ||
       (typeof value === "string" && !value.trim()));
-  const message =
-    error ?? (show && missing ? "This field is required." : issue);
+  const message = context && !show
+    ? undefined
+    : error ?? (show && missing ? "This field is required." : issue);
   useEffect(() => {
     if (path && context?.focusPath === path && context.attempt)
       focusField(path);
   }, [path, context?.focusPath, context?.attempt]);
   return (
     <div
-      ref={ref}
       className={`op-field ${message ? "invalid" : ""}`}
       data-field-path={path}
     >
@@ -135,8 +132,17 @@ export default function FormField({
         "aria-required": Boolean(mandatory),
         "aria-invalid": Boolean(message),
         "aria-describedby": message || hint ? `${id}-help` : undefined,
-        onBlur: () => {
-          if (path) context?.touch(path);
+        onKeyDown: (event) => {
+          if (
+            event.currentTarget.type === "number" &&
+            (event.key === "ArrowUp" || event.key === "ArrowDown")
+          ) {
+            event.preventDefault();
+          }
+        },
+        onWheel: (event) => {
+          const input = event.currentTarget;
+          if (input.type === "number" && input === document.activeElement) input.blur();
         },
       })}
       <FieldMessage id={`${id}-help`} error={message} hint={hint} />

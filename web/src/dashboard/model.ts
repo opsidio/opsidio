@@ -565,7 +565,7 @@ export function validate(p: Plan): Issue[] {
         path + ".admission",
         "Choose seated or standing admission.",
       );
-    if (c.sold > c.quota)
+    if (Number.isFinite(c.sold) && Number.isFinite(c.quota) && c.sold > c.quota)
       add("attendance", path + ".sold", `${c.name}: sold exceeds quota.`);
     if (!gates.some((g) => g.id === c.entry_gate))
       add(
