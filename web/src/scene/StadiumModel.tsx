@@ -10,10 +10,10 @@ type Chair = { position: V3; yaw: number; color: THREE.Color }
 const TAU = Math.PI * 2
 const SEGMENTS = 160
 const colors = {
-  ivory: '#dedfd3', roof: '#efeee4', roofShade: '#bbc7bb',
-  concrete: '#a7b1a0', shade: '#495d54', red: '#a54e43',
-  sage: '#819580', track: '#aa6654', grass: '#63805b',
-  grassLight: '#6c895f', marking: '#e7ebd7',
+  ivory: '#eef1f6', roof: '#fafbff', roofShade: '#c5cddb',
+  concrete: '#b8c2cf', shade: '#48566a', red: '#bc4f60',
+  coral: '#ff5a5f', sage: '#819788', track: '#ac6872', grass: '#608464',
+  grassLight: '#6d9070', marking: '#eef3ef',
 }
 type Surface = keyof typeof colors
 type Batches = Record<Surface, Buffer>
@@ -112,10 +112,10 @@ function paintLine(target: Buffer, from: [number, number], to: [number, number],
 
 function makeModel(rx: number, rz: number) {
   const batches: Batches = { ivory: [], roof: [], roofShade: [], concrete: [], shade: [], red: [],
-    sage: [], track: [], grass: [], grassLight: [], marking: [] }
+    coral: [], sage: [], track: [], grass: [], grassLight: [], marking: [] }
   const chairs: Chair[] = []
-  const seatRed = new THREE.Color('#ad574b'), seatLight = new THREE.Color('#c27762')
-  const seatIvory = new THREE.Color('#d8d7c6'), seatSage = new THREE.Color('#899c87')
+  const seatRed = new THREE.Color('#ca5564'), seatLight = new THREE.Color(colors.coral)
+  const seatIvory = new THREE.Color(colors.ivory), seatSage = new THREE.Color('#8da292')
 
   // A slim apron and the exposed inner bowl ground. All elevations and the
   // architectural profile are illustrative; OSM only supplies horizontal scale.
@@ -190,7 +190,7 @@ function makeModel(rx: number, rz: number) {
     band(batches.roof, rx * a.x, rz * a.z, rx * b.x, rz * b.z, a.y, b.y)
     band(batches.roofShade, rx * a.x, rz * a.z, rx * b.x, rz * b.z, a.y - .8, b.y - .8)
   }
-  wall(batches.ivory, rx, rz, 31.2, 32)
+  wall(batches.coral, rx, rz, 31.2, 32)
   wall(batches.ivory, rx * .725, rz * .79, 35.1, 35.9)
   for (let i = 0; i < 96; i++) {
     const a = i / 96 * TAU
@@ -297,7 +297,7 @@ function Seats({ chairs, shape }: { chairs: Chair[]; shape: THREE.BufferGeometry
 /** Fresh illustrative GBK architecture, fitted to the sourced OSM outline bounds.
  * Mapped horizontal bounds: 267.81 × 322.23 m for the supplied GBK pack.
  * All heights, tier/roof profiles, facade details and seats are unsurveyed.
- * Eleven batched material meshes + one seat instance draw; no HTML UI.
+ * Batched material meshes and one instanced seat mesh.
  */
 export default function StadiumModel({ venue }: { venue: VenuePack }) {
   const dimensions = useMemo(() => {
@@ -314,7 +314,7 @@ export default function StadiumModel({ venue }: { venue: VenuePack }) {
     position={[dimensions.cx, 0, dimensions.cz]}
     userData={{ basis: 'illustrative', heights: 'unsurveyed', footprintSource: venue.sourceUrl }}>
     {model.surfaces.map(surface => <mesh key={surface.name} geometry={surface.geometry}
-      receiveShadow castShadow={['ivory', 'roof', 'roofShade'].includes(surface.name)}>
+      receiveShadow castShadow={['ivory', 'roof', 'roofShade', 'coral'].includes(surface.name)}>
       <meshStandardMaterial color={colors[surface.name]} roughness={surface.name === 'roof' ? .78 : .94} side={THREE.DoubleSide} />
     </mesh>)}
     <Seats chairs={model.chairs} shape={model.chairGeometry} />

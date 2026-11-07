@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowLeft, Plus, Trash2, MapPin, LockKeyhole } from "lucide-react";
-import { Button, Badge, Card, Notice, Heading, Forward } from "./ui";
+import { Button, Badge, Card, Notice, Heading, Forward, GbkDemoLink } from "./ui";
 import ArrivalProfileEditor from "./ArrivalProfileEditor";
 import TimeField from "./TimeField";
 import StaffAssignments from "./StaffAssignments";
@@ -306,6 +306,7 @@ export default function PlanForm({
                   targets: "What should a smooth entrance look like?",
                 }[step]
         }
+        action={<GbkDemoLink />}
       >
         {step === "brief"
           ? "Add the event, venue, and operating times used to plan arrivals."

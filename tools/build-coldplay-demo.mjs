@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { catalogue } from '../web/src/simulation/model.ts'
 import { localToWorld } from '../web/src/simulation/layout/core.ts'
-import { admissionSpine, addArrivalNetwork, round } from './arrival-network.mjs'
+import { admissionSpine, addArrivalNetwork, distance, round, venue } from './arrival-network.mjs'
 
 const root = new URL('../', import.meta.url)
 const draft = JSON.parse(readFileSync(new URL('contracts/examples/coldplay-gbk-plan-draft.json', root)))
@@ -25,6 +25,26 @@ const waitInsetM = 0.4
 const securityS = 42
 const lanePrefix = lane => lane === 1 ? '' : `lane_${lane + 1}_`
 const spines = new Map(source.entry_areas.map(area => [area.id, admissionSpine(area.id)]))
+const handoverBasis = 'proposed_stadium_handover_site_review_required'
+const [[minX, maxX], [minZ, maxZ]] = [0, 2].map(axis => {
+  const values = venue.stadiumOutline.map(point => point[axis])
+  return [Math.min(...values), Math.max(...values)]
+})
+const stadiumCenter = [(minX + maxX) / 2, 0, (minZ + maxZ) / 2]
+const stadiumRadii = [(maxX - minX) / 2, (maxZ - minZ) / 2]
+
+function stadiumHandover(spine, offset = 0) {
+  const approach = spine.sample(spine.lengthM)
+  const dx = approach[0] - stadiumCenter[0], dz = approach[2] - stadiumCenter[2]
+  const length = Math.hypot(dx, dz)
+  // End below the eaves and in front of the modelled ground-floor facade.
+  const scale = 0.989 / Math.hypot(dx / stadiumRadii[0], dz / stadiumRadii[1])
+  return [
+    round(stadiumCenter[0] + scale * dx - offset * dz / length),
+    0,
+    round(stadiumCenter[2] + scale * dz + offset * dx / length),
+  ]
+}
 
 function admissionTemplate(areaId, spine) {
   const laneCount = laneCounts[areaId]
@@ -66,7 +86,7 @@ function admissionTemplate(areaId, spine) {
     { id: 'help-release', role: 'waypoint', position: [2.2, 0, 18.75] },
     { id: 'help-rejoin', role: 'waypoint', position: [0, 0, 20] },
     { id: 'entry-approach', role: 'waypoint', position: [0, 0, entryApproachS] },
-    { id: 'destination', role: 'destination', position: [0, 0, routeLengthM] },
+    { id: 'stadium-approach', role: 'waypoint', position: [0, 0, routeLengthM] },
   ]
   const edges = [
     { id: 'help_pass', from: 'arrival', to: 'help-pass' },
@@ -74,7 +94,7 @@ function admissionTemplate(areaId, spine) {
     { id: 'help_approach', from: 'help-pass', to: 'help_checkpoint' },
     { id: 'help_release', from: 'help_checkpoint', to: 'help-release' },
     { id: 'help_return', from: 'help-release', to: 'help-rejoin' },
-    { id: 'admitted', from: 'entry-approach', to: 'destination' },
+    { id: 'admitted', from: 'entry-approach', to: 'stadium-approach' },
   ]
   const laneSecurityIds = []
   const insetOffset = panelLengthM / 2 - waitInsetM
@@ -105,7 +125,7 @@ function admissionTemplate(areaId, spine) {
 const windows = { '09:00-13:00': 10, '13:00-15:30': 30, '15:30-17:30': 45, '17:30-19:30': 15 }
 plan.meta.description = 'V1 local Coldplay-inspired GBK demo. Fictional operational assumptions are editable. Send this snapshot to the API when Optimize is selected.'
 plan.meta.version = 1
-plan.meta.revision = 8
+plan.meta.revision = 9
 plan.meta.readiness = { status: 'local_preview_ready', remote_semantic_validation: 'not_run' }
 plan.meta.unresolved = []
 plan.meta.demo_assumptions = [
@@ -131,7 +151,7 @@ for (const category of plan.event.ticket_categories) {
 }
 const spatial = {
   schema_version: 'opsidio-layout/0.1', venue_id: 'gbk-osm-local', catalogue_version: 'research-v1',
-  layout_id: 'gbk-five-entry-v1', revision: 8, one_way_admission: true,
+  layout_id: 'gbk-five-entry-v1', revision: plan.meta.revision, one_way_admission: true,
   coordinate_frame: { units: 'm', origin_wgs84: { longitude_deg: 106.80255, latitude_deg: -6.21858 }, axes: { x: 'east', y: 'up', z: 'south' }, vertical_reference: 'local_ground' },
   placements: [], navigation: { nodes: [], edges: [] }, operational_bindings: [], entry_areas: [], cohort_routes: [], operators: [], service_stations: [],
   playback: { seed: 20261114, time_origin: '2026-11-14T09:00:00+07:00', horizon_seconds: 52200, walk_speed_mps: 1.2, group_size: 2 }
@@ -180,6 +200,14 @@ for (const area of source.entry_areas) {
     }
     spatial.navigation.edges.push({ id: key(edge.id), from_node_id: previous, to_node_id: key(edge.to), directed: true })
   }
+  const stadiumApproach = spine.sample(routeLengthM), handover = stadiumHandover(spine)
+  spatial.navigation.nodes.push({
+    id: key('destination'), role: 'destination', entry_area_id: area.id, position_m: handover, basis: handoverBasis,
+  })
+  spatial.navigation.edges.push({
+    id: key('stadium_handover'), from_node_id: key('stadium-approach'), to_node_id: key('destination'),
+    directed: true, basis: handoverBasis,
+  })
   const categories = plan.event.ticket_categories.filter(category => category.entry_area_id === area.id)
   const queueId = `queue_${area.id}`
   const insideId = `inside_${area.id}`
@@ -189,7 +217,7 @@ for (const area of source.entry_areas) {
   layout.zones.push({ id: queueId, name: `${area.label} security queue`, type: 'queue', length_m: round(queueLengthM), area_m2: round(queueWidthM * queueLengthM), barricade_m: round((laneCount + 1) * panelsPerRow * panelLengthM), switchback_rows: laneCount }, { id: insideId, name: `${area.label} admitted area`, type: 'holding', area_m2: 1200 }, { id: helpZoneId, name: `${area.label} upstream help desk`, type: 'service' })
   layout.gates.push({ id: gateId, name: area.label, queue_zone: queueId, leads_to: [insideId], opens: '17:30', closes: '21:00', frontage_m: spine.widthM, max_lanes: laneCount, serves_categories: categories.map(category => category.id), lanes: [{ group: 'general', count: laneCount, steps: ['security_inspection', 'eticket_scan', 'wristband_fit'], equipment_per_lane: { handheld_scanner: 1, metal_detector_wand: 1 } }] })
   layout.service_points.push({ id: helpId, name: `${area.label} ticket help`, zone: helpZoneId, queue_zone: helpZoneId, opens: '13:00', closes: '21:00', max_lanes: 1, lanes: [{ group: 'desk', count: 1, serves: 'visitors_with_exception', steps: ['help_desk_resolution'], equipment_per_lane: {} }] })
-  layout.walking_paths.push({ from: queueId, to: gateId, distance_m: round(routeLengthM) })
+  layout.walking_paths.push({ from: queueId, to: gateId, distance_m: round(routeLengthM + distance(stadiumApproach, handover)) })
   for (const category of categories) spatial.cohort_routes.push({ category_id: category.id, arrival_node_id: key('arrival'), destination_node_id: key('destination'), lane_checkpoint_ids: laneSecurityIds.map(key) })
   for (const [kind, count, placement, steps, point, offsetZ] of [
     ['scan', laneCount, 'scan_tent', ['eticket_scan', 'wristband_fit'], gateId, 0],
@@ -229,7 +257,7 @@ const profiles = [
   { id: 'premium_package', label: 'Package holder', group_size: 2, walk_speed_mps: 1.1, shares: [5, 65, 28, 2], spawn: 'arrival_package', offset_m: 3, behavior: 'Uses the package category entry area and an earlier arrival profile.' },
   { id: 'social_group', label: 'Social group', group_size: 4, walk_speed_mps: 1.0, shares: [10, 35, 45, 10], spawn: 'arrival_group', offset_m: -3, behavior: 'Arrives together and shares a slower group walking speed.' },
 ].map((profile, index) => ({ ...profile, help_desk_visit_percent: 1, origin_share_percent: Object.fromEntries(['origin_mrt', 'origin_parking', 'origin_dropoff'].map((id, i) => [id, [[60, 15, 25], [45, 25, 30], [20, 10, 70], [10, 40, 50], [25, 45, 30]][index][i]])), arrival_windows_percent: Object.fromEntries(Object.keys(windows).map((key, index) => [key, profile.shares[index]])) }))
-const behavior = { schema_version: 'opsidio-behavior/0.1', basis: 'fictional_demo_assumptions', unit: 'category_x_behavior_cohort', profiles, cohorts: [], destination_scope: 'Post-scan category handover at the assigned entrance. Internal routes to seats and standing sectors require venue review.', spawn_scope: 'Pedestrians spawn at mapped MRT Istora Mandiri Exit B, mapped Parkir Timur centroid or a fictional passenger drop-off at a mapped parking entrance. No vehicle traffic is modeled. Legacy entrance arrival IDs remain fallback bindings.', time_reference: 'origin_spawn' }
+const behavior = { schema_version: 'opsidio-behavior/0.1', basis: 'fictional_demo_assumptions', unit: 'category_x_behavior_cohort', profiles, cohorts: [], destination_scope: 'Post-scan category handover just inside the stadium footprint at the assigned entrance. Internal routes to seats and standing sectors require venue review.', spawn_scope: 'Pedestrians spawn at mapped MRT Istora Mandiri Exit B, mapped Parkir Timur centroid or a fictional passenger drop-off at a mapped parking entrance. No vehicle traffic is modeled. Legacy entrance arrival IDs remain fallback bindings.', time_reference: 'origin_spawn' }
 for (const area of spatial.entry_areas) {
   const north = area.id === 'plaza_utara'
   const key = id => north ? id : `${area.id}_${id}`
@@ -251,9 +279,9 @@ for (const category of plan.event.ticket_categories) {
   const sector = category.viewing_tier === 'festival' ? 0 : Number(category.viewing_tier.replace('cat', ''))
   const lateralOffset = (sector - 4.5) * 0.65
   const spine = spines.get(area.id)
-  const handover = spine.sample(spine.lengthM ?? spine.lengths.at(-1), lateralOffset)
-  spatial.navigation.nodes.push({ id: destinationId, role: 'destination', entry_area_id: area.id, position_m: handover, label: `${category.name} handover`, viewing_tier: category.viewing_tier, final_zone_route_status: 'pending_venue_review' })
-  spatial.navigation.edges.push({ id: `handover_${category.id}`, from_node_id: key('destination'), to_node_id: destinationId, directed: true })
+  const handover = stadiumHandover(spine, lateralOffset)
+  spatial.navigation.nodes.push({ id: destinationId, role: 'destination', entry_area_id: area.id, position_m: handover, label: `${category.name} handover`, basis: handoverBasis, viewing_tier: category.viewing_tier, final_zone_route_status: 'pending_venue_review' })
+  spatial.navigation.edges.push({ id: `handover_${category.id}`, from_node_id: key('destination'), to_node_id: destinationId, directed: true, basis: handoverBasis })
   spatial.cohort_routes.find(route => route.category_id === category.id).destination_node_id = destinationId
   let mix
   if (['ultimate_experience', 'my_universe'].includes(category.id)) mix = { premium_package: 95, social_group: 5 }
@@ -283,7 +311,7 @@ plan.event.audience_profile.arrival_mode_percent = { mrt: mrtShare, private_car:
 plan.meta.demo_assumptions.push('Each bound operator serves one person at a time in FIFO order using typical step times and the configured operating hours. Security waits use the authored barrier pens. Overflow and waits without an authored pen appear in queue counts. People still waiting after closing remain queued.')
 plan.meta.demo_assumptions.push('Arriving groups are assigned round-robin across their entrance’s authored lanes and keep that assignment through admission.')
 plan.meta.demo_assumptions.push(`The fictional baseline has ${equipmentOnHand} units on hand and allocates ${equipmentRented} rented units per device type.`)
-plan.meta.demo_assumptions.push('Behavior profiles, origin shares and category mixes are fictional inputs. The 76 category × behavior rows expand into 228 origin-specific runtime cohorts with exact attendee conservation. Category handovers remain near the admitted entrance endpoint until internal sector routes are reviewed.')
+plan.meta.demo_assumptions.push('Behavior profiles, origin shares and category mixes are fictional inputs. The 76 category × behavior rows expand into 228 origin-specific runtime cohorts with exact attendee conservation. Post-scan links and category handovers are proposed at the stadium threshold. Confirm the access paths and internal sector routes on site.')
 plan.meta.demo_assumptions.push('MRT Exit B and drop-off coordinates use existing public OSM nodes. Parkir Timur uses a mapped polygon centroid with one explicitly proposed exit connector. Designating the parking entrance for taxi or app-based passenger drop-off is fictional; no vehicle movement is modeled.')
 writeFileSync(new URL('contracts/examples/coldplay-gbk-demo-plan.json', root), JSON.stringify(plan, null, 2) + '\n')
 console.log(`Wrote V1 with ${plan.event.ticket_categories.length} categories, ${spatial.entry_areas.length} entry areas, ${spatial.operators.length} operators and ${spatial.placements.length} equipment placements. Catalogue has ${catalogue.length} presets.`)

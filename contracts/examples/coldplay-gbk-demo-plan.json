@@ -270,7 +270,7 @@
       }
     },
     "version": 1,
-    "revision": 8,
+    "revision": 9,
     "demo_assumptions": [
       "The existing 70,000 expected arrivals are represented by fictional sold counts with zero no-shows for deterministic demo conservation.",
       "V1 uses 30 staffed lanes: 8 Plaza Tenggara, 4 Plaza Barat, 5 Pintu Kuning, 5 Plaza Utara, 8 Plaza Timur · Festival. Each lane has a scan operator and security officer. Each entry has one help agent.",
@@ -282,7 +282,7 @@
       "Each bound operator serves one person at a time in FIFO order using typical step times and the configured operating hours. Security waits use the authored barrier pens. Overflow and waits without an authored pen appear in queue counts. People still waiting after closing remain queued.",
       "Arriving groups are assigned round-robin across their entrance’s authored lanes and keep that assignment through admission.",
       "The fictional baseline has 20 units on hand and allocates 10 rented units per device type.",
-      "Behavior profiles, origin shares and category mixes are fictional inputs. The 76 category × behavior rows expand into 228 origin-specific runtime cohorts with exact attendee conservation. Category handovers remain near the admitted entrance endpoint until internal sector routes are reviewed.",
+      "Behavior profiles, origin shares and category mixes are fictional inputs. The 76 category × behavior rows expand into 228 origin-specific runtime cohorts with exact attendee conservation. Post-scan links and category handovers are proposed at the stadium threshold. Confirm the access paths and internal sector routes on site.",
       "MRT Exit B and drop-off coordinates use existing public OSM nodes. Parkir Timur uses a mapped polygon centroid with one explicitly proposed exit connector. Designating the parking entrance for taxi or app-based passenger drop-off is fictional; no vehicle movement is modeled."
     ]
   },
@@ -1153,27 +1153,27 @@
         {
           "from": "queue_plaza_tenggara",
           "to": "proposed_gate_plaza_tenggara",
-          "distance_m": 142.832
+          "distance_m": 190.969
         },
         {
           "from": "queue_plaza_barat",
           "to": "proposed_gate_plaza_barat",
-          "distance_m": 141
+          "distance_m": 178.929
         },
         {
           "from": "queue_pintu_kuning",
           "to": "proposed_gate_pintu_kuning",
-          "distance_m": 98.915
+          "distance_m": 174.913
         },
         {
           "from": "queue_plaza_utara",
           "to": "proposed_gate_plaza_utara",
-          "distance_m": 141
+          "distance_m": 157.575
         },
         {
           "from": "queue_plaza_timur",
           "to": "proposed_gate_plaza_timur",
-          "distance_m": 182.001
+          "distance_m": 253.227
         },
         {
           "from": "origin_mrt",
@@ -1994,7 +1994,7 @@
     "venue_id": "gbk-osm-local",
     "catalogue_version": "research-v1",
     "layout_id": "gbk-five-entry-v1",
-    "revision": 8,
+    "revision": 9,
     "one_way_admission": true,
     "coordinate_frame": {
       "units": "m",
@@ -3862,8 +3862,8 @@
           ]
         },
         {
-          "id": "plaza_tenggara_destination",
-          "role": "destination",
+          "id": "plaza_tenggara_stadium-approach",
+          "role": "waypoint",
           "entry_area_id": "plaza_tenggara",
           "position_m": [
             125.145,
@@ -4696,6 +4696,17 @@
           "basis": "mapped_corridor_lane_bend"
         },
         {
+          "id": "plaza_tenggara_destination",
+          "role": "destination",
+          "entry_area_id": "plaza_tenggara",
+          "position_m": [
+            95.937,
+            0,
+            117.111
+          ],
+          "basis": "proposed_stadium_handover_site_review_required"
+        },
+        {
           "id": "plaza_barat_arrival",
           "role": "arrival",
           "entry_area_id": "plaza_barat",
@@ -4759,8 +4770,8 @@
           ]
         },
         {
-          "id": "plaza_barat_destination",
-          "role": "destination",
+          "id": "plaza_barat_stadium-approach",
+          "role": "waypoint",
           "entry_area_id": "plaza_barat",
           "position_m": [
             -164.002,
@@ -5141,6 +5152,17 @@
           "basis": "mapped_corridor_lane_bend"
         },
         {
+          "id": "plaza_barat_destination",
+          "role": "destination",
+          "entry_area_id": "plaza_barat",
+          "position_m": [
+            -126.074,
+            0,
+            0.872
+          ],
+          "basis": "proposed_stadium_handover_site_review_required"
+        },
+        {
           "id": "pintu_kuning_arrival",
           "role": "arrival",
           "entry_area_id": "pintu_kuning",
@@ -5204,8 +5226,8 @@
           ]
         },
         {
-          "id": "pintu_kuning_destination",
-          "role": "destination",
+          "id": "pintu_kuning_stadium-approach",
+          "role": "waypoint",
           "entry_area_id": "pintu_kuning",
           "position_m": [
             -119.573,
@@ -5624,6 +5646,17 @@
           }
         },
         {
+          "id": "pintu_kuning_destination",
+          "role": "destination",
+          "entry_area_id": "pintu_kuning",
+          "position_m": [
+            -77.084,
+            0,
+            -123.983
+          ],
+          "basis": "proposed_stadium_handover_site_review_required"
+        },
+        {
           "id": "arrival",
           "role": "arrival",
           "entry_area_id": "plaza_utara",
@@ -5687,8 +5720,8 @@
           ]
         },
         {
-          "id": "destination",
-          "role": "destination",
+          "id": "stadium-approach",
+          "role": "waypoint",
           "entry_area_id": "plaza_utara",
           "position_m": [
             12.649,
@@ -6239,6 +6272,17 @@
           "basis": "mapped_corridor_lane_bend"
         },
         {
+          "id": "destination",
+          "role": "destination",
+          "entry_area_id": "plaza_utara",
+          "position_m": [
+            12.056,
+            0,
+            -159.44
+          ],
+          "basis": "proposed_stadium_handover_site_review_required"
+        },
+        {
           "id": "plaza_timur_arrival",
           "role": "arrival",
           "entry_area_id": "plaza_timur",
@@ -6302,8 +6346,8 @@
           ]
         },
         {
-          "id": "plaza_timur_destination",
-          "role": "destination",
+          "id": "plaza_timur_stadium-approach",
+          "role": "waypoint",
           "entry_area_id": "plaza_timur",
           "position_m": [
             210,
@@ -7048,6 +7092,17 @@
           ]
         },
         {
+          "id": "plaza_timur_destination",
+          "role": "destination",
+          "entry_area_id": "plaza_timur",
+          "position_m": [
+            138.78,
+            0,
+            1.446
+          ],
+          "basis": "proposed_stadium_handover_site_review_required"
+        },
+        {
           "id": "plaza_tenggara_arrival_walk",
           "role": "arrival",
           "entry_area_id": "plaza_tenggara",
@@ -7272,11 +7327,12 @@
           "role": "destination",
           "entry_area_id": "plaza_tenggara",
           "position_m": [
-            126.986,
+            97.746,
             0,
-            154.038
+            115.73
           ],
           "label": "Ultimate Experience handover",
+          "basis": "proposed_stadium_handover_site_review_required",
           "viewing_tier": "cat1",
           "final_zone_route_status": "pending_venue_review"
         },
@@ -7285,11 +7341,12 @@
           "role": "destination",
           "entry_area_id": "plaza_tenggara",
           "position_m": [
-            127.512,
+            98.262,
             0,
-            153.656
+            115.336
           ],
           "label": "My Universe handover",
+          "basis": "proposed_stadium_handover_site_review_required",
           "viewing_tier": "festival",
           "final_zone_route_status": "pending_venue_review"
         },
@@ -7298,11 +7355,12 @@
           "role": "destination",
           "entry_area_id": "plaza_timur",
           "position_m": [
-            210.011,
+            138.817,
             0,
-            -0.57
+            -1.479
           ],
           "label": "Festival handover",
+          "basis": "proposed_stadium_handover_site_review_required",
           "viewing_tier": "festival",
           "final_zone_route_status": "pending_venue_review"
         },
@@ -7311,11 +7369,12 @@
           "role": "destination",
           "entry_area_id": "plaza_tenggara",
           "position_m": [
-            126.986,
+            97.746,
             0,
-            154.038
+            115.73
           ],
           "label": "CAT 1 handover",
+          "basis": "proposed_stadium_handover_site_review_required",
           "viewing_tier": "cat1",
           "final_zone_route_status": "pending_venue_review"
         },
@@ -7324,11 +7383,12 @@
           "role": "destination",
           "entry_area_id": "plaza_tenggara",
           "position_m": [
-            126.46,
+            97.229,
             0,
-            154.42
+            116.125
           ],
           "label": "CAT 2 handover",
+          "basis": "proposed_stadium_handover_site_review_required",
           "viewing_tier": "cat2",
           "final_zone_route_status": "pending_venue_review"
         },
@@ -7337,11 +7397,12 @@
           "role": "destination",
           "entry_area_id": "plaza_barat",
           "position_m": [
-            -164.008,
+            -126.066,
             0,
-            2.167
+            1.847
           ],
           "label": "CAT 3 handover",
+          "basis": "proposed_stadium_handover_site_review_required",
           "viewing_tier": "cat3",
           "final_zone_route_status": "pending_venue_review"
         },
@@ -7350,11 +7411,12 @@
           "role": "destination",
           "entry_area_id": "pintu_kuning",
           "position_m": [
-            -119.835,
+            -77.353,
             0,
-            -186.802
+            -123.802
           ],
           "label": "CAT 4 handover",
+          "basis": "proposed_stadium_handover_site_review_required",
           "viewing_tier": "cat4",
           "final_zone_route_status": "pending_venue_review"
         },
@@ -7363,11 +7425,12 @@
           "role": "destination",
           "entry_area_id": "plaza_utara",
           "position_m": [
-            12.974,
+            12.381,
             0,
-            -176
+            -159.428
           ],
           "label": "CAT 5 handover",
+          "basis": "proposed_stadium_handover_site_review_required",
           "viewing_tier": "cat5",
           "final_zone_route_status": "pending_venue_review"
         },
@@ -7376,11 +7439,12 @@
           "role": "destination",
           "entry_area_id": "plaza_utara",
           "position_m": [
-            13.624,
+            13.03,
             0,
-            -175.993
+            -159.405
           ],
           "label": "CAT 6 handover",
+          "basis": "proposed_stadium_handover_site_review_required",
           "viewing_tier": "cat6",
           "final_zone_route_status": "pending_venue_review"
         },
@@ -7389,11 +7453,12 @@
           "role": "destination",
           "entry_area_id": "plaza_utara",
           "position_m": [
-            14.274,
+            13.68,
             0,
-            -175.986
+            -159.382
           ],
           "label": "CAT 7 handover",
+          "basis": "proposed_stadium_handover_site_review_required",
           "viewing_tier": "cat7",
           "final_zone_route_status": "pending_venue_review"
         },
@@ -7402,11 +7467,12 @@
           "role": "destination",
           "entry_area_id": "plaza_utara",
           "position_m": [
-            14.924,
+            14.329,
             0,
-            -175.979
+            -159.359
           ],
           "label": "CAT 8 handover",
+          "basis": "proposed_stadium_handover_site_review_required",
           "viewing_tier": "cat8",
           "final_zone_route_status": "pending_venue_review"
         },
@@ -7415,11 +7481,12 @@
           "role": "destination",
           "entry_area_id": "plaza_tenggara",
           "position_m": [
-            127.512,
+            98.262,
             0,
-            153.656
+            115.336
           ],
           "label": "Infinity allocation cohort — FESTIVAL handover",
+          "basis": "proposed_stadium_handover_site_review_required",
           "viewing_tier": "festival",
           "final_zone_route_status": "pending_venue_review"
         },
@@ -7428,11 +7495,12 @@
           "role": "destination",
           "entry_area_id": "plaza_tenggara",
           "position_m": [
-            126.986,
+            97.746,
             0,
-            154.038
+            115.73
           ],
           "label": "Infinity allocation cohort — CAT1 handover",
+          "basis": "proposed_stadium_handover_site_review_required",
           "viewing_tier": "cat1",
           "final_zone_route_status": "pending_venue_review"
         },
@@ -7441,11 +7509,12 @@
           "role": "destination",
           "entry_area_id": "plaza_tenggara",
           "position_m": [
-            126.46,
+            97.229,
             0,
-            154.42
+            116.125
           ],
           "label": "Infinity allocation cohort — CAT2 handover",
+          "basis": "proposed_stadium_handover_site_review_required",
           "viewing_tier": "cat2",
           "final_zone_route_status": "pending_venue_review"
         },
@@ -7454,11 +7523,12 @@
           "role": "destination",
           "entry_area_id": "plaza_tenggara",
           "position_m": [
-            125.934,
+            96.712,
             0,
-            154.801
+            116.519
           ],
           "label": "Infinity allocation cohort — CAT3 handover",
+          "basis": "proposed_stadium_handover_site_review_required",
           "viewing_tier": "cat3",
           "final_zone_route_status": "pending_venue_review"
         },
@@ -7467,11 +7537,12 @@
           "role": "destination",
           "entry_area_id": "plaza_tenggara",
           "position_m": [
-            125.408,
+            96.196,
             0,
-            155.183
+            116.914
           ],
           "label": "Infinity allocation cohort — CAT4 handover",
+          "basis": "proposed_stadium_handover_site_review_required",
           "viewing_tier": "cat4",
           "final_zone_route_status": "pending_venue_review"
         },
@@ -7480,11 +7551,12 @@
           "role": "destination",
           "entry_area_id": "plaza_tenggara",
           "position_m": [
-            124.882,
+            95.679,
             0,
-            155.565
+            117.308
           ],
           "label": "Infinity allocation cohort — CAT5 handover",
+          "basis": "proposed_stadium_handover_site_review_required",
           "viewing_tier": "cat5",
           "final_zone_route_status": "pending_venue_review"
         },
@@ -7493,11 +7565,12 @@
           "role": "destination",
           "entry_area_id": "plaza_tenggara",
           "position_m": [
-            124.355,
+            95.162,
             0,
-            155.947
+            117.702
           ],
           "label": "Infinity allocation cohort — CAT6 handover",
+          "basis": "proposed_stadium_handover_site_review_required",
           "viewing_tier": "cat6",
           "final_zone_route_status": "pending_venue_review"
         },
@@ -7506,11 +7579,12 @@
           "role": "destination",
           "entry_area_id": "plaza_tenggara",
           "position_m": [
-            123.829,
+            94.645,
             0,
-            156.328
+            118.097
           ],
           "label": "Infinity allocation cohort — CAT7 handover",
+          "basis": "proposed_stadium_handover_site_review_required",
           "viewing_tier": "cat7",
           "final_zone_route_status": "pending_venue_review"
         },
@@ -7519,11 +7593,12 @@
           "role": "destination",
           "entry_area_id": "plaza_tenggara",
           "position_m": [
-            123.303,
+            94.129,
             0,
-            156.71
+            118.491
           ],
           "label": "Infinity allocation cohort — CAT8 handover",
+          "basis": "proposed_stadium_handover_site_review_required",
           "viewing_tier": "cat8",
           "final_zone_route_status": "pending_venue_review"
         },
@@ -8930,7 +9005,7 @@
         {
           "id": "plaza_tenggara_admitted",
           "from_node_id": "plaza_tenggara_entry-approach",
-          "to_node_id": "plaza_tenggara_destination",
+          "to_node_id": "plaza_tenggara_stadium-approach",
           "directed": true
         },
         {
@@ -9414,6 +9489,13 @@
           "directed": true
         },
         {
+          "id": "plaza_tenggara_stadium_handover",
+          "from_node_id": "plaza_tenggara_stadium-approach",
+          "to_node_id": "plaza_tenggara_destination",
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
+        },
+        {
           "id": "plaza_barat_help_pass",
           "from_node_id": "plaza_barat_arrival",
           "to_node_id": "plaza_barat_help-pass",
@@ -9446,7 +9528,7 @@
         {
           "id": "plaza_barat_admitted",
           "from_node_id": "plaza_barat_entry-approach",
-          "to_node_id": "plaza_barat_destination",
+          "to_node_id": "plaza_barat_stadium-approach",
           "directed": true
         },
         {
@@ -9666,6 +9748,13 @@
           "directed": true
         },
         {
+          "id": "plaza_barat_stadium_handover",
+          "from_node_id": "plaza_barat_stadium-approach",
+          "to_node_id": "plaza_barat_destination",
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
+        },
+        {
           "id": "pintu_kuning_help_pass",
           "from_node_id": "pintu_kuning_arrival",
           "to_node_id": "pintu_kuning_help-pass",
@@ -9698,7 +9787,7 @@
         {
           "id": "pintu_kuning_admitted",
           "from_node_id": "pintu_kuning_entry-approach",
-          "to_node_id": "pintu_kuning_destination",
+          "to_node_id": "pintu_kuning_stadium-approach",
           "directed": true
         },
         {
@@ -9942,6 +10031,13 @@
           "directed": true
         },
         {
+          "id": "pintu_kuning_stadium_handover",
+          "from_node_id": "pintu_kuning_stadium-approach",
+          "to_node_id": "pintu_kuning_destination",
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
+        },
+        {
           "id": "help_pass",
           "from_node_id": "arrival",
           "to_node_id": "help-pass",
@@ -9986,7 +10082,7 @@
         {
           "id": "admitted",
           "from_node_id": "entry-approach",
-          "to_node_id": "destination",
+          "to_node_id": "stadium-approach",
           "directed": true
         },
         {
@@ -10290,6 +10386,13 @@
           "directed": true
         },
         {
+          "id": "stadium_handover",
+          "from_node_id": "stadium-approach",
+          "to_node_id": "destination",
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
+        },
+        {
           "id": "plaza_timur_help_pass",
           "from_node_id": "plaza_timur_arrival",
           "to_node_id": "plaza_timur_help-pass",
@@ -10322,7 +10425,7 @@
         {
           "id": "plaza_timur_admitted",
           "from_node_id": "plaza_timur_entry-approach",
-          "to_node_id": "plaza_timur_destination",
+          "to_node_id": "plaza_timur_stadium-approach",
           "directed": true
         },
         {
@@ -10758,6 +10861,13 @@
           "directed": true
         },
         {
+          "id": "plaza_timur_stadium_handover",
+          "from_node_id": "plaza_timur_stadium-approach",
+          "to_node_id": "plaza_timur_destination",
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
+        },
+        {
           "id": "plaza_tenggara_arrival_walk_to_lanes",
           "from_node_id": "plaza_tenggara_arrival_walk",
           "to_node_id": "plaza_tenggara_arrival",
@@ -10881,121 +10991,141 @@
           "id": "handover_ultimate_experience",
           "from_node_id": "plaza_tenggara_destination",
           "to_node_id": "destination_ultimate_experience",
-          "directed": true
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
         },
         {
           "id": "handover_my_universe",
           "from_node_id": "plaza_tenggara_destination",
           "to_node_id": "destination_my_universe",
-          "directed": true
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
         },
         {
           "id": "handover_festival",
           "from_node_id": "plaza_timur_destination",
           "to_node_id": "destination_festival",
-          "directed": true
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
         },
         {
           "id": "handover_cat1",
           "from_node_id": "plaza_tenggara_destination",
           "to_node_id": "destination_cat1",
-          "directed": true
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
         },
         {
           "id": "handover_cat2",
           "from_node_id": "plaza_tenggara_destination",
           "to_node_id": "destination_cat2",
-          "directed": true
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
         },
         {
           "id": "handover_cat3",
           "from_node_id": "plaza_barat_destination",
           "to_node_id": "destination_cat3",
-          "directed": true
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
         },
         {
           "id": "handover_cat4",
           "from_node_id": "pintu_kuning_destination",
           "to_node_id": "destination_cat4",
-          "directed": true
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
         },
         {
           "id": "handover_cat5",
           "from_node_id": "destination",
           "to_node_id": "destination_cat5",
-          "directed": true
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
         },
         {
           "id": "handover_cat6",
           "from_node_id": "destination",
           "to_node_id": "destination_cat6",
-          "directed": true
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
         },
         {
           "id": "handover_cat7",
           "from_node_id": "destination",
           "to_node_id": "destination_cat7",
-          "directed": true
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
         },
         {
           "id": "handover_cat8",
           "from_node_id": "destination",
           "to_node_id": "destination_cat8",
-          "directed": true
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
         },
         {
           "id": "handover_infinity_festival",
           "from_node_id": "plaza_tenggara_destination",
           "to_node_id": "destination_infinity_festival",
-          "directed": true
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
         },
         {
           "id": "handover_infinity_cat1",
           "from_node_id": "plaza_tenggara_destination",
           "to_node_id": "destination_infinity_cat1",
-          "directed": true
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
         },
         {
           "id": "handover_infinity_cat2",
           "from_node_id": "plaza_tenggara_destination",
           "to_node_id": "destination_infinity_cat2",
-          "directed": true
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
         },
         {
           "id": "handover_infinity_cat3",
           "from_node_id": "plaza_tenggara_destination",
           "to_node_id": "destination_infinity_cat3",
-          "directed": true
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
         },
         {
           "id": "handover_infinity_cat4",
           "from_node_id": "plaza_tenggara_destination",
           "to_node_id": "destination_infinity_cat4",
-          "directed": true
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
         },
         {
           "id": "handover_infinity_cat5",
           "from_node_id": "plaza_tenggara_destination",
           "to_node_id": "destination_infinity_cat5",
-          "directed": true
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
         },
         {
           "id": "handover_infinity_cat6",
           "from_node_id": "plaza_tenggara_destination",
           "to_node_id": "destination_infinity_cat6",
-          "directed": true
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
         },
         {
           "id": "handover_infinity_cat7",
           "from_node_id": "plaza_tenggara_destination",
           "to_node_id": "destination_infinity_cat7",
-          "directed": true
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
         },
         {
           "id": "handover_infinity_cat8",
           "from_node_id": "plaza_tenggara_destination",
           "to_node_id": "destination_infinity_cat8",
-          "directed": true
+          "directed": true,
+          "basis": "proposed_stadium_handover_site_review_required"
         },
         {
           "id": "approach_10121357658_11739544872",
@@ -16228,7 +16358,7 @@
         "destination_node_id": "destination_infinity_cat8"
       }
     ],
-    "destination_scope": "Post-scan category handover at the assigned entrance. Internal routes to seats and standing sectors require venue review.",
+    "destination_scope": "Post-scan category handover just inside the stadium footprint at the assigned entrance. Internal routes to seats and standing sectors require venue review.",
     "spawn_scope": "Pedestrians spawn at mapped MRT Istora Mandiri Exit B, mapped Parkir Timur centroid or a fictional passenger drop-off at a mapped parking entrance. No vehicle traffic is modeled. Legacy entrance arrival IDs remain fallback bindings.",
     "time_reference": "origin_spawn"
   }
