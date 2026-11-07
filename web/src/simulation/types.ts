@@ -65,10 +65,14 @@ export type RouteNode = {
   position: Point
 }
 
-export type SceneView = 'orbit' | 'entry' | 'layout'
+export type SceneView = 'orbit' | 'isometric' | 'entry' | 'map' | 'layout'
 
 export type SceneProps = {
   debug?: boolean
+  autoRotate?: boolean
+  panMode?: boolean
+  showLabels?: boolean
+  onCameraInteraction?: () => void
   showGuides?: boolean
   venue: VenuePack
   catalogue: readonly KitPreset[]

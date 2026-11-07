@@ -36,9 +36,7 @@ Use the occupied ground footprint for collision. Tables and queue panels can sit
 
 ## Dashboard integration
 
-Make `/simulation` a full-width page in Wira's dashboard shell. Wira owns the route and navigation. Faisal's lane owns one lazy-loaded `SimulationWorkspace` that can also mount in a thin local preview against the same bundled fixture. The shell passes a scenario ID and the workspace loads its own venue, equipment catalogue, layout revisions, saved runs, and editable draft. `/simulation?scenario=coldplay-gbk-2023` is the demo deep link.
-
-Use an iframe only if the workspace ends up independently deployed and embedding is required for the demo. In that case, the frame owns all edits and result display and the dashboard passes only the scenario ID in the URL. Test the allowed embedding origin and the full-size canvas on the deployed dashboard. [MDN iframe behavior](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe)
+Make `/simulation` a standalone, full-screen venue scene with small camera controls. Wira owns the later dashboard overlay and navigation. Faisal's lane owns the renderer and coordinate foundation. Wira can compose `GbkCanvas` under the overlay through its scene props. Keep scene state and metre coordinates separate from overlay pixels. [Spatial and layout contract](spatial-layout-contract.md)
 
 ## Four-hour dispatch
 
