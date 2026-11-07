@@ -1,0 +1,91 @@
+import { readFileSync, writeFileSync } from 'node:fs'
+import { catalogue, initialDraft } from '../web/src/simulation/model.ts'
+import { createLayoutRevision, localToWorld } from '../web/src/simulation/layout/core.ts'
+
+const root = new URL('../', import.meta.url)
+const draft = JSON.parse(readFileSync(new URL('contracts/examples/coldplay-gbk-plan-draft.json', root)))
+const source = draft.meta.source_scenario.snapshot
+const plan = structuredClone(draft)
+const baseline = createLayoutRevision(initialDraft().placements)
+const northAnchor = [12, 0, -275]
+const windows = { '09:00-13:00': 10, '13:00-15:30': 30, '15:30-17:30': 45, '17:30-19:30': 15 }
+plan.meta.description = 'V1 local Coldplay-inspired GBK demo. Fictional operational assumptions are editable. Send this snapshot to the API when Optimize is selected.'
+plan.meta.version = 1
+plan.meta.readiness = { status: 'local_preview_ready', remote_semantic_validation: 'not_run' }
+plan.meta.unresolved = []
+plan.meta.demo_assumptions = [
+  'The existing 70,000 expected arrivals are represented by fictional sold counts with zero no-shows for deterministic demo conservation.',
+  'Each proposed entry area uses an illustrative four-lane admission template with four scan operators, four security officers and one help agent.',
+  'Gate processing combines scan, wristband and security steps. Physical checkpoint positions remain separately visible in the spatial context.',
+  'Other entry-area layouts are rotated copies of the authored North template. They need a site review and do not describe the 2023 operation.',
+  'Group size is two, walking speed is 1.2 m/s, and the four arrival windows are fictional.',
+  'Rates, queue dimensions, costs, capacity, staff genders, targets and opening policies are fictional demo inputs.',
+  'The browser displays walking trajectories. Queue and processing results require a separate engine run or optimization response.'
+]
+plan.event.name = 'Coldplay-inspired GBK demo · V1'
+plan.event.capacity = { basis: 'estimate', configured_capacity: 70000, tickets_on_sale: 70000, tickets_sold: 70000, no_show_percent_estimate: 0 }
+plan.event.schedule = { ...plan.event.schedule, basis: 'policy', redemption_open: '13:00', redemption_close: '21:00', last_entry: '21:00', show_end_estimate: '23:30' }
+plan.event.audience_profile = { basis: 'estimate', female_percent: 50, typical_group_size: 2, arrive_in_groups_percent: 100, visitors_with_bag_percent: 50, visitors_using_locker_percent: 0, accessible_visitors_percent: 0 }
+for (const category of plan.event.ticket_categories) {
+  category.sold = category.expected_attendees_estimate
+  category.quota = category.sold
+  category.basis = 'estimate'
+  category.count_basis = 'fictional_v1_sales_equal_expected_arrivals_zero_no_show'
+  delete category.entry_gate_status
+  delete category.attendance_interpretation
+}
+const spatial = {
+  schema_version: 'opsidio-layout/0.1', venue_id: 'gbk-osm-local', catalogue_version: 'research-v1',
+  layout_id: 'gbk-five-entry-v1', revision: 1,
+  coordinate_frame: { units: 'm', origin_wgs84: { longitude_deg: 106.80255, latitude_deg: -6.21858 }, axes: { x: 'east', y: 'up', z: 'south' }, vertical_reference: 'local_ground' },
+  placements: [], navigation: { nodes: [], edges: [] }, operational_bindings: [], entry_areas: [], cohort_routes: [], operators: [],
+  playback: { seed: 20261114, time_origin: '2026-11-14T09:00:00+07:00', horizon_seconds: 52200, walk_speed_mps: 1.2, group_size: 2 }
+}
+const layout = { basis: 'estimate', zones: [], service_points: [], gates: [], walking_paths: [], visitor_flow: [{ order: 1, point: 'entry_gate_of_category', required: true }] }
+const roles = []
+for (const area of source.entry_areas) {
+  const north = area.id === 'plaza_utara'
+  const yaw = north ? 0 : Math.atan2(-area.position[0], -area.position[2]) * 180 / Math.PI
+  const frame = { position: area.position, yawDeg: yaw }
+  const key = id => north ? id : `${area.id}_${id}`
+  const transform = position => localToWorld(position.map((value, axis) => value - northAnchor[axis]), frame).map(value => Math.round(value * 1000) / 1000)
+  const gateId = `proposed_gate_${area.id}`
+  spatial.entry_areas.push({ id: area.id, label: area.label, gate_id: gateId, position_m: area.position, color: area.color, basis: 'fictional_scenario' })
+  for (const item of baseline.placements) spatial.placements.push({ id: key(item.id), label: item.label, preset_id: item.presetId, position_m: transform(item.position), yaw_deg: item.yawDeg + yaw, ...(item.bays ? { parameters: { bays: item.bays } } : {}), entry_area_id: area.id, basis: 'fictional_scenario' })
+  // Visible detectors stand beside the central walking route, preserving its clearance.
+  spatial.placements.push({ id: key('security_detector'), label: 'Security detector', preset_id: 'detector-90', position_m: transform([14, 0, -228]), yaw_deg: yaw, entry_area_id: area.id, basis: 'fictional_scenario' })
+  for (const node of baseline.nodes) spatial.navigation.nodes.push({ id: key(node.id), role: node.role, entry_area_id: area.id, ...(node.attachment ? { attachment: { placement_id: key(node.attachment.placementId), offset_m: node.attachment.offset } } : { position_m: transform(node.position) }) })
+  for (const edge of baseline.edges) spatial.navigation.edges.push({ id: key(edge.id), from_node_id: key(edge.from), to_node_id: key(edge.to), directed: true })
+  const categories = plan.event.ticket_categories.filter(category => category.entry_area_id === area.id)
+  const queueId = `queue_${area.id}`
+  const insideId = `inside_${area.id}`
+  const helpId = `help_${area.id}`
+  layout.zones.push({ id: queueId, name: `${area.label} queue`, type: 'queue', area_m2: 120, barricade_m: 18 * 2.3, switchback_rows: 5 }, { id: insideId, name: `${area.label} admitted area`, type: 'holding', area_m2: 1200 })
+  layout.gates.push({ id: gateId, name: area.label, queue_zone: queueId, leads_to: [insideId], opens: '17:30', closes: '21:00', frontage_m: 10, max_lanes: 5, serves_categories: categories.map(category => category.id), lanes: [{ group: 'general', count: 4, steps: ['eticket_scan', 'wristband_fit', 'security_inspection'], equipment_per_lane: { handheld_scanner: 1, metal_detector_wand: 1 } }] })
+  layout.service_points.push({ id: helpId, name: `${area.label} ticket help`, zone: insideId, queue_zone: queueId, opens: '13:00', closes: '21:00', max_lanes: 1, lanes: [{ group: 'desk', count: 1, serves: 'visitors_with_exception', steps: ['help_desk_resolution'], equipment_per_lane: {} }] })
+  layout.walking_paths.push({ from: queueId, to: gateId, distance_m: 141 })
+  for (const category of categories) spatial.cohort_routes.push({ category_id: category.id, arrival_node_id: key('arrival'), destination_node_id: key('destination') })
+  for (const [kind, count, placement, steps, point, offsetZ] of [
+    ['scan', 4, 'scan_tent', ['eticket_scan', 'wristband_fit'], gateId, -3.5],
+    ['security', 4, 'security_tent', ['security_inspection'], gateId, -3.5],
+    ['help', 1, 'help_tent', ['help_desk_resolution'], helpId, -0.5]
+  ]) {
+    const roleId = `${area.id}_${kind}`
+    roles.push({ id: roleId, name: `${area.label} ${kind}`, basis: 'estimate', processing_role: true, count, gender: { female: Math.floor(count / 2), male: count - Math.floor(count / 2) }, shift: 'admission_shift', can_do: steps, rate_idr_per_shift: kind === 'security' ? 400000 : 350000, pool_limit_total: count * 2, assignment: [{ point, lane_group: kind === 'help' ? 'desk' : 'general', per_lane: 1, count }] })
+    for (let index = 0; index < count; index++) spatial.operators.push({ id: `${roleId}_${index + 1}`, label: `${kind === 'security' ? 'Security' : kind === 'help' ? 'Help agent' : 'Scan operator'} ${index + 1}`, role_id: roleId, point_id: point, entry_area_id: area.id, attachment: { placement_id: key(placement), offset_m: [count === 1 ? 0.7 : -2.49 + index * 1.66, 0, offsetZ] } })
+    spatial.operational_bindings.push({ placement_id: key(placement), node_id: key(`${kind === 'scan' ? 'scan' : kind === 'security' ? 'security' : 'help'}_checkpoint`), point_id: point, lane_group: kind === 'help' ? 'desk' : 'general', queue_zone_id: queueId })
+  }
+}
+plan.venue = { ...plan.venue, id: 'gbk-osm-local', name: 'Stadion Utama Gelora Bung Karno', layout }
+plan.process_steps = { basis: 'estimate', steps: [
+  ['eticket_scan', 'Scan e-ticket and match ID', 5, 12, 'scan'],
+  ['wristband_fit', 'Issue admission wristband', 4, 8, 'scan'],
+  ['security_inspection', 'Security inspection', 8, 20, 'security'],
+  ['help_desk_resolution', 'Resolve ticket exception', 90, 240, 'help']
+].map(([id, name, typical, slow, kind]) => ({ id, name, applies_to: kind === 'help' ? 'visitors_with_exception' : 'all_visitors', done_by: roles.filter(role => role.id.endsWith(`_${kind}`)).map(role => role.id), time_per_person_seconds: { typical, slow }, exceptions: [], ...(kind === 'help' ? { results: { resolved_percent: 100, refused_percent: 0 } } : {}) })) }
+plan.staff = { basis: 'estimate', meal_allowance_idr_per_person: 45000, shifts: [{ id: 'admission_shift', start: '12:30', end: '21:30', meal_break_minutes: 30 }], roles }
+plan.constraints = { budget: { basis: 'estimate', staff_cap_idr: 30000000, equipment_cap_idr: 30000000 }, service_targets: { basis: 'policy', gate_wait: { max_minutes: 20, for_share_of_visitors_percent: 90 }, longest_acceptable_wait_minutes: 45, inside_before_main_act_percent: 95 }, safety: { basis: 'policy', max_density_persons_per_m2: { queue_zones: 2, inner_concourse: 1.5 }, queues_must_stay_inside_queue_zones: true, emergency_lane_width_m: 3 }, equipment: { basis: 'estimate', items: [{ id: 'handheld_scanner', name: 'Ticket scanner', available: 20, extra_rentable: 10, extra_cost_idr_per_unit: 150000, lead_time_days: 3, committed_cost_idr: 3000000 }, { id: 'metal_detector_wand', name: 'Metal detector wand', available: 20, extra_rentable: 10, extra_cost_idr_per_unit: 100000, lead_time_days: 3, committed_cost_idr: 2000000 }] }, timing: { basis: 'policy', doors_open_earliest: '17:00', last_entry_latest: '21:00', venue_slot_end: '23:30' } }
+plan.demand = { basis: 'estimate', arrival_windows_percent: Object.fromEntries(plan.event.ticket_categories.map(category => [category.id, windows])), group_size_share_percent: { '2': 100 } }
+plan.spatial_context = spatial
+writeFileSync(new URL('contracts/examples/coldplay-gbk-demo-plan.json', root), JSON.stringify(plan, null, 2) + '\n')
+console.log(`Wrote V1 with ${plan.event.ticket_categories.length} categories, ${spatial.entry_areas.length} entry areas, ${spatial.operators.length} operators and ${spatial.placements.length} equipment placements. Catalogue has ${catalogue.length} presets.`)
