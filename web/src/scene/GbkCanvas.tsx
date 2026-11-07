@@ -143,7 +143,7 @@ export default function GbkCanvas(props: SceneProps & { debug?: boolean; showGui
   const performance = useRef<HTMLDivElement>(null)
   return <div style={{ position: 'relative', width: '100%', height: '100%' }}>
     <Canvas shadows="percentage" dpr={[1, 1.75]} camera={{ position: [350, 350, 450], fov: 42, near: 2, far: 4000 }} gl={{ antialias: true }} style={{ width: '100%', height: '100%', background: '#e8ebe1' }}>
-      <Suspense fallback={null}><Scene {...props} />{props.debug && <PerformanceMonitor output={performance} />}</Suspense>
+      <Suspense fallback={null}><Scene {...props} />{props.children}{props.debug && <PerformanceMonitor output={performance} />}</Suspense>
     </Canvas>
     {props.debug && <div ref={performance} data-scene-performance aria-label="Scene rendering performance" title="Half-second average: rendered frames per second, renderer draw calls including shadows, and triangles. Depends on browser, device and view." style={{ position: 'absolute', right: 12, bottom: 10, pointerEvents: 'none', color: '#38534b', background: '#eef1e7d9', padding: '4px 7px', borderRadius: 4, font: '10px ui-monospace, monospace', fontVariantNumeric: 'tabular-nums' }}>Measuring scene…</div>}
   </div>
