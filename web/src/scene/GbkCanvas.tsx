@@ -1,12 +1,12 @@
 import KitModel from './KitModel'
 import StadiumModel from './StadiumModel'
-import { Suspense, memo, useEffect, useMemo, useRef, type RefObject } from 'react'
+import LandscapeContext from './LandscapeContext'
+import { Suspense, useEffect, useMemo, useRef, type RefObject } from 'react'
 import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber'
 import { Html, Line, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
-import type { MapArea, Point, SceneProps, VenuePack } from '../simulation/types'
+import type { Point, SceneProps, VenuePack } from '../simulation/types'
 
 const palette = { grass: '#667b5e', lawn: '#7c936c', concrete: '#b6b5a9', road: '#777f7d', ivory: '#e8e4d5', steel: '#7b9392', red: '#ad4c40', ink: '#183d44', cyan: '#27c5bb', amber: '#e9aa46' }
 
@@ -15,53 +15,12 @@ function bounds(points: readonly Point[]) {
   return { minX: Math.min(...xs), maxX: Math.max(...xs), minZ: Math.min(...zs), maxZ: Math.max(...zs) }
 }
 
-function AreaBatch({ areas, kind }: { areas: readonly MapArea[]; kind: MapArea['kind'] }) {
-  const geometry = useMemo(() => {
-    const parts = areas.filter(a => a.kind === kind).map(area => {
-      const shape = new THREE.Shape()
-      area.ring.forEach((p, i) => i ? shape.lineTo(p[0], -p[2]) : shape.moveTo(p[0], -p[2])); shape.closePath()
-      const source = kind === 'building' ? new THREE.ExtrudeGeometry(shape, { depth: area.heightM ?? 7, bevelEnabled: false }) : new THREE.ShapeGeometry(shape)
-      const part = source.index ? source.toNonIndexed() : source
-      if (part !== source) source.dispose()
-      part.clearGroups(); part.rotateX(-Math.PI / 2); part.translate(0, 0.05, 0)
-      return part
-    })
-    const merged = parts.length ? mergeGeometries(parts, false) : null
-    parts.forEach(part => part.dispose())
-    return merged
-  }, [areas, kind])
-  useEffect(() => () => geometry?.dispose(), [geometry])
-  if (!geometry) return null
-  return <mesh geometry={geometry} receiveShadow castShadow={kind === 'building'}>
-    <meshStandardMaterial color={kind === 'building' ? '#c8c9bc' : kind === 'green' ? palette.lawn : kind === 'water' ? '#6da2a1' : '#c4c1b2'} roughness={0.95} />
-  </mesh>
-}
-
-const MapContext = memo(function MapContext({ venue }: { venue: VenuePack }) {
-  // Explicit segment pairs keep disconnected mapped paths from being joined.
-  const paths = useMemo(() => {
-    const result: Record<'road' | 'walk', [number, number, number][]> = { road: [], walk: [] }
-    venue.paths.forEach(path => {
-      for (let i = 1; i < path.points.length; i++) {
-        const a = path.points[i - 1], b = path.points[i]
-        result[path.kind].push([a[0], 0.12, a[2]], [b[0], 0.12, b[2]])
-      }
-    })
-    return result
-  }, [venue.paths])
-  return <>
-    {(['building', 'green', 'water', 'plaza'] as const).map(kind => <AreaBatch key={kind} kind={kind} areas={venue.areas} />)}
-    {paths.road.length > 0 && <Line points={paths.road} segments color={palette.road} lineWidth={9} />}
-    {paths.walk.length > 0 && <Line points={paths.walk} segments color="#d4cfbc" lineWidth={3} />}
-  </>
-})
-
 function CameraRig(props: SceneProps) {
   const { venue, view } = props
   const { set, size } = useThree()
   const controls = useRef<OrbitControlsImpl>(null)
-  const perspective = useMemo(() => new THREE.PerspectiveCamera(42, 1, 2, 3000), [])
-  const orthographic = useMemo(() => new THREE.OrthographicCamera(-500, 500, 500, -500, 2, 3000), [])
+  const perspective = useMemo(() => new THREE.PerspectiveCamera(42, 1, 2, 4000), [])
+  const orthographic = useMemo(() => new THREE.OrthographicCamera(-500, 500, 500, -500, 2, 4000), [])
   const flat = view === 'map' || view === 'layout'
   const camera = flat || view === 'isometric' ? orthographic : perspective
 
@@ -106,7 +65,7 @@ function CameraRig(props: SceneProps) {
     minDistance={6} maxDistance={2400} minZoom={0.5} maxZoom={30}
     maxPolarAngle={Math.PI / 2 - 0.04}
     enableRotate={!flat && view !== 'isometric'} screenSpacePanning
-    mouseButtons={{ LEFT: flat || props.panMode ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }}
+    mouseButtons={{ LEFT: flat || view === 'isometric' || props.panMode ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }}
     autoRotate={props.autoRotate && view === 'orbit'} autoRotateSpeed={0.35}
     onStart={props.onCameraInteraction} enableDamping dampingFactor={0.09} />
 }
@@ -125,13 +84,13 @@ function Scene(props: SceneProps & { showGuides?: boolean }) {
     } else onSelect(null)
   }
   return <>
-    <color attach="background" args={['#e8ebe1']} />
+    <color attach="background" args={['#dbe5df']} />
     <ambientLight intensity={1.3} />
     <hemisphereLight args={['#f8f6df', '#4b695a', 1.5]} />
     <directionalLight position={[-180, 350, -200]} intensity={2.5} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-400} shadow-camera-right={400} shadow-camera-top={400} shadow-camera-bottom={-400} shadow-camera-far={1000} shadow-bias={-0.0004} shadow-normalBias={0.15} />
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={centre} receiveShadow onClick={moveOnGround}><planeGeometry args={[size, size]} /><meshStandardMaterial color={palette.grass} roughness={1} /></mesh>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={centre} receiveShadow onClick={moveOnGround}><planeGeometry args={[size, size]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} /></mesh>
     <group onClick={moveOnGround}>
-      <MapContext venue={venue} />
+      <LandscapeContext venue={venue} />
     </group>
     <StadiumModel venue={venue} />
     {props.showLabels && venue.landmarks.filter(landmark => /Indonesia Arena|Tennis Indoor|Istana Olahraga|Stadion Madya|Stadion Utama|Aquatic|Akuatik/.test(landmark.label)).map(landmark =>
@@ -173,7 +132,7 @@ function PerformanceMonitor({ output }: { output: RefObject<HTMLDivElement | nul
 export default function GbkCanvas(props: SceneProps & { debug?: boolean; showGuides?: boolean }) {
   const performance = useRef<HTMLDivElement>(null)
   return <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-    <Canvas shadows dpr={[1, 1.75]} camera={{ position: [350, 350, 450], fov: 42, near: 2, far: 2500 }} gl={{ antialias: true }} style={{ width: '100%', height: '100%', background: '#e8ebe1' }}>
+    <Canvas shadows dpr={[1, 1.75]} camera={{ position: [350, 350, 450], fov: 42, near: 2, far: 4000 }} gl={{ antialias: true }} style={{ width: '100%', height: '100%', background: '#e8ebe1' }}>
       <Suspense fallback={null}><Scene {...props} />{props.debug && <PerformanceMonitor output={performance} />}</Suspense>
     </Canvas>
     {props.debug && <div ref={performance} data-scene-performance aria-label="Scene rendering performance" title="Half-second average: rendered frames per second, renderer draw calls including shadows, and triangles. Depends on browser, device and view." style={{ position: 'absolute', right: 12, bottom: 10, pointerEvents: 'none', color: '#38534b', background: '#eef1e7d9', padding: '4px 7px', borderRadius: 4, font: '10px ui-monospace, monospace', fontVariantNumeric: 'tabular-nums' }}>Measuring scene…</div>}
