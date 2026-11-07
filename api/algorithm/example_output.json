@@ -1,0 +1,2303 @@
+{
+  "schema_version": "0.1",
+  "meta": {
+    "document": "opsidio_event_output",
+    "example": true,
+    "description": "Result of one simulation run: one plan, one scenario, and many replications. The promoter's ticketing operations team reads it to plan the event day. It shows when the queues clear, where they grow too long or too dense, what the staff do and cost, and which step holds the visitors up.",
+    "input_file": "opsidio-event-input-example.yaml",
+    "masking": "Same fictional event as the input file. Every visitor is synthetic.",
+    "example_values": "A throwaway per-visitor model produced these numbers from the input file and from the assumptions in run_manifest. The sizes and the relations between the numbers are realistic. They are not results of the Opsidio engine.",
+    "prepared_for_role": "Ticketing operations lead (promoter)",
+    "currency": "IDR",
+    "timezone": "Asia/Jakarta",
+    "conventions": [
+      "Field names carry their unit, for example _minutes, _persons, _percent, _idr, _persons_per_m2.",
+      "Clock times are local time (WIB), 24-hour HH:MM, written as quoted strings.",
+      "Values of point, lane_group, zone, role, step, rule, and category fields are IDs from the input file.",
+      "A lane group is written point/group, for example gate_floor/female. The group is a lane group of that point in the input file, or a staff duty there, for example gate_priority/escort.",
+      "A plain simulated number is the mean across the replications.",
+      "A {mean, p05, p95} map adds the 5th and the 95th percentile across the replications. Plan safety measures for the p95 value.",
+      "A total can differ from the sum of its rounded parts by up to half a unit per part.",
+      "IDs that this file creates are unique across the file."
+    ],
+    "basis_values": {
+      "simulated": "Result of the simulation, as the mean across the replications.",
+      "computed": "Arithmetic on input values or on simulated values. No randomness."
+    },
+    "status_values": {
+      "met": "The target holds in at least 95% of the replications.",
+      "at_risk": "The target holds on average but fails in more than 5% of the replications.",
+      "missed": "The target fails on average."
+    },
+    "rule_status_values": {
+      "pass": "The plan follows the rule.",
+      "fail": "The plan breaks the rule.",
+      "not_tested": "The input or the model cannot test the rule."
+    },
+    "risk_values": {
+      "high": "A check linked to the problem is missed.",
+      "medium": "A linked check is at risk, or the run shows the conditions of the problem but no target can test them.",
+      "low": "The run shows no sign of the problem."
+    },
+    "definitions": {
+      "wait": "Time from joining a queue to the start of service. For a visitor who joins before the point opens, the wait starts at the opening time. A visitor who joins the same point twice adds both waits.",
+      "pre_open_holding": "Time a visitor stands in a queue before the point opens.",
+      "backlog": "People in a queue when the point opens.",
+      "time_to_clear": "Minutes from the opening time until the last person in the backlog starts service.",
+      "wait_under_5_minutes_from": "First clock time after the queue peak from which every new visitor waits less than 5 minutes, until the point closes.",
+      "lane_busy": "Share of open time in which the first position of a lane holds a visitor. It includes hand-off time, when a served visitor waits for the next position.",
+      "serving": "Time that staff spend on a visitor. Hand-off time is not serving.",
+      "holding_capacity": "Zone area × the density limit for the zone type in constraints.safety.",
+      "density": "People in a zone ÷ zone area. It assumes an even spread.",
+      "open_air": "The part of a zone without cover, from covered_percent in the input file.",
+      "bottleneck_episode": "A run of 15-minute slots in which a lane group is at least 85% busy and the visitors who start service waited more than 5 minutes on average. A gap of one slot does not end an episode.",
+      "queue_minutes": "Sum of the waits of the visitors who start service in an episode."
+    },
+    "excludes": [
+      "Per-minute time series and per-visitor traces. Opsidio writes them to separate files.",
+      "Plan comparison, scenario matrix, and cost-versus-wait trade-off",
+      "Egress after the show and locker pick-up",
+      "Crowd pressure inside a zone, for example at the stage barrier",
+      "Seat assignment errors",
+      "Merchandise queue"
+    ]
+  },
+  "run_manifest": {
+    "run_id": "run_20261105_1452_baseline",
+    "status": "completed",
+    "created_at": "2026-11-05T14:52:38+07:00",
+    "requested_by_role": "Ticketing operations lead (promoter)",
+    "purpose": "Check the baseline plan against the service targets before the deadline for extra crew (constraints.staffing_changes.confirm_extra_crew_by, D-3).",
+    "idempotency_key": "4287b21792950bbf19e7068a914ebd19e6245e4e9450cf8323bc918cedd44473",
+    "idempotency_rule": "SHA-256 of plan.plan_hash_sha256, scenario.id, replications.base_seed, and replications.count, joined with \"|\". A rerun with the same key replaces this result.",
+    "plan": {
+      "file": "opsidio-event-input-example.yaml",
+      "document": "opsidio_event_input",
+      "schema_version": "0.1",
+      "event_id": "evt_sample_001",
+      "label": "Baseline plan as submitted",
+      "plan_hash_sha256": "ba21dbc1dd9eefd3683f15d4fc36e8ede76c58af9b044e0738026ef2ac07be6e",
+      "plan_hash_rule": "SHA-256 of the bytes of the input file.",
+      "parent_run_id": null
+    },
+    "scenario": {
+      "id": "scn_base",
+      "name": "Base day",
+      "description": "Dry weather. Every scanner works. Ticket sales as of 2026-11-24.",
+      "modifiers": []
+    },
+    "model": {
+      "engine": "opsidio-sim",
+      "engine_version": "0.1.0-example",
+      "method": "Per-visitor discrete-event simulation. Steps run in series, and each lane group has one queue.",
+      "simulated_window": {
+        "start": "13:30",
+        "end": "21:00"
+      },
+      "run_until": "Every queue is empty. In every replication, the last service ends before 21:00.",
+      "initial_state": "No visitor is on site at 13:30. Every queue is empty.",
+      "queue_rules": [
+        "First come, first served in each lane group.",
+        "Visitors do not leave a queue before service.",
+        "A group arrives together and joins a queue together."
+      ]
+    },
+    "replications": {
+      "count": 20,
+      "base_seed": 20261127,
+      "seed_rule": "Replication i uses seed base_seed + i, for i from 0 to 19.",
+      "random_generator": "Mersenne Twister (Python random module), one stream per replication",
+      "common_random_numbers": "The probe runs reuse the same seeds."
+    },
+    "derived_inputs": {
+      "basis": "assumed",
+      "attendance": "Each ticket holder comes with a probability of 97%, from event.capacity.no_show_percent_estimate. The mean attendance is 3,428.",
+      "group_size_share_percent": {
+        "1": 55,
+        "2": 15,
+        "3": 20,
+        "4": 10
+      },
+      "group_size_note": "Shares of groups, not of visitors. 30% of visitors come alone.",
+      "arrival_windows_percent": {
+        "festival_a": {
+          "14:30-15:30": 25,
+          "15:30-16:30": 35,
+          "16:30-17:30": 25,
+          "17:30-18:30": 10,
+          "18:30-19:30": 5
+        },
+        "festival_b": {
+          "15:00-16:00": 8,
+          "16:00-17:00": 20,
+          "17:00-18:00": 32,
+          "18:00-19:00": 27,
+          "19:00-19:45": 10,
+          "19:45-20:30": 3
+        },
+        "cat1": {
+          "15:30-16:30": 6,
+          "16:30-17:30": 20,
+          "17:30-18:30": 34,
+          "18:30-19:15": 25,
+          "19:15-19:45": 10,
+          "19:45-20:30": 5
+        },
+        "cat2": {
+          "15:30-16:30": 10,
+          "16:30-17:30": 25,
+          "17:30-18:30": 33,
+          "18:30-19:15": 20,
+          "19:15-19:45": 8,
+          "19:45-20:30": 4
+        },
+        "cat3": {
+          "15:30-16:30": 10,
+          "16:30-17:30": 25,
+          "17:30-18:30": 33,
+          "18:30-19:15": 20,
+          "19:15-19:45": 8,
+          "19:45-20:30": 4
+        },
+        "vip_seated": {
+          "16:30-17:30": 15,
+          "17:30-18:30": 35,
+          "18:30-19:15": 30,
+          "19:15-19:45": 14,
+          "19:45-20:30": 6
+        },
+        "guest": {
+          "16:30-17:30": 15,
+          "17:30-18:30": 35,
+          "18:30-19:15": 30,
+          "19:15-19:45": 14,
+          "19:45-20:30": 6
+        }
+      },
+      "arrival_windows_note": "Arrival times are spread evenly inside each window.",
+      "gate_join_windows": {
+        "festival_a": "Joins the gate queue right after redemption.",
+        "festival_b": "16:30-17:45",
+        "cat1": "17:00-18:15",
+        "cat2": "16:45-18:00",
+        "cat3": "16:45-18:00",
+        "vip_seated": "17:00-18:00",
+        "guest": "17:00-18:00"
+      },
+      "gate_join_note": "A visitor who is ready before the window joins at a random time inside it. A visitor who is ready later joins 0 to 5 minutes after redemption. Nobody enters the outer area before outer_area_open (15:30).",
+      "wrong_gate_first_percent": 2,
+      "skip_redemption_percent": 0.3
+    },
+    "assumptions": [
+      "The time of each step follows a lognormal distribution. typical is its median and slow is its 90th percentile. A sample never exceeds 3 × slow.",
+      "The extra_minutes of an exception keep the lane busy. With step_aside_and_return, the visitor spends them off the lane.",
+      "Each person in a lane works one position. At most one visitor waits between two positions.",
+      "A redemption lane has two positions, eticket_scan with ktp_name_match and wristband_fit. A gate lane has one position per step.",
+      "Floaters cover meal breaks, so a break never closes a lane.",
+      "Visitors walk at 1.0 m/s along venue.layout.walking_paths.",
+      "Visitors who wait for their gate window stand in zone_forecourt.",
+      "A visitor turned away by a full locker needs 10 to 20 minutes to take the item away.",
+      "Each accessible visitor with a Festival ticket needs one wheelchair place."
+    ],
+    "parameter_provenance": {
+      "description": "Numeric values and clock times in the input file, counted by basis.",
+      "confirmed": 217,
+      "policy": 45,
+      "estimate": 165,
+      "public_source": 7,
+      "untagged": 21,
+      "estimate_share_percent": 36,
+      "untagged_note": "event.ticket_categories has no basis field, so its prices, quotas, and sales are untagged."
+    },
+    "quality_checks": [
+      {
+        "id": "qc_visitor_balance",
+        "rule": "Attendance = admitted + refused + still outside at the end.",
+        "result": "3,428 = 3,390 + 38 + 0",
+        "status": "pass"
+      },
+      {
+        "id": "qc_no_negative_queue",
+        "rule": "No queue length falls below zero.",
+        "status": "pass"
+      },
+      {
+        "id": "qc_staff_within_pool",
+        "rule": "Each role count stays within pool_limit_total and pool_limit_by_gender.",
+        "status": "pass"
+      },
+      {
+        "id": "qc_lanes_within_max",
+        "rule": "Open lanes at each point stay within max_lanes.",
+        "status": "pass"
+      },
+      {
+        "id": "qc_equipment_within_stock",
+        "rule": "Equipment per lane × lanes stays within the available stock.",
+        "status": "pass"
+      }
+    ],
+    "runtime": {
+      "simulation_ms_total": 5203,
+      "simulation_ms_per_replication": {
+        "mean": 260,
+        "p95": 332
+      },
+      "events_per_replication": 25507,
+      "machine": "Team VPS, 2 vCPU, Python 3.12, one thread"
+    },
+    "probe_runs": [
+      {
+        "run_id": "run_20261105_1453_probe_floor_female_lanes",
+        "change": "Open 2 more female lanes at gate_floor (4 to 6), staffed by 4 more female security officers and 2 more door crew from the pools.",
+        "replications": 20,
+        "seeds": "Same as this run",
+        "used_by": [
+          "bn_01"
+        ]
+      },
+      {
+        "run_id": "run_20261105_1454_probe_priority_redemption_lane",
+        "change": "Move 2 ticketing crew from redemption_tent/general to a second priority lane (general 10 to 9, priority 1 to 2).",
+        "replications": 20,
+        "seeds": "Same as this run",
+        "used_by": [
+          "bn_03"
+        ]
+      }
+    ],
+    "privacy": "The run holds synthetic visitors only. It stores no names, KTP numbers, or ticket IDs.",
+    "reporting_standard": "The manifest follows the STRESS-DES checklist for discrete-event simulation studies.",
+    "sources": [
+      "stress_des"
+    ]
+  },
+  "scorecard": {
+    "basis": "simulated",
+    "summary": "The plan misses 3 of 10 checks: the gate wait, the longest wait, and the share inside before the main act. The redemption wait, the Festival A target, every density limit, and both budgets are met.",
+    "checks": [
+      {
+        "id": "chk_redemption_wait",
+        "target_ref": "constraints.service_targets.redemption_wait",
+        "metric": "P90 redemption wait, all visitors",
+        "target_minutes_max": 20,
+        "result_minutes": {
+          "mean": 0.9,
+          "p05": 0.3,
+          "p95": 2.0
+        },
+        "replications_met": 20,
+        "status": "met",
+        "note": "VIP Seated and Guest holders share one priority lane. Their P90 waits are 20.7 and 20.1 minutes."
+      },
+      {
+        "id": "chk_gate_wait",
+        "target_ref": "constraints.service_targets.gate_wait",
+        "metric": "P90 gate wait, all gates",
+        "target_minutes_max": 20,
+        "result_minutes": {
+          "mean": 32.7,
+          "p05": 30.1,
+          "p95": 36.2
+        },
+        "replications_met": 0,
+        "status": "missed",
+        "note": "gate_floor alone has a P90 of 40.8 minutes. The tribune and priority gates stay under 10 minutes."
+      },
+      {
+        "id": "chk_longest_wait",
+        "target_ref": "constraints.service_targets.longest_acceptable_wait_minutes",
+        "metric": "Longest wait of one visitor at one point",
+        "target_minutes_max": 45,
+        "result_minutes": {
+          "mean": 58.1,
+          "p05": 52.6,
+          "p95": 67.1
+        },
+        "replications_met": 0,
+        "status": "missed",
+        "note": "67.8 visitors wait more than 45 minutes, 64.3 of them at gate_floor."
+      },
+      {
+        "id": "chk_inside_before_main_act",
+        "target_ref": "constraints.service_targets.inside_before_main_act_percent",
+        "metric": "Share of the attendance inside at main_act (19:45)",
+        "target_percent_min": 95,
+        "result_percent": {
+          "mean": 93.1,
+          "p05": 92.5,
+          "p95": 94.3
+        },
+        "replications_met": 0,
+        "status": "missed",
+        "note": "107 visitors arrive after 19:45, so no plan can reach more than 96.9%. 94 more are on site but still outside."
+      },
+      {
+        "id": "chk_festival_a_before_opening_act",
+        "target_ref": "constraints.service_targets.festival_a_inside_before_opening_act_percent",
+        "metric": "Share of the Festival A attendance inside at opening_act (19:00)",
+        "target_percent_min": 90,
+        "result_percent": {
+          "mean": 95.8,
+          "p05": 94.1,
+          "p95": 97.0
+        },
+        "replications_met": 20,
+        "status": "met"
+      },
+      {
+        "id": "chk_density_queue_zones",
+        "target_ref": "constraints.safety.max_density_persons_per_m2.queue_zones",
+        "metric": "Highest peak density in a queue zone",
+        "target_persons_per_m2_max": 2.0,
+        "result_persons_per_m2": {
+          "mean": 1.85,
+          "p05": 1.76,
+          "p95": 1.91
+        },
+        "replications_met": 20,
+        "status": "met",
+        "note": "zone_floor_queue just before doors open. The worst replication reaches 1.96 (98% of the limit), so every queue stays inside its pen (constraints.safety.queues_must_stay_inside_queue_zones)."
+      },
+      {
+        "id": "chk_density_inner_concourse",
+        "target_ref": "constraints.safety.max_density_persons_per_m2.inner_concourse",
+        "metric": "Peak density in zone_inner_concourse",
+        "target_persons_per_m2_max": 1.5,
+        "result_persons_per_m2": {
+          "mean": 0.19,
+          "p05": 0.17,
+          "p95": 0.21
+        },
+        "replications_met": 20,
+        "status": "met"
+      },
+      {
+        "id": "chk_density_standing_floor",
+        "target_ref": "constraints.safety.max_density_persons_per_m2.standing_floor",
+        "metric": "Highest peak density on a standing floor",
+        "target_persons_per_m2_max": 2.5,
+        "result_persons_per_m2": {
+          "mean": 2.31,
+          "p05": 2.29,
+          "p95": 2.33
+        },
+        "replications_met": 20,
+        "status": "met",
+        "note": "zone_festival_a at 92% of the limit. The front of the stage is denser than this zone average."
+      },
+      {
+        "id": "chk_staff_budget",
+        "target_ref": "constraints.budget.staff_cap_idr",
+        "metric": "Staffing cost, see staffing_cost",
+        "basis": "computed",
+        "target_idr_max": 65000000,
+        "result_idr": 58705000,
+        "status": "met"
+      },
+      {
+        "id": "chk_equipment_budget",
+        "target_ref": "constraints.budget.equipment_cap_idr",
+        "metric": "Committed equipment cost plus extra rentals",
+        "basis": "computed",
+        "target_idr_max": 40000000,
+        "result_idr": 35490000,
+        "status": "met"
+      }
+    ],
+    "rule_checks": {
+      "basis": "computed",
+      "rules": [
+        {
+          "rule": "rule_same_gender_search",
+          "status": "pass",
+          "evidence": "Female security officers staff every female lane at the three gates."
+        },
+        {
+          "rule": "rule_certified_security",
+          "status": "pass",
+          "evidence": "Only security_officer and security_supervisor do bag_check and body_search."
+        },
+        {
+          "rule": "rule_id_check_all",
+          "status": "pass",
+          "evidence": "Every visitor passes ktp_name_match at the redemption tent, guests included."
+        },
+        {
+          "rule": "rule_no_re_entry",
+          "status": "not_tested",
+          "evidence": "The model has no exits before the show ends."
+        },
+        {
+          "rule": "rule_supervisor_per_gate",
+          "status": "pass",
+          "evidence": "One security_supervisor works at each of the three gates."
+        },
+        {
+          "rule": "rule_priority_gate_open",
+          "status": "pass",
+          "evidence": "gate_priority is open from 17:15 to 21:00. The other gates are open from 17:30 to 21:00."
+        },
+        {
+          "rule": "rule_breaks",
+          "status": "not_tested",
+          "evidence": "The input has no break schedule. The model assumes that floaters cover breaks."
+        },
+        {
+          "rule": "rule_no_break_peak",
+          "status": "not_tested",
+          "evidence": "The input has no break schedule."
+        },
+        {
+          "rule": "rule_friday_prayer",
+          "status": "pass",
+          "evidence": "Shifts start at 10:30, 13:00, 14:30, 15:30, and 16:00. The crew briefing is at 13:00."
+        }
+      ]
+    }
+  },
+  "known_problem_checks": {
+    "description": "Problems from past events at Gelora Bung Karno that the promoter's ground team must not repeat. Each check names the metrics that detect the problem and gives the result for this plan.",
+    "sources": [
+      "gbk_problems"
+    ],
+    "checks": [
+      {
+        "id": "kp_outside_after_start",
+        "past_event": "Indonesia vs Australia, September 2024",
+        "problem": "Ticket holders remained outside after kickoff. Crowd pressure collapsed queue barriers.",
+        "metrics": [
+          "entry_outcomes.on_site_but_outside",
+          "max_queue_length.zones"
+        ],
+        "result": "94 ticket holders are on site but outside at the main act. 49 of them hold VIP Seated or Guest tickets and wait at the priority redemption lane. The floor queue pen reaches 92% of its holding capacity at 17:29, and 98% in the worst replication.",
+        "linked_checks": [
+          "chk_inside_before_main_act",
+          "chk_density_queue_zones"
+        ],
+        "risk": "high",
+        "sources": [
+          "gbk_problems",
+          "casey_review"
+        ]
+      },
+      {
+        "id": "kp_crowded_entrance",
+        "past_event": "Indonesia vs China, June 2025",
+        "problem": "Severe crowding at one stadium entrance. Several supporters needed oxygen.",
+        "metrics": [
+          "time_to_clear.gate_balance",
+          "wait_time.pre_open_holding",
+          "peak_density.open_air_exposure"
+        ],
+        "result": "At doors open, each female floor lane faces 151 people, against a mean of 78 per gate lane. About 1,000 people stand in the floor queue pen before doors open, 506 of them for more than one hour, without cover.",
+        "linked_checks": [
+          "chk_gate_wait",
+          "chk_density_queue_zones"
+        ],
+        "risk": "high",
+        "sources": [
+          "gbk_problems",
+          "kompas_2025_pintu5",
+          "sgsa_heat"
+        ]
+      },
+      {
+        "id": "kp_new_check_step",
+        "past_event": "Indonesia vs Japan, November 2024",
+        "problem": "A new face-scan step created extra queues. A reported server error delayed the opening.",
+        "metrics": [
+          "bottleneck_report.episodes",
+          "arrival_and_access.scanner_outage_exposure"
+        ],
+        "result": "The bag check and the body search set the pace of the gate lanes. The wristband scan uses about a quarter of the door crew's time. A scanner outage at gate_floor between 17:30 and 17:45 holds back about 27 visitors per minute.",
+        "linked_checks": [],
+        "risk": "medium",
+        "sources": [
+          "gbk_problems",
+          "cnn_2024_garuda_id"
+        ]
+      },
+      {
+        "id": "kp_traffic_parking",
+        "past_event": "Dewa 19 All Stars, August 2023",
+        "problem": "Severe traffic on the way to GBK. One report described about one hour to find parking.",
+        "metrics": [
+          "arrival_and_access.drop_off",
+          "arrival_and_access.private_car_groups"
+        ],
+        "result": "Ride-hailing drop-offs peak at 46 cars per 15 minutes from 17:45, on a 60 m drop-off lane. About 468 private cars need parking. The concert at Indonesia Arena (doors 17:00, 10,000 people) uses the same roads.",
+        "linked_checks": [],
+        "risk": "medium",
+        "not_covered": "Road traffic and parking capacity are outside the model.",
+        "sources": [
+          "gbk_problems"
+        ]
+      },
+      {
+        "id": "kp_wristband_exchange",
+        "past_event": "BLACKPINK Born Pink, March 2023",
+        "problem": "Ticket-exchange queues and congestion around the exchange area. Complaints about missing assigned seats.",
+        "metrics": [
+          "wait_time.by_point",
+          "bottleneck_report.episodes"
+        ],
+        "result": "The general redemption lanes have almost no queue. The single priority lane is a bottleneck from 18:15 to 20:00, with up to 53 people waiting (bn_03). 46% of wristbands are fitted before doors open.",
+        "linked_checks": [
+          "chk_redemption_wait"
+        ],
+        "risk": "medium",
+        "not_covered": "Seat assignment errors are outside the model.",
+        "sources": [
+          "gbk_problems",
+          "idx_2023_blackpink"
+        ]
+      }
+    ]
+  },
+  "time_to_clear": {
+    "basis": "simulated",
+    "doors_open": "17:30",
+    "all_gates": {
+      "backlog_persons": 1241,
+      "backlog_cleared_at": {
+        "mean": "18:16",
+        "p05": "18:12",
+        "p95": "18:21"
+      },
+      "time_to_clear_minutes": {
+        "mean": 46.2,
+        "p05": 42.1,
+        "p95": 51.1
+      },
+      "slowest_lane_group": "gate_floor/female"
+    },
+    "audience_95_percent_inside_at": {
+      "mean": "19:49",
+      "p05": "19:44",
+      "p95": "19:53"
+    },
+    "gates": [
+      {
+        "lane_group": "gate_floor/female",
+        "opens": "17:30",
+        "lanes": 4,
+        "backlog_persons": {
+          "mean": 604,
+          "p05": 564,
+          "p95": 635
+        },
+        "backlog_per_lane_persons": 151,
+        "backlog_cleared_at": "18:16",
+        "time_to_clear_minutes": {
+          "mean": 46.2,
+          "p05": 42.1,
+          "p95": 51.1
+        },
+        "wait_under_5_minutes_from": "18:33"
+      },
+      {
+        "lane_group": "gate_floor/male",
+        "opens": "17:30",
+        "lanes": 4,
+        "backlog_persons": {
+          "mean": 395,
+          "p05": 370,
+          "p95": 425
+        },
+        "backlog_per_lane_persons": 99,
+        "backlog_cleared_at": "18:00",
+        "time_to_clear_minutes": {
+          "mean": 30.7,
+          "p05": 28.0,
+          "p95": 34.0
+        },
+        "wait_under_5_minutes_from": "18:06"
+      },
+      {
+        "lane_group": "gate_tribune/female",
+        "opens": "17:30",
+        "lanes": 3,
+        "backlog_persons": {
+          "mean": 135,
+          "p05": 117,
+          "p95": 154
+        },
+        "backlog_per_lane_persons": 45,
+        "backlog_cleared_at": "17:44",
+        "time_to_clear_minutes": {
+          "mean": 14.3,
+          "p05": 11.6,
+          "p95": 16.7
+        },
+        "wait_under_5_minutes_from": "18:01"
+      },
+      {
+        "lane_group": "gate_tribune/male",
+        "opens": "17:30",
+        "lanes": 3,
+        "backlog_persons": {
+          "mean": 88,
+          "p05": 72,
+          "p95": 103
+        },
+        "backlog_per_lane_persons": 29,
+        "backlog_cleared_at": "17:38",
+        "time_to_clear_minutes": {
+          "mean": 8.9,
+          "p05": 6.0,
+          "p95": 11.7
+        },
+        "wait_under_5_minutes_from": "17:36"
+      },
+      {
+        "lane_group": "gate_priority/female",
+        "opens": "17:15",
+        "lanes": 1,
+        "backlog_persons": {
+          "mean": 13,
+          "p05": 8,
+          "p95": 18
+        },
+        "backlog_per_lane_persons": 13,
+        "backlog_cleared_at": "17:19",
+        "time_to_clear_minutes": {
+          "mean": 4.2,
+          "p05": 2.1,
+          "p95": 6.2
+        },
+        "wait_under_5_minutes_from": "17:15"
+      },
+      {
+        "lane_group": "gate_priority/male",
+        "opens": "17:15",
+        "lanes": 1,
+        "backlog_persons": {
+          "mean": 7,
+          "p05": 4,
+          "p95": 11
+        },
+        "backlog_per_lane_persons": 7,
+        "backlog_cleared_at": "17:16",
+        "time_to_clear_minutes": {
+          "mean": 1.7,
+          "p05": 0.1,
+          "p95": 4.2
+        },
+        "wait_under_5_minutes_from": "17:22"
+      }
+    ],
+    "other_points": [
+      {
+        "lane_group": "redemption_tent/general",
+        "queue_peak_at": "17:36",
+        "wait_under_5_minutes_from": "17:36"
+      },
+      {
+        "lane_group": "redemption_tent/priority",
+        "queue_peak_at": "19:09",
+        "wait_under_5_minutes_from": "20:03"
+      },
+      {
+        "lane_group": "help_desk/desk",
+        "queue_peak_at": "17:46",
+        "wait_under_5_minutes_from": "19:24"
+      },
+      {
+        "lane_group": "locker_point/counter",
+        "queue_peak_at": "18:14",
+        "wait_under_5_minutes_from": "18:35"
+      }
+    ],
+    "gate_balance": {
+      "measure": "Backlog per lane at opening, highest ÷ mean over all gate lanes. 1.0 means an even load.",
+      "backlog_per_lane_mean_persons": 77.6,
+      "imbalance_index": 1.95,
+      "entries_share_percent": {
+        "gate_floor": 50.3,
+        "gate_tribune": 37.8,
+        "gate_priority": 11.9
+      },
+      "lanes_share_percent": {
+        "gate_floor": 50.0,
+        "gate_tribune": 37.5,
+        "gate_priority": 12.5
+      },
+      "note": "Over the whole evening, each gate's share of lanes matches its share of entries. The imbalance comes from the floor backlog at doors open and from the 60% female share in the female lanes.",
+      "sources": [
+        "sgsa_ingress",
+        "uclf22_review"
+      ]
+    }
+  },
+  "max_queue_length": {
+    "basis": "simulated",
+    "zones": [
+      {
+        "zone": "zone_floor_queue",
+        "lane_groups": [
+          "gate_floor/female",
+          "gate_floor/male"
+        ],
+        "max_persons": {
+          "mean": 999,
+          "p05": 950,
+          "p95": 1032
+        },
+        "at": "17:29",
+        "holding_capacity_persons": 1080,
+        "fill_at_max_percent": 92,
+        "highest_replication_fill_percent": 98,
+        "overflow_minutes": 0
+      },
+      {
+        "zone": "zone_tribune_queue",
+        "lane_groups": [
+          "gate_tribune/female",
+          "gate_tribune/male"
+        ],
+        "max_persons": {
+          "mean": 223,
+          "p05": 198,
+          "p95": 253
+        },
+        "at": "17:29",
+        "holding_capacity_persons": 600,
+        "fill_at_max_percent": 37,
+        "highest_replication_fill_percent": 43,
+        "overflow_minutes": 0
+      },
+      {
+        "zone": "zone_priority_queue",
+        "lane_groups": [
+          "gate_priority/female",
+          "gate_priority/male",
+          "gate_priority/escort"
+        ],
+        "max_persons": {
+          "mean": 25,
+          "p05": 18,
+          "p95": 33
+        },
+        "at": "17:14",
+        "holding_capacity_persons": 128,
+        "fill_at_max_percent": 19,
+        "highest_replication_fill_percent": 28,
+        "overflow_minutes": 0
+      },
+      {
+        "zone": "zone_redemption_queue",
+        "lane_groups": [
+          "redemption_tent/general",
+          "redemption_tent/priority"
+        ],
+        "max_persons": {
+          "mean": 54,
+          "p05": 34,
+          "p95": 84
+        },
+        "at": "19:11",
+        "holding_capacity_persons": 800,
+        "fill_at_max_percent": 7,
+        "highest_replication_fill_percent": 11,
+        "overflow_minutes": 0
+      },
+      {
+        "zone": "zone_redemption_tent",
+        "lane_groups": [
+          "help_desk/desk"
+        ],
+        "max_persons": {
+          "mean": 9,
+          "p05": 4,
+          "p95": 16
+        },
+        "at": "17:46"
+      },
+      {
+        "zone": "zone_forecourt",
+        "contents": "Visitors who wait for their gate window, plus the locker_point/counter queue",
+        "max_persons": {
+          "mean": 392,
+          "p05": 358,
+          "p95": 427
+        },
+        "at": "17:06"
+      }
+    ],
+    "lane_groups": [
+      {
+        "lane_group": "gate_floor/female",
+        "max_persons": 604,
+        "at": "17:29"
+      },
+      {
+        "lane_group": "gate_floor/male",
+        "max_persons": 395,
+        "at": "17:29"
+      },
+      {
+        "lane_group": "gate_tribune/female",
+        "max_persons": 136,
+        "at": "17:30"
+      },
+      {
+        "lane_group": "gate_tribune/male",
+        "max_persons": 88,
+        "at": "17:29"
+      },
+      {
+        "lane_group": "gate_priority/female",
+        "max_persons": 13,
+        "at": "17:13"
+      },
+      {
+        "lane_group": "gate_priority/male",
+        "max_persons": 7,
+        "at": "17:20"
+      },
+      {
+        "lane_group": "gate_priority/escort",
+        "max_persons": 5,
+        "at": "16:57"
+      },
+      {
+        "lane_group": "redemption_tent/general",
+        "max_persons": 12,
+        "at": "17:36"
+      },
+      {
+        "lane_group": "redemption_tent/priority",
+        "max_persons": 53,
+        "at": "19:09"
+      },
+      {
+        "lane_group": "help_desk/desk",
+        "max_persons": 9,
+        "at": "17:46"
+      },
+      {
+        "lane_group": "locker_point/counter",
+        "max_persons": 23,
+        "at": "18:14"
+      }
+    ]
+  },
+  "wait_time": {
+    "basis": "simulated",
+    "by_point": [
+      {
+        "point": "redemption_tent",
+        "visitors": 3427,
+        "p50_minutes": 0.0,
+        "p90_minutes": {
+          "mean": 0.9,
+          "p05": 0.3,
+          "p95": 2.0
+        },
+        "max_minutes": 38.6,
+        "over_20_minutes_persons": 60.6,
+        "over_45_minutes_persons": 0.8
+      },
+      {
+        "point": "help_desk",
+        "visitors": 93.5,
+        "p50_minutes": 3.0,
+        "p90_minutes": {
+          "mean": 14.8,
+          "p05": 5.8,
+          "p95": 30.4
+        },
+        "max_minutes": 21.8,
+        "over_20_minutes_persons": 5.8,
+        "over_45_minutes_persons": 0
+      },
+      {
+        "point": "locker_point",
+        "visitors": 360,
+        "p50_minutes": 0.2,
+        "p90_minutes": {
+          "mean": 8.2,
+          "p05": 2.0,
+          "p95": 17.2
+        },
+        "max_minutes": 16.6,
+        "over_20_minutes_persons": 1.7,
+        "over_45_minutes_persons": 0
+      },
+      {
+        "point": "gate_floor",
+        "visitors": 1721,
+        "p50_minutes": 16.8,
+        "p90_minutes": {
+          "mean": 40.8,
+          "p05": 36.0,
+          "p95": 45.0
+        },
+        "max_minutes": 56.4,
+        "over_20_minutes_persons": 754.0,
+        "over_45_minutes_persons": 64.3
+      },
+      {
+        "point": "gate_tribune",
+        "visitors": 1304,
+        "p50_minutes": 0.0,
+        "p90_minutes": {
+          "mean": 9.3,
+          "p05": 6.7,
+          "p95": 11.4
+        },
+        "max_minutes": 19.4,
+        "over_20_minutes_persons": 1.2,
+        "over_45_minutes_persons": 0
+      },
+      {
+        "point": "gate_priority",
+        "visitors": 429,
+        "p50_minutes": 0.0,
+        "p90_minutes": {
+          "mean": 1.2,
+          "p05": 0.9,
+          "p95": 1.5
+        },
+        "max_minutes": 6.3,
+        "over_20_minutes_persons": 0,
+        "over_45_minutes_persons": 0
+      }
+    ],
+    "all_gates": {
+      "visitors": 3391,
+      "p50_minutes": 3.5,
+      "p90_minutes": {
+        "mean": 32.7,
+        "p05": 30.1,
+        "p95": 36.2
+      },
+      "max_minutes": 56.6,
+      "over_20_minutes_persons": 755.5,
+      "over_45_minutes_persons": 67.0,
+      "note": "A visitor who queues at two gates, for example after going to the wrong gate, adds both waits."
+    },
+    "by_category": [
+      {
+        "category": "vip_seated",
+        "redemption_p90_minutes": 20.7,
+        "gate_p90_minutes": 1.1,
+        "all_queues_p90_minutes": 21.3
+      },
+      {
+        "category": "guest",
+        "redemption_p90_minutes": 20.1,
+        "gate_p90_minutes": 1.2,
+        "all_queues_p90_minutes": 20.7
+      },
+      {
+        "category": "festival_a",
+        "redemption_p90_minutes": 0.0,
+        "gate_p90_minutes": 35.7,
+        "all_queues_p90_minutes": 36.0
+      },
+      {
+        "category": "festival_b",
+        "redemption_p90_minutes": 0.0,
+        "gate_p90_minutes": 42.7,
+        "all_queues_p90_minutes": 42.8
+      },
+      {
+        "category": "cat1",
+        "redemption_p90_minutes": 0.0,
+        "gate_p90_minutes": 8.1,
+        "all_queues_p90_minutes": 9.3
+      },
+      {
+        "category": "cat2",
+        "redemption_p90_minutes": 0.0,
+        "gate_p90_minutes": 9.7,
+        "all_queues_p90_minutes": 10.5
+      },
+      {
+        "category": "cat3",
+        "redemption_p90_minutes": 0.0,
+        "gate_p90_minutes": 10.1,
+        "all_queues_p90_minutes": 11.0
+      }
+    ],
+    "pre_open_holding": {
+      "zone": "zone_floor_queue",
+      "persons": 999,
+      "over_60_minutes_persons": 506,
+      "max_minutes": 120,
+      "person_hours": 1068,
+      "note": "Festival A fans queue from 15:30, when the outer area opens. The pen has no cover."
+    }
+  },
+  "staff_utilization": {
+    "basis": "simulated",
+    "ceiling_percent": 85,
+    "ceiling_reason": "Above about 85% busy, small arrival surges cause long waits.",
+    "sources": [
+      "bagust_1999",
+      "kingman_1961"
+    ],
+    "roles": [
+      {
+        "role": "ticketing_crew",
+        "people": 24,
+        "people_on_lanes": 22,
+        "paid_hours": 192.0,
+        "serving_hours": 37.9,
+        "serving_share_of_paid_hours_percent": 19.8,
+        "peak_hour": {
+          "from": "17:30",
+          "to": "18:30",
+          "serving_percent": 45.2
+        },
+        "peak_hour_above_ceiling": false,
+        "note": "The 2 floaters count in paid hours only."
+      },
+      {
+        "role": "door_crew",
+        "people": 16,
+        "people_on_lanes": 16,
+        "paid_hours": 88.0,
+        "serving_hours": 5.3,
+        "serving_share_of_paid_hours_percent": 6.0,
+        "peak_hour": {
+          "from": "17:30",
+          "to": "18:30",
+          "serving_percent": 20.9
+        },
+        "peak_hour_above_ceiling": false
+      },
+      {
+        "role": "security_officer",
+        "people": 32,
+        "people_on_lanes": 32,
+        "paid_hours": 272.0,
+        "serving_hours": 24.8,
+        "serving_share_of_paid_hours_percent": 9.1,
+        "peak_hour": {
+          "from": "17:30",
+          "to": "18:30",
+          "serving_percent": 50.9
+        },
+        "peak_hour_above_ceiling": false,
+        "note": "Their shift continues after the gates close. The model counts gate work only."
+      },
+      {
+        "role": "help_desk_agent",
+        "people": 4,
+        "people_on_lanes": 4,
+        "paid_hours": 32.0,
+        "serving_hours": 14.4,
+        "serving_share_of_paid_hours_percent": 45.0,
+        "peak_hour": {
+          "from": "17:30",
+          "to": "18:30",
+          "serving_percent": 90.9
+        },
+        "peak_hour_above_ceiling": true
+      },
+      {
+        "role": "locker_attendant",
+        "people": 6,
+        "people_on_lanes": 6,
+        "paid_hours": 63.0,
+        "serving_hours": 15.4,
+        "serving_share_of_paid_hours_percent": 24.4,
+        "peak_hour": {
+          "from": "17:45",
+          "to": "18:45",
+          "serving_percent": 95.7
+        },
+        "peak_hour_above_ceiling": true
+      },
+      {
+        "role": "accessibility_escort",
+        "people": 2,
+        "people_on_lanes": 2,
+        "paid_hours": 11.0,
+        "serving_hours": 0.7,
+        "serving_share_of_paid_hours_percent": 6.5,
+        "peak_hour": {
+          "from": "17:15",
+          "to": "18:15",
+          "serving_percent": 20.7
+        },
+        "peak_hour_above_ceiling": false
+      }
+    ],
+    "not_modeled_roles": [
+      "security_supervisor",
+      "ticketing_supervisor",
+      "crowd_marshal",
+      "runner",
+      "usher",
+      "medical_team"
+    ],
+    "not_modeled_reason": "Their duties are not visitor service steps. Their cost is in staffing_cost.",
+    "lane_groups": {
+      "slot_minutes": 15,
+      "series": [
+        {
+          "lane_group": "redemption_tent/general",
+          "lanes": 10,
+          "from": "13:30",
+          "lane_busy_percent": [
+            0,
+            0,
+            0,
+            0,
+            16,
+            18,
+            21,
+            22,
+            34,
+            38,
+            46,
+            44,
+            51,
+            54,
+            57,
+            58,
+            61,
+            59,
+            57,
+            61,
+            49,
+            48,
+            41,
+            30,
+            26,
+            10,
+            9,
+            8,
+            0,
+            0
+          ]
+        },
+        {
+          "lane_group": "redemption_tent/priority",
+          "lanes": 1,
+          "from": "13:30",
+          "lane_busy_percent": [
+            0,
+            0,
+            0,
+            0,
+            2,
+            1,
+            2,
+            1,
+            2,
+            2,
+            3,
+            3,
+            47,
+            48,
+            48,
+            50,
+            83,
+            92,
+            98,
+            98,
+            100,
+            100,
+            100,
+            100,
+            99,
+            91,
+            60,
+            27,
+            1,
+            0
+          ]
+        },
+        {
+          "lane_group": "help_desk/desk",
+          "lanes": 2,
+          "from": "13:30",
+          "lane_busy_percent": [
+            0,
+            0,
+            0,
+            0,
+            15,
+            25,
+            26,
+            29,
+            42,
+            48,
+            63,
+            57,
+            59,
+            61,
+            76,
+            83,
+            91,
+            87,
+            91,
+            94,
+            84,
+            87,
+            84,
+            72,
+            65,
+            52,
+            28,
+            17,
+            5,
+            0
+          ]
+        },
+        {
+          "lane_group": "locker_point/counter",
+          "lanes": 3,
+          "from": "13:30",
+          "lane_busy_percent": [
+            0,
+            0,
+            0,
+            0,
+            11,
+            18,
+            16,
+            17,
+            27,
+            32,
+            34,
+            38,
+            43,
+            51,
+            62,
+            65,
+            90,
+            98,
+            98,
+            96,
+            91,
+            75,
+            28,
+            12,
+            10,
+            5,
+            4,
+            2,
+            1,
+            0
+          ]
+        },
+        {
+          "lane_group": "gate_floor/female",
+          "lanes": 4,
+          "from": "17:30",
+          "lane_busy_percent": [
+            100,
+            100,
+            100,
+            100,
+            74,
+            18,
+            12,
+            10,
+            7,
+            4,
+            2,
+            2,
+            1,
+            0
+          ]
+        },
+        {
+          "lane_group": "gate_floor/male",
+          "lanes": 4,
+          "from": "17:30",
+          "lane_busy_percent": [
+            100,
+            100,
+            82,
+            18,
+            11,
+            12,
+            7,
+            6,
+            5,
+            2,
+            2,
+            1,
+            0,
+            0
+          ]
+        },
+        {
+          "lane_group": "gate_tribune/female",
+          "lanes": 3,
+          "from": "17:30",
+          "lane_busy_percent": [
+            100,
+            99,
+            89,
+            46,
+            37,
+            31,
+            30,
+            25,
+            20,
+            12,
+            6,
+            6,
+            2,
+            0
+          ]
+        },
+        {
+          "lane_group": "gate_tribune/male",
+          "lanes": 3,
+          "from": "17:30",
+          "lane_busy_percent": [
+            93,
+            49,
+            34,
+            28,
+            23,
+            21,
+            20,
+            13,
+            12,
+            8,
+            5,
+            2,
+            1,
+            0
+          ]
+        },
+        {
+          "lane_group": "gate_priority/female",
+          "lanes": 1,
+          "from": "17:15",
+          "lane_busy_percent": [
+            60,
+            34,
+            52,
+            39,
+            34,
+            39,
+            32,
+            31,
+            36,
+            33,
+            34,
+            25,
+            12,
+            4,
+            0
+          ]
+        },
+        {
+          "lane_group": "gate_priority/male",
+          "lanes": 1,
+          "from": "17:15",
+          "lane_busy_percent": [
+            32,
+            23,
+            35,
+            25,
+            24,
+            20,
+            22,
+            14,
+            20,
+            21,
+            17,
+            16,
+            8,
+            3,
+            0
+          ]
+        },
+        {
+          "lane_group": "gate_priority/escort",
+          "lanes": 2,
+          "from": "17:15",
+          "lane_busy_percent": [
+            53,
+            14,
+            9,
+            7,
+            7,
+            12,
+            10,
+            5,
+            5,
+            8,
+            7,
+            3,
+            1,
+            0,
+            0
+          ]
+        }
+      ]
+    }
+  },
+  "staffing_cost": {
+    "basis": "computed",
+    "cap_idr": 65000000,
+    "total_idr": 58705000,
+    "headroom_idr": 6295000,
+    "share_of_cap_percent": 90.3,
+    "components_idr": {
+      "shift_rates": 44400000,
+      "overtime": 0,
+      "meal_allowance": 5805000,
+      "medical_package": 8500000
+    },
+    "overtime": {
+      "basis": "simulated",
+      "hours": 0,
+      "note": "In every replication, the last service ends before the shift of its staff ends."
+    },
+    "per_admitted_visitor_idr": 17316,
+    "gross_ticket_sales_idr": 3064500000,
+    "share_of_gross_ticket_sales_percent": 1.92,
+    "roles": [
+      {
+        "role": "ticketing_crew",
+        "people": 24,
+        "rate_idr_per_shift": 350000,
+        "shift_idr": 8400000,
+        "meal_idr": 1080000,
+        "total_idr": 9480000
+      },
+      {
+        "role": "door_crew",
+        "people": 16,
+        "rate_idr_per_shift": 300000,
+        "shift_idr": 4800000,
+        "meal_idr": 720000,
+        "total_idr": 5520000
+      },
+      {
+        "role": "security_officer",
+        "people": 32,
+        "rate_idr_per_shift": 400000,
+        "shift_idr": 12800000,
+        "meal_idr": 1440000,
+        "total_idr": 14240000
+      },
+      {
+        "role": "security_supervisor",
+        "people": 3,
+        "rate_idr_per_shift": 650000,
+        "shift_idr": 1950000,
+        "meal_idr": 135000,
+        "total_idr": 2085000
+      },
+      {
+        "role": "ticketing_supervisor",
+        "people": 2,
+        "rate_idr_per_shift": 650000,
+        "shift_idr": 1300000,
+        "meal_idr": 90000,
+        "total_idr": 1390000
+      },
+      {
+        "role": "help_desk_agent",
+        "people": 4,
+        "rate_idr_per_shift": 375000,
+        "shift_idr": 1500000,
+        "meal_idr": 180000,
+        "total_idr": 1680000
+      },
+      {
+        "role": "locker_attendant",
+        "people": 6,
+        "rate_idr_per_shift": 275000,
+        "shift_idr": 1650000,
+        "meal_idr": 270000,
+        "total_idr": 1920000
+      },
+      {
+        "role": "accessibility_escort",
+        "people": 2,
+        "rate_idr_per_shift": 300000,
+        "shift_idr": 600000,
+        "meal_idr": 90000,
+        "total_idr": 690000
+      },
+      {
+        "role": "crowd_marshal",
+        "people": 20,
+        "rate_idr_per_shift": 300000,
+        "shift_idr": 6000000,
+        "meal_idr": 900000,
+        "total_idr": 6900000
+      },
+      {
+        "role": "runner",
+        "people": 4,
+        "rate_idr_per_shift": 250000,
+        "shift_idr": 1000000,
+        "meal_idr": 180000,
+        "total_idr": 1180000
+      },
+      {
+        "role": "usher",
+        "people": 16,
+        "rate_idr_per_shift": 275000,
+        "shift_idr": 4400000,
+        "meal_idr": 720000,
+        "total_idr": 5120000
+      },
+      {
+        "role": "medical_team",
+        "people": 6,
+        "package_idr": 8500000,
+        "total_idr": 8500000
+      }
+    ],
+    "providers": [
+      {
+        "provider": "Promoter's freelance ticketing pool",
+        "people": 66,
+        "total_idr": 23670000
+      },
+      {
+        "provider": "Licensed security company (BUJP)",
+        "people": 55,
+        "total_idr": 23225000
+      },
+      {
+        "provider": "Medical vendor (ambulance, doctor, and nurses)",
+        "people": 6,
+        "total_idr": 8500000
+      },
+      {
+        "provider": "Locker vendor",
+        "people": 6,
+        "total_idr": 1920000
+      },
+      {
+        "provider": "Promoter staff",
+        "people": 2,
+        "total_idr": 1390000
+      }
+    ],
+    "same_day": {
+      "extra_staff_persons": 0,
+      "contingency_used_idr": 0,
+      "contingency_available_idr": 7500000
+    }
+  },
+  "peak_density": {
+    "basis": "simulated",
+    "level_of_service_scale": "Fruin queuing Level of Service from TCQSM Exhibit 7-8, in persons per m2: A up to 0.83, B up to 1.11, C up to 1.43, D up to 3.33, E up to 5.0, and F above 5.0.",
+    "sources": [
+      "tcqsm_part7",
+      "still_density"
+    ],
+    "zones": [
+      {
+        "zone": "zone_floor_queue",
+        "peak_persons_per_m2": {
+          "mean": 1.85,
+          "p05": 1.76,
+          "p95": 1.91
+        },
+        "at": "17:29",
+        "limit_persons_per_m2": 2.0,
+        "share_of_limit_percent": 92,
+        "minutes_above_limit": 0,
+        "level_of_service": "D"
+      },
+      {
+        "zone": "zone_festival_a",
+        "peak_persons_per_m2": {
+          "mean": 2.31,
+          "p05": 2.29,
+          "p95": 2.33
+        },
+        "at": "19:39",
+        "limit_persons_per_m2": 2.5,
+        "share_of_limit_percent": 92,
+        "minutes_above_limit": 0,
+        "level_of_service": "D"
+      },
+      {
+        "zone": "zone_festival_b",
+        "peak_persons_per_m2": {
+          "mean": 1.76,
+          "p05": 1.74,
+          "p95": 1.78
+        },
+        "at": "20:41",
+        "limit_persons_per_m2": 2.5,
+        "share_of_limit_percent": 70,
+        "minutes_above_limit": 0,
+        "level_of_service": "D"
+      },
+      {
+        "zone": "zone_tribune_queue",
+        "peak_persons_per_m2": {
+          "mean": 0.74,
+          "p05": 0.66,
+          "p95": 0.84
+        },
+        "at": "17:29",
+        "limit_persons_per_m2": 2.0,
+        "share_of_limit_percent": 37,
+        "minutes_above_limit": 0,
+        "level_of_service": "A"
+      },
+      {
+        "zone": "zone_priority_queue",
+        "peak_persons_per_m2": {
+          "mean": 0.39,
+          "p05": 0.28,
+          "p95": 0.52
+        },
+        "at": "17:14",
+        "limit_persons_per_m2": 2.0,
+        "share_of_limit_percent": 19,
+        "minutes_above_limit": 0,
+        "level_of_service": "A"
+      },
+      {
+        "zone": "zone_redemption_queue",
+        "peak_persons_per_m2": {
+          "mean": 0.13,
+          "p05": 0.08,
+          "p95": 0.21
+        },
+        "at": "19:11",
+        "limit_persons_per_m2": 2.0,
+        "share_of_limit_percent": 7,
+        "minutes_above_limit": 0,
+        "level_of_service": "A"
+      },
+      {
+        "zone": "zone_inner_concourse",
+        "peak_persons_per_m2": {
+          "mean": 0.19,
+          "p05": 0.17,
+          "p95": 0.21
+        },
+        "at": "17:48",
+        "limit_persons_per_m2": 1.5,
+        "share_of_limit_percent": 13,
+        "minutes_above_limit": 0,
+        "level_of_service": "A"
+      },
+      {
+        "zone": "zone_forecourt",
+        "peak_persons_per_m2": {
+          "mean": 0.15,
+          "p05": 0.14,
+          "p95": 0.16
+        },
+        "at": "17:06",
+        "limit_persons_per_m2": null,
+        "level_of_service": "A"
+      }
+    ],
+    "open_air_exposure": {
+      "peak_persons": {
+        "mean": 1387,
+        "p05": 1341,
+        "p95": 1445
+      },
+      "at": "17:29",
+      "with_rain_plan_persons": 1021,
+      "rain_plan_ref": "constraints.safety.rain_plan",
+      "note": "The rain plan covers 200 of the 540 m2 of zone_floor_queue.",
+      "sources": [
+        "sgsa_heat"
+      ]
+    }
+  },
+  "bottleneck_report": {
+    "basis": "simulated",
+    "rule_ref": "meta.definitions.bottleneck_episode",
+    "ranked_by": "queue_minutes",
+    "throughput_benchmarks": "An entry point without searches passes at most 660 persons per hour (Green Guide). Airport security lanes pass 150 to 230 passengers per hour.",
+    "sources": [
+      "sgsa_ingress",
+      "tsa_lane_rate"
+    ],
+    "episodes": [
+      {
+        "id": "bn_01",
+        "lane_group": "gate_floor/female",
+        "start": "17:30",
+        "end": "18:30",
+        "lane_busy_percent": 100,
+        "positions": [
+          {
+            "steps": [
+              "bag_check"
+            ],
+            "role": "security_officer",
+            "serving_percent": 70.5
+          },
+          {
+            "steps": [
+              "body_search"
+            ],
+            "role": "security_officer",
+            "serving_percent": 63.7
+          },
+          {
+            "steps": [
+              "wristband_check"
+            ],
+            "role": "door_crew",
+            "serving_percent": 26.2
+          }
+        ],
+        "binding_step": "bag_check",
+        "visitors_served": 779,
+        "throughput_per_lane_per_hour": 195,
+        "queue_minutes": 20560,
+        "mean_wait_minutes": 26.4,
+        "max_queue_persons": 604,
+        "effect": "Main cause of the missed gate wait and longest wait. 48 visitors in this line wait more than 45 minutes. The officers serve 64% to 71% of the time. Visitors waiting for the next position take the rest.",
+        "moves_to": {
+          "probe_run_id": "run_20261105_1453_probe_floor_female_lanes",
+          "result": "The female line clears at 18:01, one minute after the male line, so gate_floor/male becomes the slowest lane group. The P90 gate wait falls to 24.8 minutes, still above 20. The longest wait falls to 42.3 minutes. The staff cost rises by Rp2,470,000 to Rp61,175,000."
+        }
+      },
+      {
+        "id": "bn_02",
+        "lane_group": "gate_floor/male",
+        "start": "17:30",
+        "end": "18:00",
+        "lane_busy_percent": 100,
+        "positions": [
+          {
+            "steps": [
+              "bag_check"
+            ],
+            "role": "security_officer",
+            "serving_percent": 71.2
+          },
+          {
+            "steps": [
+              "body_search"
+            ],
+            "role": "security_officer",
+            "serving_percent": 62.0
+          },
+          {
+            "steps": [
+              "wristband_check"
+            ],
+            "role": "door_crew",
+            "serving_percent": 25.5
+          }
+        ],
+        "binding_step": "bag_check",
+        "visitors_served": 384,
+        "throughput_per_lane_per_hour": 192,
+        "queue_minutes": 5514,
+        "mean_wait_minutes": 14.3,
+        "max_queue_persons": 395,
+        "effect": "Adds to the missed gate wait. P90 wait 27.4 minutes.",
+        "moves_to": null
+      },
+      {
+        "id": "bn_03",
+        "lane_group": "redemption_tent/priority",
+        "start": "18:15",
+        "end": "20:00",
+        "lane_busy_percent": 98.1,
+        "positions": [
+          {
+            "steps": [
+              "eticket_scan",
+              "ktp_name_match"
+            ],
+            "role": "ticketing_crew",
+            "serving_percent": 94.8
+          },
+          {
+            "steps": [
+              "wristband_fit"
+            ],
+            "role": "ticketing_crew",
+            "serving_percent": 43.6
+          }
+        ],
+        "binding_step": "ktp_name_match",
+        "visitors_served": 222,
+        "throughput_per_lane_per_hour": 127,
+        "queue_minutes": 3163,
+        "mean_wait_minutes": 14.2,
+        "max_queue_persons": 53,
+        "effect": "VIP Seated and Guest holders wait longest at redemption. 49 of them are on site but outside at the main act. ktp_name_match takes 55.5% of the lane time.",
+        "moves_to": {
+          "probe_run_id": "run_20261105_1454_probe_priority_redemption_lane",
+          "result": "The priority P90 wait falls to 1.1 minutes. No new bottleneck appears on the VIP path. The share inside at the main act rises to 94.1%, so the gate_floor backlog and late arrivals now limit it. Staff cost does not change."
+        }
+      },
+      {
+        "id": "bn_04",
+        "lane_group": "gate_tribune/female",
+        "start": "17:30",
+        "end": "18:00",
+        "lane_busy_percent": 99.6,
+        "positions": [
+          {
+            "steps": [
+              "bag_check"
+            ],
+            "role": "security_officer",
+            "serving_percent": 68.7
+          },
+          {
+            "steps": [
+              "body_search"
+            ],
+            "role": "security_officer",
+            "serving_percent": 63.2
+          },
+          {
+            "steps": [
+              "wristband_check"
+            ],
+            "role": "door_crew",
+            "serving_percent": 28.9
+          }
+        ],
+        "binding_step": "bag_check",
+        "visitors_served": 285,
+        "throughput_per_lane_per_hour": 190,
+        "queue_minutes": 2325,
+        "mean_wait_minutes": 8.2,
+        "max_queue_persons": 136,
+        "effect": "No target is missed. P90 wait 10.7 minutes.",
+        "moves_to": null
+      },
+      {
+        "id": "bn_05",
+        "lane_group": "locker_point/counter",
+        "start": "18:00",
+        "end": "18:45",
+        "lane_busy_percent": 95.1,
+        "positions": [
+          {
+            "steps": [
+              "locker_dropoff"
+            ],
+            "role": "locker_attendant",
+            "serving_percent": 95.1
+          }
+        ],
+        "binding_step": "locker_dropoff",
+        "visitors_served": 90,
+        "throughput_per_lane_per_hour": 40,
+        "queue_minutes": 563,
+        "mean_wait_minutes": 6.2,
+        "max_queue_persons": 23,
+        "effect": "Visitors that bag_check sends to the locker add to this peak. The units run out at 19:01 (support_services.locker).",
+        "moves_to": null
+      },
+      {
+        "id": "bn_06",
+        "lane_group": "help_desk/desk",
+        "start": "17:30",
+        "end": "19:00",
+        "lane_busy_percent": 89.2,
+        "positions": [
+          {
+            "steps": [
+              "help_desk_resolution"
+            ],
+            "role": "help_desk_agent",
+            "serving_percent": 89.2
+          }
+        ],
+        "binding_step": "help_desk_resolution",
+        "visitors_served": 32.5,
+        "throughput_per_lane_per_hour": 10.8,
+        "queue_minutes": 250,
+        "mean_wait_minutes": 7.7,
+        "max_queue_persons": 9,
+        "effect": "The P90 help desk wait reaches 30.4 minutes in a bad replication.",
+        "moves_to": null
+      }
+    ]
+  },
+  "entry_outcomes": {
+    "basis": "simulated",
+    "attendance_persons": {
+      "mean": 3428,
+      "p05": 3410,
+      "p95": 3440
+    },
+    "admitted_persons": {
+      "mean": 3390,
+      "p05": 3369,
+      "p95": 3405
+    },
+    "refused_persons": 38,
+    "still_outside_at_end_persons": 0,
+    "inside_at": [
+      {
+        "moment": "opening_act",
+        "clock": "19:00",
+        "share_of_attendance_percent": 80.4,
+        "festival_a_share_percent": {
+          "mean": 95.8,
+          "p05": 94.1,
+          "p95": 97.0
+        }
+      },
+      {
+        "moment": "main_act",
+        "clock": "19:45",
+        "share_of_attendance_percent": {
+          "mean": 93.1,
+          "p05": 92.5,
+          "p95": 94.3
+        }
+      }
+    ],
+    "on_site_but_outside": {
+      "at_opening_act_persons": 122,
+      "at_main_act_persons": {
+        "mean": 93.9,
+        "p05": 63.2,
+        "p95": 121.6
+      },
+      "note": "Visitors who arrived before the moment and are not inside yet. Refused visitors are not counted.",
+      "sources": [
+        "casey_review"
+      ]
+    },
+    "arrived_after_main_act_persons": 107,
+    "refused_by_reason": [
+      {
+        "reason": "name_mismatch_no_documents",
+        "where": [
+          "redemption_tent"
+        ],
+        "persons": 14.1
+      },
+      {
+        "reason": "proxy_with_documents",
+        "where": [
+          "help_desk"
+        ],
+        "persons": 13.4
+      },
+      {
+        "reason": "no_physical_id",
+        "where": [
+          "help_desk"
+        ],
+        "persons": 7.0
+      },
+      {
+        "reason": "qr_invalid_or_used",
+        "where": [
+          "help_desk"
+        ],
+        "persons": 2.4
+      },
+      {
+        "reason": "redemption_closed",
+        "where": [
+          "redemption_tent"
+        ],
+        "persons": 0.6
+      },
+      {
+        "reason": "last_entry_passed",
+        "where": [
+          "gate_tribune",
+          "gate_priority"
+        ],
+        "persons": 0.1
+      }
+    ],
+    "by_category": [
+      {
+        "category": "vip_seated",
+        "attending_persons": 274.7,
+        "inside_at_main_act_percent": 81.2,
+        "outside_on_site_at_main_act_persons": 35.0
+      },
+      {
+        "category": "guest",
+        "attending_persons": 116.7,
+        "inside_at_main_act_percent": 80.1,
+        "outside_on_site_at_main_act_persons": 14.5
+      },
+      {
+        "category": "festival_a",
+        "attending_persons": 892.0,
+        "inside_at_main_act_percent": 98.8,
+        "outside_on_site_at_main_act_persons": 0.2
+      },
+      {
+        "category": "festival_b",
+        "attending_persons": 842.5,
+        "inside_at_main_act_percent": 93.9,
+        "outside_on_site_at_main_act_persons": 13.5
+      },
+      {
+        "category": "cat1",
+        "attending_persons": 361.8,
+        "inside_at_main_act_percent": 90.4,
+        "outside_on_site_at_main_act_persons": 11.3
+      },
+      {
+        "category": "cat2",
+        "attending_persons": 341.8,
+        "inside_at_main_act_percent": 92.7,
+        "outside_on_site_at_main_act_persons": 7.4
+      },
+      {
+        "category": "cat3",
+        "attending_persons": 598.5,
+        "inside_at_main_act_percent": 93.4,
+        "outside_on_site_at_main_act_persons": 12.3
+      }
+    ]
+  },
+  "support_services": {
+    "basis": "simulated",
+    "help_desk": {
+      "point": "help_desk",
+      "cases": {
+        "mean": 93.5,
+        "p05": 79.8,
+        "p95": 107.0
+      },
+      "refused_persons": 22.8,
+      "wait_p90_minutes": {
+        "mean": 14.8,
+        "p05": 5.8,
+        "p95": 30.4
+      },
+      "note": "Two desks serve every case. They are 89% busy from 17:30 to 19:00 (bn_06)."
+    },
+    "locker": {
+      "point": "locker_point",
+      "full_at": {
+        "mean": "19:01",
+        "p05": "18:48",
+        "p95": "19:17"
+      },
+      "demand_persons": 366,
+      "turned_away_persons": {
+        "mean": 66.2,
+        "p05": 37.9,
+        "p95": 91.4
+      },
+      "wait_p90_minutes": {
+        "mean": 8.2,
+        "p05": 2.0,
+        "p95": 17.2
+      },
+      "note": "Demand counts the planned locker users and the visitors that bag_check sends to the locker."
+    },
+    "accessible_entry": {
+      "point": "gate_priority",
+      "escorted_visitors": 16.9,
+      "escort_wait_p90_minutes": 2.7,
+      "wheelchair_places_needed": {
+        "mean": 8.6,
+        "p05": 3.0,
+        "p95": 14.1
+      },
+      "wheelchair_places_available": 10,
+      "replications_over_capacity": 6
+    }
+  },
+  "stock_check": {
+    "items": [
+      {
+        "item": "wristband",
+        "basis": "simulated",
+        "available": 3950,
+        "used": 3429,
+        "spare": 521,
+        "note": "3,390 fitted plus 38 replaced after a broken clasp."
+      },
+      {
+        "item": "locker_unit",
+        "basis": "simulated",
+        "available": 300,
+        "used": 300,
+        "spare": 0,
+        "extra_rentable": 100
+      },
+      {
+        "item": "handheld_scanner",
+        "basis": "computed",
+        "available": 32,
+        "used": 29,
+        "spare": 3
+      },
+      {
+        "item": "metal_detector_wand",
+        "basis": "computed",
+        "available": 18,
+        "used": 16,
+        "spare": 2
+      },
+      {
+        "item": "bag_check_table",
+        "basis": "computed",
+        "available": 20,
+        "used": 16,
+        "spare": 4
+      },
+      {
+        "item": "crowd_barricade_m",
+        "basis": "computed",
+        "available": 500,
+        "used": 460,
+        "spare": 40
+      }
+    ]
+  },
+  "arrival_and_access": {
+    "basis": "simulated",
+    "arrivals_per_15min": {
+      "from": "14:30",
+      "persons": [
+        56,
+        58,
+        70,
+        75,
+        116,
+        127,
+        152,
+        148,
+        186,
+        192,
+        207,
+        214,
+        230,
+        227,
+        223,
+        232,
+        198,
+        197,
+        176,
+        124,
+        113,
+        37,
+        37,
+        33
+      ],
+      "peak_at": "18:15",
+      "peak_persons": 232
+    },
+    "redeemed_before_doors_open_percent": 46.1,
+    "outer_area_opening": {
+      "opens": "15:30",
+      "waiting_outside_persons": {
+        "mean": 243,
+        "p05": 212,
+        "p95": 274
+      },
+      "note": "Festival A fans who redeemed early. They reach zone_floor_queue within 2 minutes after the outer area opens."
+    },
+    "drop_off": {
+      "zone": "zone_drop_off",
+      "peak_vehicles_per_15min": 46,
+      "peak_at": "17:45",
+      "note": "One ride-hailing car per group. The concert at Indonesia Arena (doors 17:00) uses the same roads."
+    },
+    "private_car_groups": 468,
+    "scanner_outage_exposure": {
+      "note": "Visitors who start service per minute in the busiest 15-minute slot. A scanner outage in that slot holds back this many visitors each minute.",
+      "points": [
+        {
+          "point": "gate_floor",
+          "visitors_per_minute": 26.6,
+          "slot_start": "17:30"
+        },
+        {
+          "point": "gate_tribune",
+          "visitors_per_minute": 18.5,
+          "slot_start": "17:30"
+        },
+        {
+          "point": "redemption_tent",
+          "visitors_per_minute": 15.4,
+          "slot_start": "18:15"
+        },
+        {
+          "point": "gate_priority",
+          "visitors_per_minute": 3.3,
+          "slot_start": "17:45"
+        }
+      ],
+      "sources": [
+        "uclf22_review"
+      ]
+    }
+  },
+  "sources": {
+    "gbk_problems": {
+      "title": "Opsidio research note — other GBK events with documented problems (5 November 2026)",
+      "path": "opsidio-gbk-event-problems.md"
+    },
+    "kompas_2025_pintu5": {
+      "title": "Kompas — Pintu 5 GBK dipadati suporter menjelang laga Timnas Indonesia vs China (5 June 2025)",
+      "url": "https://megapolitan.kompas.com/read/2025/06/05/16162811/pintu-5-gbk-dipadati-suporter-menjelang-laga-timnas-indonesia-vs-china"
+    },
+    "cnn_2024_garuda_id": {
+      "title": "CNN Indonesia — Antrean scan Garuda ID, penonton Indonesia vs Jepang mengular di GBK (15 November 2024)",
+      "url": "https://www.cnnindonesia.com/olahraga/20241115161345-142-1167074/antrean-scan-garuda-id-penonton-indonesia-vs-jepang-mengular-di-gbk"
+    },
+    "idx_2023_blackpink": {
+      "title": "IDX Channel — Begini suasana penukaran tiket konser Blackpink di Stadion GBK (9 March 2023)",
+      "url": "https://www.idxchannel.com/foto-1/foto/begini-suasana-penukaran-tiket-konser-blackpink-di-stadion-gbk"
+    },
+    "sgsa_ingress": {
+      "title": "Sports Grounds Safety Authority — Ingress (Green Guide entry rate)",
+      "url": "https://sgsa.org.uk/physical-factors/circulation/ingress/"
+    },
+    "sgsa_heat": {
+      "title": "Sports Grounds Safety Authority — Planning for Extreme Heat",
+      "url": "https://sgsa.org.uk/wp-content/uploads/2024/01/Planning-for-Extreme-Heat.pdf"
+    },
+    "tcqsm_part7": {
+      "title": "TCRP Report 100, Transit Capacity and Quality of Service Manual, 2nd edition, Part 7 (Exhibit 7-8)",
+      "url": "https://onlinepubs.trb.org/onlinepubs/tcrp/docs/tcrp100/Part7.pdf"
+    },
+    "still_density": {
+      "title": "G. Keith Still — Crowd density",
+      "url": "http://www.gkstill.com/Support/crowd-density/CrowdDensity-1.html"
+    },
+    "bagust_1999": {
+      "title": "Bagust, Place, and Posnett — Dynamics of bed use in accommodating emergency admissions (BMJ, 1999)",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC28163/"
+    },
+    "kingman_1961": {
+      "title": "Kingman — The single server queue in heavy traffic (1961)",
+      "url": "https://doi.org/10.1017/S0305004100036094"
+    },
+    "tsa_lane_rate": {
+      "title": "Airport security screening study that cites the TSA lane throughput goal (PubMed Central PMC9169447)",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9169447"
+    },
+    "casey_review": {
+      "title": "Independent Review of events surrounding the UEFA Euro 2020 Final at Wembley (Casey Review)",
+      "url": "https://democracy.brent.gov.uk/documents/s128049/Background%20Reading%201%20-%20Independent%20Review%20of%20events%20surrounding%20the%20UEFA%20Euro%202020%20Final%20at%20Wembley.pdf"
+    },
+    "uclf22_review": {
+      "title": "UEFA — Independent review of the 2022 UEFA Champions League final",
+      "url": "https://editorial.uefa.com/resources/027e-174e17fd7030-a45785447d2f-1000/uclf22_independent_review_report.pdf"
+    },
+    "stress_des": {
+      "title": "Monks et al. — Strengthening the reporting of empirical simulation studies (STRESS), Journal of Simulation, 2019",
+      "url": "https://www.tandfonline.com/doi/full/10.1080/17477778.2018.1442155"
+    }
+  }
+}
