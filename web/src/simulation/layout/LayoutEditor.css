@@ -15,7 +15,9 @@
 .ole-tabs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; padding: 0 12px 12px; border-bottom: 1px solid #e5ebf2; }
 .ole-tabs button { font-size: 11px; padding: 7px 4px; border-color: transparent; }
 .ole-tabs button[aria-pressed="true"] { color: #2457a8; background: #edf4ff; border-color: #cfddf5; }
-.ole-body { padding: 14px 16px; overflow: auto; scrollbar-width: thin; display: flex; flex-direction: column; gap: 12px; }
+.ole-header, .ole-status, .ole-tabs, .ole-footer { flex-shrink: 0; }
+.ole-body { min-height: 0; padding: 14px 16px; overflow: auto; scrollbar-width: thin; display: flex; flex-direction: column; gap: 12px; }
+.ole-body > * { flex-shrink: 0; }
 .ole-stack { display: flex; flex-direction: column; gap: 10px; }
 .ole-palette { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .ole-palette button { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; min-height: 48px; padding: 8px; }

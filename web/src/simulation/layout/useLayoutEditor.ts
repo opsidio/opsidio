@@ -66,10 +66,12 @@ export function useLayoutEditor(options: LayoutEditorOptions) {
     setState(current => {
       const next = change(current.layout)
       if (next === current.layout) return current
+      const revision = Math.max(current.layout.revision, next.revision) + 1
+      if (!Number.isSafeInteger(revision)) return { ...current, actionIssues: [{ code: 'revision_limit', severity: 'error', path: 'revision', message: 'Revision exceeds the supported safe integer range. Use a lower revision in the imported draft.' }] }
       const shape = inspectLayoutShape(next)
       if (shape.length) return { ...current, actionIssues: shape, message: 'The change was not applied. Correct the reported values.' }
       return {
-        ...current, ...selection, layout: { ...next, revision: Math.max(current.layout.revision, next.revision) + 1 },
+        ...current, ...selection, layout: { ...next, revision },
         history: [...current.history.slice(-19), current.layout], actionIssues: [], message, changed: true,
       }
     })
@@ -166,7 +168,7 @@ export function useLayoutEditor(options: LayoutEditorOptions) {
     updateNode, moveNode, attachNode, addNode, removeNode, connectNodes, removeEdge,
     importJSON, exportJSON: () => exportLayoutJSON(state.layout), undo, reset,
     onSelect: selectPlacement,
-    onMove: (id: string, position: Point) => { if (state.layout.placements.some(item => item.id === id)) movePlacement(id, position); else moveNode(id, position) },
+    onMove: (id: string, position: Point) => { if (selectedNodeId === id) moveNode(id, position); else if (state.layout.placements.some(item => item.id === id)) movePlacement(id, position); else if (state.layout.nodes.some(item => item.id === id)) moveNode(id, position) },
   }
 }
 export type LayoutEditorController = ReturnType<typeof useLayoutEditor>
