@@ -777,6 +777,9 @@ summary {
   margin: 32px 0 20px;
   font-size: 21px;
 }
+.op-help-cards {
+  margin-bottom: 32px;
+}
 .op-help-number {
   display: flex;
   gap: 12px;
