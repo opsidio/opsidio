@@ -66,6 +66,11 @@ body{background:var(--paper);font-family:Inter,"Segoe UI",Arial,sans-serif}heade
   .dots { gap: 5px; }
   .dot { width: clamp(8px, 3vw, 13px); }
 }
+
+.pitch-stack-scene .pitch-flow-card::after { display: none; }
+.pitch-stack-scene .pitch-flow-card ul { padding-left: 16px; margin: 13px 0 0; color: #54606c; font-size: 13px; line-height: 1.55; }
+.pitch-stack-scene .pitch-flow-card li + li { margin-top: 9px; }
+.pitch-stack-scene .pitch-flow-card li::marker { color: var(--red); }
 </style>
 </head>
 <body>
@@ -78,36 +83,32 @@ body{background:var(--paper);font-family:Inter,"Segoe UI",Arial,sans-serif}heade
 
 
 <section class="scene canvas-scene" data-title="Entrance knowledge map" aria-label="Entrance knowledge map"><div class="heading"><div><div class="eyebrow">04 / Connected assumptions · Feasible decisions</div><h2>The event planning knowledge map</h2></div><p class="caption">Planning framework, not a live risk model.<br>Highlights are illustrative, not calculated scores.</p></div><div class="canvas-toolbar"><div class="switch" aria-label="Illustrative scenario"><button data-scenario="unassessed" aria-pressed="true">Unassessed plan</button><button data-scenario="surge" aria-pressed="false">Arrival surge</button><button data-scenario="verification" aria-pressed="false">Verification delays</button><button data-scenario="shortage" aria-pressed="false">Staff shortage</button></div><div class="canvas-controls"><button id="zoomOut" aria-label="Zoom out">−</button><output id="zoomValue">100%</output><button id="zoomIn" aria-label="Zoom in">+</button><button id="fitMap">Fit view</button><button id="resetMap">Reset view</button></div></div><p id="scenarioText" class="caption" aria-live="polite">No plan has been assessed. Select a planning group to expand its mind map.</p><div id="knowledgeCanvas" tabindex="0" role="region" aria-label="Interactive entrance planning canvas" aria-describedby="canvasHint"><div id="mapWorld"><svg id="canvasEdges" width="1600" height="1000" aria-hidden="true"><defs><marker id="arrowHead" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7" fill="#a2adb8"/></marker></defs><g id="edgePaths"></g></svg><div id="canvasNodes"></div></div><aside id="canvasInspector" hidden aria-label="Checkpoint inspector"><button id="closeInspector" aria-label="Close inspector">×</button><div id="inspectorBody"></div></aside><div class="canvas-watermark">ENTRANCE OPERATIONS / CONCEPTUAL DEPENDENCIES</div></div><div class="canvas-bottom"><p id="canvasHint" class="caption">Click a group to expand · Click blank space to clear · Drag to pan · Wheel / + − to zoom</p><span class="caption">Group → question → problems → decision · Highlights are illustrative</span></div></section>
-<section class="scene pitch-flow-scene" data-title="Design architecture" aria-label="Design architecture">
-  <div class="heading"><div><div class="eyebrow">05 / Design architecture</div><h2>One entrance plan.<br>Two ways to test it.</h2></div><p class="caption">OPSIDIO workspace<br>Draft → preview → optimize → compare</p></div>
-  <ol class="pitch-flow" style="--flow-count:4">
-    <li class="pitch-flow-card">
+<section class="scene pitch-flow-scene pitch-stack-scene" data-title="Technology stack" aria-label="Technology stack">
+  <div class="heading"><div><div class="eyebrow">05 / Technology stack</div><h2>Built with</h2></div><p class="caption">OPSIDIO web app, venue model and optimization integration</p></div>
+  <div class="pitch-flow" style="--flow-count:4">
+    <article class="pitch-flow-card">
       <span class="pitch-flow-index" aria-hidden="true">01</span>
-      <div class="eyebrow">Workspace</div>
-      <h3>Capture the plan</h3>
-      <p>The organizer enters event details, expected arrivals, entrance checks, resources and targets.</p>
-    </li>
-    <li class="pitch-flow-card">
+      <h3>Web application</h3>
+      <ul><li>React + React DOM 19.3.1</li><li>TypeScript 5.9.3</li><li>Vite 8.3.6 + React plugin 6.2.1</li><li>Jost + Roboto via Fontsource 5.3.0</li><li>Lucide React 1.70.0</li></ul>
+    </article>
+    <article class="pitch-flow-card">
       <span class="pitch-flow-index" aria-hidden="true">02</span>
-      <div class="eyebrow">Plan data</div>
-      <h3>Save a baseline</h3>
-      <p>The workspace stores an editable draft in the browser. The plan snapshot carries assumptions into the simulation.</p>
-    </li>
-    <li class="pitch-flow-card">
+      <h3>3D venue and simulation</h3>
+      <ul><li>Three.js 0.187.0</li><li>React Three Fiber 9.8.2 + Drei 10.7.9</li><li>Web Workers for local agent simulation</li><li>OpenStreetMap data + bundled GBK geometry</li></ul>
+    </article>
+    <article class="pitch-flow-card">
       <span class="pitch-flow-index" aria-hidden="true">03</span>
-      <div class="eyebrow">Browser worker</div>
-      <h3>Preview V1 arrivals</h3>
-      <p>The worker generates walking arrivals for playback on the authored Plaza Utara route.</p>
-    </li>
-    <li class="pitch-flow-card">
+      <h3>Plans and optimization</h3>
+      <ul><li>JSON plan contract + browser storage</li><li>Python 3.11+ server bridge</li><li>Remote optimization and discrete-event simulation API</li><li>OpenAPI contract for plan validation and comparison</li></ul>
+    </article>
+    <article class="pitch-flow-card">
       <span class="pitch-flow-index" aria-hidden="true">04</span>
-      <div class="eyebrow">Server API</div>
-      <h3>Optimize and compare</h3>
-      <p>The server validates the snapshot and requests optimization. The workspace compares the returned V2 candidate with the baseline.</p>
-    </li>
-  </ol>
-  <div class="pitch-flow-band"><div class="eyebrow">Revision loop</div><p>Review the returned candidate, apply its inputs as a new draft revision, then generate a fresh preview.</p></div>
-  <p class="caption pitch-flow-foot">V1 plays walking arrivals. Queue and service outcomes come from the optimization service. <a href="https://github.com/opsidio/opsidio/blob/main/docs/dashboard-handoff.md" target="_blank" rel="noopener noreferrer">Implementation notes ↗</a></p>
+      <h3>Build and delivery</h3>
+      <ul><li>Node.js 22.12+ and npm</li><li>Git + GitHub</li><li>Vercel for the Vite build and /pitch route</li></ul>
+    </article>
+  </div>
+  <p class="caption pitch-flow-foot">The browser runs the local preview. Live optimization uses the separately configured Python bridge and upstream service.</p>
+  <p class="caption pitch-flow-foot"><a href="https://github.com/opsidio/opsidio/blob/main/web/package.json" target="_blank" rel="noopener noreferrer">Web dependencies ↗</a> · <a href="https://github.com/opsidio/opsidio/blob/main/docs/des-bridge.md" target="_blank" rel="noopener noreferrer">Simulation integration ↗</a></p>
 </section>
 <section class="scene pitch-flow-scene" data-title="User journey" aria-label="User journey">
   <div class="heading"><div><div class="eyebrow">06 / User journey</div><h2>From event brief<br>to a revised entrance plan.</h2></div><p class="caption">Organizer journey<br>Follow the GBK demo in the workspace</p></div>
@@ -161,7 +162,7 @@ body{background:var(--paper);font-family:Inter,"Segoe UI",Arial,sans-serif}heade
 <aside class="notes-panel" id="notesPanel" hidden aria-label="Speaker notes"></aside>
 <dialog id="sources"><h2>Sources & scope</h2><p><a href="https://www.aseanfootball.org/v3/sold-out-fifa-asean-cup-2026-final/" target="_blank" rel="noopener noreferrer">ASEAN Football Federation — FIFA ASEAN Cup final · 2026</a>: AFF reported all 67,000 tickets sold for the Indonesia–Thailand final. A documented condition, not proof of admission failure.</p><p><a href="https://www.cnnindonesia.com/hiburan/20261022201811-227-1418597/konser-ye-di-gbk-24-oktober-rute-akses-hingga-aturan-bawaan/amp" target="_blank" rel="noopener noreferrer">CNN Indonesia — Ye · GBK · 2026</a>: The entry guide described showing a LoketX e-ticket and receiving a wristband at the gate. A documented condition, not proof of admission failure.</p><p><a href="https://www.liputan6.com/showbiz/read/3956764/konser-ed-sheeran-lalu-lintas-sekitar-gbk-macet-total" target="_blank" rel="noopener noreferrer">Liputan6 — Ed Sheeran · GBK · 2019</a>: Reporting described traffic congestion and queues for shuttles to the entrance. Reported friction, not a diagnosed cause.</p><p>Entrance evidence establishes reported friction, not reconstructed operational causes. Product summaries describe documented strengths, not exclusive capability boundaries.</p><p><a href="https://www.antaranews.com/berita/3824460/penonton-coldplay-berlarian-padati-gbk-jelang-konser" target="_blank" rel="noopener noreferrer">ANTARA · 15 November 2023</a> — entrance queues before Coldplay at GBK.</p><p><a href="https://www.kemendag.go.id/berita/siaran-pers/tindaklanjuti-pengaduan-konsumen-konser-coldplay-kemendag-minta-klarifikasi-pk-entertainment" target="_blank" rel="noopener noreferrer">Ministry of Trade · 2 December 2023</a> — follow-up of consumer ticket complaints.</p><p><a href="https://www.anylogic.com/features/libraries/pedestrian-library/" target="_blank" rel="noopener noreferrer">AnyLogic · Pedestrian Library</a> — Model queues and service areas; connect pedestrian flows with staffing and test alternatives.</p><p><a href="https://www.oasys-software.com/products/pedestrian-simulation-software/massmotion/" target="_blank" rel="noopener noreferrer">Oasys MassMotion</a> — 2D/3D pedestrian models, operational scenarios, congestion and waiting-time analysis.</p><p><a href="https://www.incontrolsim.com/software-pedestrian-dynamics/" target="_blank" rel="noopener noreferrer">InControl · Pedestrian Dynamics</a> — Identify bottlenecks and compare strategies for pedestrian movement and operations.</p><p><a href="https://www.oneplan.io/crowd-management/" target="_blank" rel="noopener noreferrer">OnePlan</a> — Plan crowd capacity, perimeters and barriers to support movement through an event site.</p><p><a href="https://www.crowdconnected.com/solutions/location-analytics/" target="_blank" rel="noopener noreferrer">Crowd Connected</a> — Understand footfall, dwell time, occupancy heatmaps and movement patterns.</p><p>Official product pages reviewed 7 November 2026. The map is a presentation framework. No performance values are calculated here. The supplied Coldplay-inspired JSON is fictional and marks remote semantic validation as not run. The live demo determines implementation scope.</p><p>Arrow keys navigate slides; N opens notes; F toggles full screen. Within the map, arrows pan, Shift + arrows move a focused node, + / − zoom, Enter selects and Escape closes the inspector. Tab moves between controls and nodes.</p><button class="button" id="closeSources">Return to opening</button></dialog>
 <script>
-const notes=["Preserve the public experience: memorable music and sport at GBK. Visible success is the opening, not a claim that every visit was frictionless.","Distinguish observed friction from documented conditions. Coldplay and Ed Sheeran provide reported problems; Ye provides a multi-step admission procedure, and FIFA provides sold-out demand. None supplies a reconstructed gate-level model. Use these cases to explain connected entrance decisions.","Acknowledge existing simulation, planning and analytics products. Explain our narrower decision workflow, without implying exclusive capabilities, better accuracy or superior speed.","Start with the planning groups. Select Demand and arrival planning to reveal its question and five problems. Select a problem to connect it with an OPSIDIO decision experiment. Clicking blank canvas clears branches, selection, scenario highlights and inspector. Dragging blank canvas pans without clearing. This is conceptual, not live analytics.","Follow the plan snapshot through the workspace. V1 is the local browser worker and plays walking arrivals. Optimize validates the snapshot through the server and returns a candidate for comparison. Applying that candidate creates a new draft revision.","Show the organizer’s path from the home screen through the draft sections, review and simulation. Generate V1 arrivals first. If the optimization service is configured, compare the returned V2 candidate and review its changes before applying them.","Hand over to the demo. The GBK case uses fictional operating assumptions. Use V1 to show arrival playback and the comparison view to discuss any returned optimization results."];
+const notes=["Preserve the public experience: memorable music and sport at GBK. Visible success is the opening, not a claim that every visit was frictionless.","Distinguish observed friction from documented conditions. Coldplay and Ed Sheeran provide reported problems; Ye provides a multi-step admission procedure, and FIFA provides sold-out demand. None supplies a reconstructed gate-level model. Use these cases to explain connected entrance decisions.","Acknowledge existing simulation, planning and analytics products. Explain our narrower decision workflow, without implying exclusive capabilities, better accuracy or superior speed.","Start with the planning groups. Select Demand and arrival planning to reveal its question and five problems. Select a problem to connect it with an OPSIDIO decision experiment. Clicking blank canvas clears branches, selection, scenario highlights and inspector. Dragging blank canvas pans without clearing. This is conceptual, not live analytics.","Call out React, TypeScript and Vite for the workspace, Three.js and Web Workers for the venue preview, and the Python bridge for the remote optimization service. Versions come from the repository manifest.","Show the organizer’s path from the home screen through the draft sections, review and simulation. Generate V1 arrivals first. If the optimization service is configured, compare the returned V2 candidate and review its changes before applying them.","Hand over to the demo. The GBK case uses fictional operating assumptions. Use V1 to show arrival playback and the comparison view to discuss any returned optimization results."];
 const scenes=[...document.querySelectorAll('.scene')];let current=0;let selectedGroup=0;
 const dots=document.getElementById('dots');scenes.forEach((s,i)=>{const b=document.createElement('button');b.className='dot';b.setAttribute('aria-label',`Scene ${i+1}: ${s.dataset.title}`);b.onclick=()=>show(i);dots.append(b)});
 function show(i,writeHash=true){current=Math.max(0,Math.min(scenes.length-1,i));scenes.forEach((s,j)=>{s.classList.toggle('active',j===current);s.setAttribute('aria-hidden',String(j!==current))});[...dots.children].forEach((b,j)=>{if(j===current)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current')});document.getElementById('counter').textContent=`${String(current+1).padStart(2,'0')} / ${String(scenes.length).padStart(2,'0')}`;document.getElementById('slideName').textContent=scenes[current].dataset.title;document.getElementById('prev').disabled=current===0;document.getElementById('next').disabled=current===scenes.length-1;document.getElementById('notesPanel').textContent=notes[current];document.title=`OPSIDIO — ${scenes[current].dataset.title}`;if(writeHash)history.replaceState(null,'',`#scene-${current+1}`);window.scrollTo(0,0)}
