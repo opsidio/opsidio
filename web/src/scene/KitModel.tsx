@@ -119,7 +119,6 @@ function geometryFor(preset: KitPreset, bayCount: number) {
     const top = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false, curveSegments: 5 })
     top.rotateX(-Math.PI / 2).translate(0, h - thickness, 0)
     add('plastic', top)
-    box('dark', [0.002, 0.001, d - 0.04], [0, h - 0.0005, 0])
     for (const side of [-1, 1]) {
       const x = side * w * 0.31, footX = side * w * 0.34
       for (const end of [-1, 1]) {
@@ -140,9 +139,9 @@ function geometryFor(preset: KitPreset, bayCount: number) {
       for (let marker = 0; marker < 12; marker++) box('accent', [0.006, 0.024, 0.006], [x - sign * (panel / 2 - 0.003), 0.16 + marker * (h - 0.4) / 12, -d * 0.32])
     }
     box('plastic', [w, head, d * 0.82], [0, h - head / 2, 0])
-    box('dark', [w * 0.53, head * 0.57, 0.008], [0, h - head / 2, -d * 0.41 - 0.004])
-    box('accent', [w * 0.2, 0.028, 0.009], [-w * 0.085, h - head / 2, -d * 0.41 - 0.009])
-    for (let button = 0; button < 3; button++) box('metal', [0.015, 0.015, 0.009], [w * (0.11 + button * 0.035), h - head / 2, -d * 0.41 - 0.009])
+    box('dark', [w * 0.53, head * 0.57, 0.025], [0, h - head / 2, -d * 0.41 - 0.0125])
+    box('accent', [w * 0.2, 0.028, 0.022], [-w * 0.085, h - head / 2, -d * 0.41 - 0.034])
+    for (let button = 0; button < 3; button++) box('metal', [0.015, 0.015, 0.022], [w * (0.11 + button * 0.035), h - head / 2, -d * 0.41 - 0.034])
   }
 
   const merged = finishes.flatMap(finish => {
