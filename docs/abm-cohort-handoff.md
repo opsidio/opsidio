@@ -1,6 +1,6 @@
 # V1 ABM cohort handoff
 
-The complete input is `contracts/examples/coldplay-gbk-demo-plan.json`. The browser groups demand by ticket category and behavior segment. Parameters are defined once per segment, and each generated journey inherits those parameters. Category and segment allocations conserve the 70,000-person population across 76 cohorts. Each entry has four active lanes.
+The complete input is `contracts/examples/coldplay-gbk-demo-plan.json`. The browser groups demand by ticket category, behavior segment and transport origin. Parameters are defined once per segment, and each generated journey inherits those parameters. The 76 authored category × behavior rows expand into 228 runtime cohorts when the three transport origins are declared, preserving all 70,000 people. Each entry has four active lanes. Legacy plans without transport origins retain their 76 behavior cohorts.
 
 All segment shares, arrival profiles, group sizes, speeds and local spawn offsets are fictional demo assumptions. Public category-to-entry routing is retained from the sourced admission scenario.
 
@@ -16,7 +16,17 @@ Arrival shares below correspond to 09:00–13:00, 13:00–15:30, 15:30–17:30 a
 | Package holder | 5 / 65 / 28 / 2% | 2 | 1.1 m/s | Package approach |
 | Social group | 10 / 35 / 45 / 10% | 4 | 1.0 m/s | Group meeting approach |
 
-Spawn points are ground coordinates in `spatial_context.navigation.nodes`. The five entry areas each have these five onsite approaches. Walking, drop-off and package labels describe the scenario source. Offsite MRT, parking and vehicle paths still need mapping.
+Without transport origins, the onsite spawn labels above select the legacy per-entry approach nodes. With `spatial_context.arrival_origins`, visitors start at shared MRT, parking or taxi/ride-hailing origin nodes, follow the authored public approach network to their assigned entry forecourt, and continue through that entry's lanes. Origin positions and public routes carry their own provenance; mode shares remain fictional behavior assumptions.
+
+| Segment | MRT | Parking | Taxi / ride-hailing |
+| --- | --- | --- | --- |
+| Early fan | 60% | 15% | 25% |
+| Regular attendee | 45% | 25% | 30% |
+| Late arrival | 20% | 10% | 70% |
+| Package holder | 10% | 40% | 50% |
+| Social group | 25% | 45% | 30% |
+
+Each profile's `origin_share_percent` references every declared origin and sums to 100%. The adapter first applies native no-shows and category behavior shares using largest remainders. It then allocates whole groups to transport origins using largest remainders, with stable origin-ID tie breaks. If a behavior cohort has an incomplete final group, that single partial group goes to the origin furthest below its attendee target. Exact head counts are conserved; small cohorts may differ from their modal percentages by a group. Transport allocation does not change the profile arrival windows or their native category aggregate.
 
 ## Category allocation
 
@@ -33,7 +43,7 @@ Infinity retains its original 500 people and Plaza Tenggara arrival. Each of its
 
 ## Spawning and destinations
 
-The runtime path is onsite spawn → queue → ticket scan → security → category handover. Four directed lane routes per entry distribute arriving groups round-robin. Each lane has its own scan and security checkpoint and bound operators. The local worker queues visitors FIFO, processes one visitor per operator, then continues the journey. It uses fixed typical times from the native process steps and native gate opening/closing clocks. The help branch is authored, with exception demand still pending.
+The runtime path is transport origin → public approach → assigned entry forecourt → queue → ticket scan → security → category handover. Four directed lane routes per entry distribute arriving groups round-robin. Each lane has its own scan and security checkpoint and bound operators. The local worker queues visitors FIFO, processes one visitor per operator, then continues the journey. It uses fixed typical times from the native process steps and native gate opening/closing clocks. The help branch is authored, with exception demand still pending.
 
 Every ticket category has a named destination node. These are post-security category handover points at its assigned entry area. Category handovers are spaced around that area's admitted endpoint until internal routes are reviewed. `viewing_tier` records the eventual seated or standing sector. `final_zone_route_status` is `pending_venue_review`. Seat blocks, stairs, accessible routes and stage-specific field destinations still need venue mapping.
 
@@ -45,10 +55,14 @@ Groups spawn together with the same arrival timestamp and follow the cohort rout
 - Native `demand.arrival_windows_percent` is the weighted category aggregate of the behavior profiles.
 - `behavior_context` uses `opsidio-behavior/0.1`, with profiles and category × segment cohort records.
 - Each cohort references `category_id`, `segment_id`, `share_percent`, `arrival_node_id` and `destination_node_id`.
+- Transport origins use `spatial_context.arrival_origins` with `id`, `label`, `mode`, `position_m`, `source_url` and `basis`. Each binds to a same-ID arrival node in `shared_origins`; public waypoints use `approach_network`.
+- Compiled transport cohort IDs are `<behavior cohort ID>__<origin ID>`; `categoryId`, `segmentId` and `originId` retain their aggregation identities. `compiled.arrivalOrigins` exposes normalized positions and attendee totals for map pins.
 - Serialized `expected_attendees_estimate` is informational. Runtime counts come from native sold/issued counts, no-show percentage and cohort shares, using deterministic largest-remainder rounding.
 - `spatial_context` carries the positions, directed routes and staff/equipment bindings in the agreed local metre frame.
 
-The adapter rejects missing route bindings, invalid coordinates, duplicate IDs, staffing-position mismatches, and category or profile shares that do not sum to 100%. It also rejects native category arrival curves that disagree with the behavior mixture. The worker rejects disconnected paths and cohorts without a required checkpoint.
+The adapter rejects missing route bindings, invalid coordinates, duplicate IDs, staffing-position mismatches, unknown origin references, and category, profile or modal shares that do not sum to 100%. It checks directed reachability through each category's own lane checkpoints and prevents a station from double counting an operator or checkpoint. It also rejects native category arrival curves that disagree with the behavior mixture. The worker validates the resolved routes again before generating journeys.
+
+North editor projections retain public approach edges crossing into the editable area. Removing their bound North endpoint fails explicitly. Native queue-to-gate walking distance averages bounded samples across the North lane options, starting at the local `arrival` forecourt node. The external transport prefix and all queue/service time are excluded; full journey walking time still includes the transport approach.
 
 V1 is local. Optimize sends the complete current plan snapshot to Doni's API. The API payload includes aggregate category demand and the spatial and behavior extensions. V2 candidates need matching layout bindings before local playback.
 

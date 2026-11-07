@@ -64,12 +64,11 @@ test('a partial plan, disconnected binding, bad coordinate frame or staffing mis
 test('behavior cohorts conserve every category and retain its assigned entry area', () => {
   const result = compileSimulationPlan(fixture)
   assert.equal(result.segments.length, 5)
-  assert.equal(result.config.cohorts.length, 76)
+  assert.equal(result.config.cohorts.length, fixture.spatial_context.arrival_origins ? 228 : 76)
   for (const category of fixture.event.ticket_categories) {
-    const identifiers = new Set(fixture.behavior_context.cohorts.filter(item => item.category_id === category.id).map(item => item.id))
-    const cohorts = result.config.cohorts.filter(item => identifiers.has(item.id))
+    const cohorts = result.config.cohorts.filter(item => item.categoryId === category.id)
     assert.equal(cohorts.reduce((sum, item) => sum + item.count, 0), category.sold)
-    assert.ok(cohorts.every(cohort => result.nodes.find(node => node.id === cohort.arrivalNodeId).entryAreaId === category.entry_area_id))
+    assert.ok(cohorts.every(cohort => result.nodes.find(node => node.id === cohort.destinationNodeId).entryAreaId === category.entry_area_id))
   }
   assert.equal(result.segments.reduce((sum, item) => sum + item.attendees, 0), 70000)
 })
@@ -86,7 +85,7 @@ test('cohort walking speed changes travel time while retaining the route and see
 const { prepareJourneySampler, sampleJourneyPosition, sampleWalkingCrowd } = await import('../abm/sampling.ts')
 function smallAdmissionConfig() {
   const config = compileSimulationPlan(fixture).config
-  const cohort = config.cohorts.find(item => item.id === 'cat5__early_fan')
+  const cohort = config.cohorts.find(item => item.categoryId === 'cat5' && item.segmentId === 'early_fan')
   return { ...config, cohorts: [{ ...cohort, count: 8, windows: [{ startSeconds: 0, endSeconds: .01, sharePercent: 100 }] }] }
 }
 test('four lanes are used, groups stay together, and one person per operator is processed', () => {
@@ -133,4 +132,127 @@ test('changing open lane options preserves seeded onsite demand', () => {
   const two = generateAbm({ ...config, cohorts: config.cohorts.map(cohort => ({ ...cohort, laneCheckpointIds: cohort.laneCheckpointIds.slice(0, 2) })) })
   assert.deepEqual(four.journeys.map(item => item.onsiteArrivalSeconds), two.journeys.map(item => item.onsiteArrivalSeconds))
   assert.equal(new Set(two.journeys.map(item => item.serviceStops[0].operatorId)).size, 2)
+})
+
+// A compact transport extension exercises the wire independently of the full mapped approach artifact.
+function transportFixture() {
+  const plan = structuredClone(fixture)
+  if (plan.spatial_context.arrival_origins) return plan
+  const origins = [
+    { id: 'origin_mrt', label: 'MRT', mode: 'mrt', position_m: [900, 0, 700] },
+    { id: 'origin_parking', label: 'Parking', mode: 'parking', position_m: [-800, 0, -700] },
+    { id: 'origin_dropoff', label: 'Taxi / ride-hailing', mode: 'taxi_ride_hailing', position_m: [700, 0, -900] },
+  ]
+  plan.spatial_context.arrival_origins = origins.map(origin => ({ ...origin, source_url: 'https://www.openstreetmap.org', basis: 'test fixture only' }))
+  const navigation = plan.spatial_context.navigation
+  for (const origin of origins) {
+    navigation.nodes.push({ id: origin.id, role: 'arrival', entry_area_id: 'shared_origins', position_m: [...origin.position_m] })
+    const approach = `${origin.id}_approach`
+    navigation.nodes.push({ id: approach, role: 'waypoint', entry_area_id: 'approach_network', position_m: origin.position_m.map(value => value / 2) })
+    navigation.edges.push({ id: `${origin.id}_approach_edge`, from_node_id: origin.id, to_node_id: approach, directed: true })
+    for (const arrivalId of new Set(plan.spatial_context.cohort_routes.map(route => route.arrival_node_id))) navigation.edges.push({ id: `${origin.id}_to_${arrivalId}`, from_node_id: approach, to_node_id: arrivalId, directed: true })
+  }
+  const mixes = { early_fan: [60, 15, 25], regular_attendee: [45, 25, 30], late_arrival: [20, 10, 70], premium_package: [10, 40, 50], social_group: [25, 45, 30] }
+  for (const profile of plan.behavior_context.profiles) profile.origin_share_percent = Object.fromEntries(origins.map((origin, index) => [origin.id, mixes[profile.id][index]]))
+  return plan
+}
+
+test('behavior-only legacy plans still compile without transport origins', () => {
+  const input = transportFixture()
+  delete input.spatial_context.arrival_origins
+  for (const profile of input.behavior_context.profiles) delete profile.origin_share_percent
+  const navigation = input.spatial_context.navigation
+  navigation.nodes = navigation.nodes.filter(node => !['shared_origins', 'approach_network'].includes(node.entry_area_id))
+  const retained = new Set(navigation.nodes.map(node => node.id))
+  navigation.edges = navigation.edges.filter(edge => retained.has(edge.from_node_id) && retained.has(edge.to_node_id))
+  const compiled = compileSimulationPlan(input)
+  assert.equal(compiled.config.cohorts.length, 76)
+  assert.deepEqual(compiled.arrivalOrigins, [])
+  assert.equal(compiled.config.cohorts.reduce((sum, cohort) => sum + cohort.count, 0), 70000)
+})
+
+test('transport cohorts preserve all 70,000 people by category, segment and origin, and reach the category gate', () => {
+  const input = transportFixture(), compiled = compileSimulationPlan(input)
+  assert.equal(input.behavior_context.cohorts.length, 76)
+  assert.equal(compiled.config.cohorts.length, 228)
+  assert.equal(compiled.arrivalOrigins.reduce((sum, origin) => sum + origin.attendees, 0), 70000)
+  assert.equal(compiled.segments.reduce((sum, segment) => sum + segment.attendees, 0), 70000)
+  const journeys = generateAbm(compiled.config)
+  assert.equal(journeys.generatedCount, 70000)
+  assert.deepEqual(journeys.issues, [])
+  for (const category of input.event.ticket_categories) assert.equal(compiled.config.cohorts.filter(cohort => cohort.categoryId === category.id).reduce((sum, cohort) => sum + cohort.count, 0), category.sold)
+  for (const segment of compiled.segments) assert.equal(segment.attendees, compiled.config.cohorts.filter(cohort => cohort.segmentId === segment.id).reduce((sum, cohort) => sum + cohort.count, 0))
+  for (const origin of compiled.arrivalOrigins) {
+    assert.equal(origin.attendees, compiled.config.cohorts.filter(cohort => cohort.originId === origin.id).reduce((sum, cohort) => sum + cohort.count, 0))
+    assert.deepEqual(origin.position, input.spatial_context.arrival_origins.find(item => item.id === origin.id).position_m)
+  }
+  const byId = new Map(compiled.config.cohorts.map(cohort => [cohort.id, cohort]))
+  for (const journey of journeys.journeys) {
+    const cohort = byId.get(journey.cohortId)
+    const category = input.event.ticket_categories.find(item => item.id === cohort.categoryId)
+    assert.equal(journey.routeNodeIds[0], cohort.originId)
+    assert.equal(compiled.nodes.find(node => node.id === journey.routeNodeIds.at(-1)).entryAreaId, category.entry_area_id)
+    assert.ok(journey.routeNodeIds.some(id => cohort.laneCheckpointIds.includes(id)))
+    assert.ok(cohort.id.endsWith(`__${cohort.originId}`))
+  }
+  for (const row of input.behavior_context.cohorts) {
+    const split = compiled.config.cohorts.filter(cohort => cohort.id.startsWith(`${row.id}__`))
+    assert.equal(split.length, 3)
+    assert.ok(split.filter(cohort => cohort.count % cohort.groupSize !== 0).length <= 1)
+  }
+  const changed = structuredClone(input)
+  changed.event.ticket_categories[0].sold += 11
+  changed.event.capacity.no_show_percent_estimate = 3.5
+  const updated = compileSimulationPlan(changed)
+  const total = Math.round(70011 * .965)
+  assert.equal(updated.config.cohorts.reduce((sum, cohort) => sum + cohort.count, 0), total)
+  assert.equal(updated.arrivalOrigins.reduce((sum, origin) => sum + origin.attendees, 0), total)
+  assert.equal(updated.segments.reduce((sum, segment) => sum + segment.attendees, 0), total)
+})
+
+test('unknown origins, invalid modal shares, coordinates, unreachable lanes and duplicate service capacity reject explicitly', () => {
+  for (const mutate of [
+    plan => { plan.behavior_context.profiles[0].origin_share_percent.origin_rogue = 1 },
+    plan => { plan.behavior_context.profiles[0].origin_share_percent.origin_mrt += 1 },
+    plan => { delete plan.behavior_context.profiles[0].origin_share_percent.origin_mrt },
+    plan => { plan.spatial_context.arrival_origins[0].position_m[0] += 1 },
+    plan => { plan.spatial_context.arrival_origins.push(structuredClone(plan.spatial_context.arrival_origins[0])) },
+    plan => { plan.spatial_context.navigation.edges = plan.spatial_context.navigation.edges.filter(edge => edge.from_node_id !== 'origin_mrt') },
+    plan => { plan.spatial_context.cohort_routes[0].lane_checkpoint_ids[0] = 'scan_checkpoint' },
+    plan => { plan.spatial_context.service_stations[1].operator_id = plan.spatial_context.service_stations[0].operator_id },
+    plan => { plan.spatial_context.service_stations[0].step_ids = ['security_inspection'] },
+  ]) {
+    const input = transportFixture()
+    mutate(input)
+    assert.throws(() => compileSimulationPlan(input))
+  }
+})
+
+test('North edits retain the shared origin prefix and exclude it from native walking distance', () => {
+  const input = transportFixture(), original = compileSimulationPlan(input)
+  const layout = structuredClone(original.northLayout)
+  layout.revision++
+  layout.placements.find(item => item.id === 'scan_tent').position[0] += 2
+  const projected = projectNorthLayout(input, layout), result = compileSimulationPlan(projected)
+  const publicEdges = input.spatial_context.navigation.edges.filter(edge => {
+    const from = original.nodes.find(node => node.id === edge.from_node_id), to = original.nodes.find(node => node.id === edge.to_node_id)
+    return from.entryAreaId === 'approach_network' || to.entryAreaId === 'approach_network' || from.entryAreaId === 'shared_origins'
+  })
+  for (const edge of publicEdges) assert.ok(projected.spatial_context.navigation.edges.some(item => item.id === edge.id))
+  assert.equal(result.nodes.find(node => node.id === 'scan_checkpoint').position[0], original.nodes.find(node => node.id === 'scan_checkpoint').position[0] + 2)
+  assert.equal(result.operators.find(operator => operator.id === 'plaza_utara_scan_2').position[0], original.operators.find(operator => operator.id === 'plaza_utara_scan_2').position[0] + 2)
+  const remote = structuredClone(input)
+  const origin = remote.spatial_context.arrival_origins[0]
+  origin.position_m[0] += 10000
+  remote.spatial_context.navigation.nodes.find(node => node.id === origin.id).position_m = [...origin.position_m]
+  const farther = projectNorthLayout(remote, layout)
+  const nativeDistance = plan => plan.venue.layout.walking_paths.find(path => path.from === 'queue_plaza_utara' && path.to === 'proposed_gate_plaza_utara').distance_m
+  assert.ok(Math.abs(nativeDistance(projected) - nativeDistance(farther)) < 1e-8)
+  assert.ok(nativeDistance(projected) < 500)
+  const slowService = structuredClone(input)
+  for (const step of slowService.process_steps.steps) step.time_per_person_seconds.typical *= 100
+  assert.ok(Math.abs(nativeDistance(projected) - nativeDistance(projectNorthLayout(slowService, layout))) < 1e-8)
+  const deleted = structuredClone(layout)
+  deleted.nodes = deleted.nodes.filter(node => node.id !== 'arrival')
+  assert.throws(() => projectNorthLayout(input, deleted), /public approach network/)
 })

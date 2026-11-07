@@ -27,6 +27,9 @@ export type ArrivalWindow = {
 
 export type CohortDemand = {
   id: string
+  categoryId?: string
+  segmentId?: string
+  originId?: string
   count: number
   arrivalNodeId: string
   destinationNodeId: string
