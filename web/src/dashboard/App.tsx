@@ -600,7 +600,35 @@ export default function App() {
                 ? "Continue an entry plan or start a new scenario."
                 : "Bring your next event into focus, one step at a time."}
             </Heading>
-            <PlanAssistant onCreate={(plan) => addDraft({ ...newDraft(), plan })} />
+            <h3 className="op-home-subtitle">A clearer plan in three steps</h3>
+            <div className="op-grid three op-help-cards">
+              {[
+                {
+                  Icon: FileText,
+                  title: "Define your event",
+                  text: "Add the basics and choose a public or private venue.",
+                },
+                {
+                  Icon: Users,
+                  title: "Build your entry plan",
+                  text: "Plan arrivals, entry checks, staffing, and any missing details.",
+                },
+                {
+                  Icon: Box,
+                  title: "Test the possibilities",
+                  text: "Explore the 3D view, then optimize and compare changes.",
+                },
+              ].map(({ Icon, title, text }, i) => (
+                <Card key={title}>
+                  <div className="op-help-number">
+                    <Icon size={21} />
+                    <span>0{i + 1}</span>
+                  </div>
+                  <h3>{title}</h3>
+                  <p className="op-muted">{text}</p>
+                </Card>
+              ))}
+            </div>
             {!drafts.length ? (
               <section className="op-empty">
                 <div className="op-empty-icon">
@@ -652,35 +680,6 @@ export default function App() {
                 ))}
               </div>
             )}
-            <h3 className="op-home-subtitle">A clearer plan in three steps</h3>
-            <div className="op-grid three op-help-cards">
-              {[
-                {
-                  Icon: FileText,
-                  title: "Define your event",
-                  text: "Add the basics and choose a public or private venue.",
-                },
-                {
-                  Icon: Users,
-                  title: "Build your entry plan",
-                  text: "Plan arrivals, entry checks, staffing, and any missing details.",
-                },
-                {
-                  Icon: Box,
-                  title: "Test the possibilities",
-                  text: "Explore the 3D view, then optimize and compare changes.",
-                },
-              ].map(({ Icon, title, text }, i) => (
-                <Card key={title}>
-                  <div className="op-help-number">
-                    <Icon size={21} />
-                    <span>0{i + 1}</span>
-                  </div>
-                  <h3>{title}</h3>
-                  <p className="op-muted">{text}</p>
-                </Card>
-              ))}
-            </div>
             <div className="op-demo-actions">
               <span>Have a plan ready?</span>
               <Button onClick={() => importRef.current?.click()}>
@@ -692,6 +691,7 @@ export default function App() {
                 <ArrowRight size={15} />
               </Button>
             </div>
+            <PlanAssistant onCreate={(plan) => addDraft({ ...newDraft(), plan })} />
             <input
               ref={importRef}
               type="file"
