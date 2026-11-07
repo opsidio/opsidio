@@ -49,6 +49,22 @@ The editable area is separate from public map data. Its routes, equipment and an
 
 OSM polygons can be approximate, incomplete or stale. This pack is a coordinate foundation for local visual prototyping; actual placement, access and routes still need event-specific verification.
 
+## Arrival routing
+
+[Arrival origin sources](arrival-origins.json) refer to the existing pinned OSM extract. MRT Istora Mandiri Exit B and the mapped parking entrance are shared network nodes; the latter is a **proposed** taxi and ride-hailing drop-off. Parkir Timur uses the centre of its mapped parking polygon. Its **82.6 m proposed walking connector** to the public network needs on-site confirmation. No vehicles are simulated.
+
+V1 joins the shortest walking routes from all three origins to the five entrance forecourts. The graph uses visible footways, pedestrian paths, steps, living streets and allowed service roads. Adjacency comes from shared OSM nodes. Restricted ways and gates, polygon outlines and off-map segments are excluded. Mapped routes may share ground with fictional admission stations, so event access, closures and accessible routing remain unverified.
+
+North and West use mapped pedestrian corridors. The East, Southeast and Yellow four-lane layouts use separate sections of Jalan Lingkar Stadion: the original approaches there are too narrow for the illustrated lane spacing. `proposed_anchor_m` retains the original scenario marker, while `operational_anchor_m` is the illustrated scan location. These positions are for the demo and do not identify confirmed gates. The tests sample all admission route legs against the 7.5 m rendered corridors and check all four scan/security sequences, barrier/table/detector footprints and operator positions. The illustrated 10 m shelters overhang the rendered corridor and require site review before equipment placement.
+
+| Origin | Approach walk to entrance forecourt |
+| --- | ---: |
+| MRT Istora Mandiri Exit B | 906–1,373 m |
+| Parkir Timur | 581–1,176 m |
+| Proposed passenger drop-off | 971–1,438 m |
+
+Each entrance adds about 141 m of walking across its admission layout. For Doni's API, `demand.time_reference: origin_spawn` means arrivals are released at the selected origin; `venue.layout.walking_paths` contains the 15 origin-to-queue approach distances. Apply that walk once. The category × behavior rows remain at 76; local playback assigns the origin split while preserving all 70,000 visitors.
+
 ## Rebuild and checks
 
 From the repository root, using Python 3.9 or later:
