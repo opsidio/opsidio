@@ -5,7 +5,7 @@ stem connects the annotation to the operator; staff and attendee positions remai
 at ground level. Bars start 6 m above ground to clear the current canopies.
 
 - **Height:** current waiting count, excluding the person being processed. A
-  square-root scale adds up to 18 m of height at 1,000 queued people. Larger queues
+  square-root scale adds up to 18 m of height at 5,000 queued people. Larger queues
   retain their exact counts; only the visual height is capped. An idle operator
   has a short neutral marker, and a processing operator with no queue is teal.
 - **Color:** oldest current wait in that operator's queue. Fresh waits are yellow,
