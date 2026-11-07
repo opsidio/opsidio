@@ -36,3 +36,13 @@ All three agent lanes are integrated into the standalone scene. Wira can continu
 | Doni-format example | `contracts/examples/coldplay-gbk-plan-draft.json` passes the actual OpenAPI `PlanDocument` schema. Six exporter tests passed. Its 20 category records preserve 70,000 expected attendees, including the original 500 Infinity attendees. | Complete the operational sections listed in `meta.unresolved`. Live semantic validation remains pending. |
 
 The production build passes. Vite reports a large-bundle warning. In total, 49 JavaScript tests and 17 Python tests pass. Browser checks cover the integrated North-entry worker and playback, editor revision invalidation, and the bridge's explicit unconfigured state.
+
+## Local V1 checkpoint
+
+The user confirmed that V1 is the locally authored initial plan. Optimization submits that plan to Doni's API and returns V2 candidates.
+
+The complete example now lives at `contracts/examples/coldplay-gbk-demo-plan.json`. It passes the actual OpenAPI schema and contains 20 category records totaling 70,000 expected arrivals, five entry-area graphs, 45 staff positions, 90 queue-barrier panels, 15 tents, 10 tables and five detectors. The other four entry layouts are fictional rotations of the North template. All new operational values are explicit demo assumptions.
+
+The local JSON adapter feeds the worker and renderer. North editor changes update attached operators and checkpoints, and project route distance into the same exported plan. The map has overview counts, role-colored operators, checkpoint signs, stronger barrier guides and buttons to focus each entry area. The road depth-bias clipping fix is included.
+
+The browser generated all 70,000 arrivals from the full JSON. The optimization bridge and polling panel are implemented with mock coverage. Four new adapter tests and four optimization tests bring the total to 74 automated tests. Remote service validation and optimization remain pending credentials. Returned native plan changes that lack matching spatial bindings require layout repair before V2 can be loaded.

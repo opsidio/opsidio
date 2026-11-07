@@ -79,6 +79,7 @@ export type EntryAreaMarker = {
 
 export type SceneProps = {
   children?: ReactNode
+  focusPosition?: Point
   entryAreas?: readonly EntryAreaMarker[]
   debug?: boolean
   autoRotate?: boolean

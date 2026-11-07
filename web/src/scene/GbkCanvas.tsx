@@ -43,14 +43,14 @@ function CameraRig(props: SceneProps) {
     const cx = (stadium.minX + stadium.maxX) / 2
     const cz = (stadium.minZ + stadium.maxZ) / 2
     const entry = view === 'entry' || view === 'layout'
-    const target = new THREE.Vector3(entry ? 12 : cx, 0, entry ? -260 : cz)
+    const target = entry && props.focusPosition ? new THREE.Vector3(...props.focusPosition) : new THREE.Vector3(entry ? 12 : cx, 0, entry ? -260 : cz)
     camera.up.set(0, 1, 0)
     if (flat) {
       camera.position.set(target.x, 1400, target.z + 0.01)
     } else if (view === 'isometric') {
       camera.position.set(cx + 800, 800, cz + 800)
     } else if (entry) {
-      camera.position.set(70, 66, -350)
+      camera.position.set(target.x + 58, 66, target.z - 90)
     } else {
       camera.position.set(cx + 510, 620, cz + 650)
     }
@@ -60,7 +60,7 @@ function CameraRig(props: SceneProps) {
       controls.current.target.copy(target)
       controls.current.update()
     }
-  }, [camera, flat, set, venue.id, view])
+  }, [camera, flat, set, venue.id, view, props.focusPosition?.[0], props.focusPosition?.[2]])
 
   return <OrbitControls ref={controls} camera={camera} makeDefault
     minDistance={6} maxDistance={2400} minZoom={0.5} maxZoom={30}
