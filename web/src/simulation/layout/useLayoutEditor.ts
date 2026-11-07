@@ -26,6 +26,7 @@ type State = {
   message: string | null
   changed: boolean
   history: LayoutRevision[]
+  recoveryJSON: string | null
 }
 const newId = (prefix: string) => `${prefix}_${crypto.randomUUID()}`
 const rounded = (point: Point): Point => [Math.round(point[0] * 100) / 100, 0, Math.round(point[2] * 100) / 100]
@@ -39,16 +40,16 @@ export function useLayoutEditor(options: LayoutEditorOptions) {
   const initialRef = useRef(options.initialLayout ?? null)
   const [state, setState] = useState<State>(() => {
     const initial = options.initialLayout ?? createInitialLayout()
-    let layout = initial, issues: LayoutIssue[] = [], message: string | null = null
+    let layout = initial, issues: LayoutIssue[] = [], message: string | null = null, recoveryJSON: string | null = null
     if (storageKey && typeof window !== 'undefined') {
       try {
         const restored = restoreLayout(window.localStorage, storageKey, validationOptions)
-        issues = restored.issues
+        issues = restored.layout ? [] : restored.issues
         if (restored.layout) { layout = restored.layout; message = 'Restored the browser draft; all geometry and graph checks were rerun.' }
-        else if (restored.found) message = 'Stored JSON could not be loaded. It has been kept untouched; export or repair it before replacing it with a new edit.'
+        else if (restored.found) { recoveryJSON = restored.sourceJSON ?? null; message = 'Stored JSON could not be loaded. It is available in Save / import for repair and stays untouched until you edit the draft.' }
       } catch { issues = [{ code: 'storage_read', severity: 'error', path: 'storage', message: 'Browser storage is unavailable. JSON import/export still works.' }] }
     }
-    return { layout, selectedPlacementId: null, selectedNodeId: null, actionIssues: issues, message, changed: false, history: [] }
+    return { layout, selectedPlacementId: null, selectedNodeId: null, actionIssues: issues, message, changed: false, history: [], recoveryJSON }
   })
   const [storageIssues, setStorageIssues] = useState<LayoutIssue[]>([])
   const validation = useMemo(() => validateLayout(state.layout, validationOptions), [state.layout, validationOptions])
@@ -160,7 +161,7 @@ export function useLayoutEditor(options: LayoutEditorOptions) {
     /** Pass only this graph to ABM. Invalid drafts remain visible but cannot be run. */
     runnableGraph: validation.valid ? validation.graph : null,
     selectedPlacementId, selectedNodeId, selectedId: selectedPlacementId ?? selectedNodeId,
-    message: state.message, actionIssues: [...state.actionIssues, ...storageIssues], canUndo: state.history.length > 0,
+    message: state.message, recoveryJSON: state.recoveryJSON, actionIssues: [...state.actionIssues, ...storageIssues], canUndo: state.history.length > 0,
     selectPlacement, selectNode, updatePlacement, movePlacement, addPlacement, removePlacement,
     updateNode, moveNode, attachNode, addNode, removeNode, connectNodes, removeEdge,
     importJSON, exportJSON: () => exportLayoutJSON(state.layout), undo, reset,
