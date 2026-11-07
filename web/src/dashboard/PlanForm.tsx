@@ -1,13 +1,7 @@
 import { useState } from "react";
-import {
-  ArrowLeft,
-  Plus,
-  Trash2,
-  MapPin,
-  LockKeyhole,
-  CheckCircle2,
-} from "lucide-react";
+import { ArrowLeft, Plus, Trash2, MapPin, LockKeyhole } from "lucide-react";
 import { Button, Badge, Card, Notice, Heading, Forward } from "./ui";
+import ArrivalProfileEditor from "./ArrivalProfileEditor";
 import {
   get,
   set,
@@ -58,11 +52,9 @@ export default function PlanForm({
 }: Props) {
   const p = draft.plan,
     t = totals(p),
-    [errorsVisible, setErrorsVisible] = useState(false),
-    [arrivalCategory, setArrivalCategory] = useState("all"),
+    [touched, setTouched] = useState<Set<string>>(() => new Set()),
     [cohortsOpen, setCohortsOpen] = useState(false);
-  const issues = validate(p),
-    sectionIssues = issues.filter((i) => i.step === step);
+  const issues = validate(p);
   const change = (path: string, value: unknown) => {
     const next = set(p, path, value);
     if (path === "venue.name") {
@@ -79,7 +71,7 @@ export default function PlanForm({
     hint?: string,
   ) {
     const value = get(p, path),
-      error = errorsVisible
+      error = touched.has(path)
         ? issues.find((i) => i.path === path)?.message
         : undefined;
     return (
@@ -117,7 +109,7 @@ export default function PlanForm({
               )
             }
             onBlur={() => {
-              if (error) setErrorsVisible(true);
+              setTouched((current) => new Set([...current, path]));
             }}
           />
         )}
@@ -164,7 +156,7 @@ export default function PlanForm({
       id = "category_" + crypto.randomUUID();
     next.event.ticket_categories.push({
       id,
-      name: "New category",
+      name: cats.length ? "New category" : "General",
       admission: "standing",
       sold: null,
       quota: null,
@@ -258,15 +250,7 @@ export default function PlanForm({
       ];
     });
   const next = () => {
-    setErrorsVisible(true);
-    if (sectionIssues.length) {
-      document
-        .querySelector("[data-form-top]")
-        ?.scrollIntoView({ behavior: "smooth" });
-      return;
-    }
     onStep(steps[steps.indexOf(step) + 1] ?? "review");
-    setErrorsVisible(false);
   };
   return (
     <div data-form-top>
@@ -276,7 +260,12 @@ export default function PlanForm({
             ? "Set the context for your entry plan"
             : step === "review"
               ? "Review your entry plan"
-              : "Plan your entrance operations"
+              : {
+                  attendance: "How many guests will arrive?",
+                  checks: "How will guests enter?",
+                  resources: "Who and what do you need?",
+                  targets: "What should a smooth entrance look like?",
+                }[step]
         }
       >
         {step === "brief"
@@ -297,7 +286,6 @@ export default function PlanForm({
                 aria-current={step === s ? "step" : undefined}
                 onClick={() => {
                   onStep(s);
-                  setErrorsVisible(false);
                 }}
               >
                 {i + 1}　{titles[s]}
@@ -309,17 +297,11 @@ export default function PlanForm({
           </p>
         </>
       )}
-      {errorsVisible && sectionIssues.length > 0 && (
-        <Notice
-          title={`Please fix ${sectionIssues.length} input${sectionIssues.length === 1 ? "" : "s"} before continuing`}
-          tone="amber"
-        >
-          <ul>
-            {sectionIssues.slice(0, 8).map((issue, i) => (
-              <li key={i}>{issue.message}</li>
-            ))}
-          </ul>
-        </Notice>
+      {step !== "review" && (
+        <p className="op-draft-guidance">
+          Start with what you know. You can continue with missing estimates and
+          complete them before Optimize.
+        </p>
       )}
       {step === "brief" && (
         <>
@@ -432,8 +414,10 @@ export default function PlanForm({
               )}
             </div>
             <p className="op-muted">
-              Expected arrivals, sold tickets and quota are separate inputs.
-              Zero is an explicit estimate.
+              Expected attendees is your forecast; sold tickets is the number
+              already issued; quota is the number offered. The category rows
+              below should add up to these totals. Leave unknown numbers blank;
+              use zero only when you mean none.
             </p>
           </Card>
           <Card
@@ -496,72 +480,7 @@ export default function PlanForm({
               {fmt(p.event.capacity.tickets_on_sale)}
             </p>
           </Card>
-          <Card title="Arrival profile" tag={estimate}>
-            <label className="op-field">
-              <span>Apply profile to</span>
-              <select
-                value={arrivalCategory}
-                onChange={(e) => setArrivalCategory(e.target.value)}
-              >
-                <option value="all">All ticket categories</option>
-                {cats.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {table(
-              ["Arrival window", "Share (%)", "Expected arrivals"],
-              Object.keys(
-                p.demand.arrival_windows_percent[
-                  arrivalCategory === "all" ? cats[0]?.id : arrivalCategory
-                ] ?? {},
-              ).map((window) => {
-                const selected =
-                    arrivalCategory === "all"
-                      ? cats
-                      : cats.filter((c) => c.id === arrivalCategory),
-                  values = selected.map(
-                    (c) => p.demand.arrival_windows_percent[c.id]?.[window],
-                  ),
-                  same = values.every((v) => v === values[0]),
-                  share = same ? values[0] : "";
-                return [
-                  window,
-                  <input
-                    aria-label={`${window} arrival share`}
-                    type="number"
-                    min="0"
-                    max="100"
-                    placeholder={same ? "" : "Mixed"}
-                    value={share ?? ""}
-                    onChange={(e) => {
-                      const next = structuredClone(p);
-                      for (const c of selected)
-                        next.demand.arrival_windows_percent[c.id][window] =
-                          e.target.value === "" ? null : Number(e.target.value);
-                      onChange(next);
-                    }}
-                  />,
-                  same && typeof share === "number"
-                    ? fmt(
-                        Math.round(
-                          ((arrivalCategory === "all"
-                            ? Number(p.event.expected_attendees_estimate)
-                            : Number(selected[0]?.sold)) *
-                            share) /
-                            100,
-                        ),
-                      )
-                    : "—",
-                ];
-              }),
-            )}
-            <p className="op-muted">
-              Each category’s arrival shares must total 100%.
-            </p>
-          </Card>
+          <ArrivalProfileEditor plan={p} onChange={onChange} />
           <Card title="Audience assumptions" tag={estimate}>
             <div className="op-grid three">
               {[
@@ -581,8 +500,29 @@ export default function PlanForm({
       )}
       {step === "checks" && (
         <>
+          <div className="op-entry-guide" aria-label="How entry works">
+            {[
+              ["1", "Ticket check", "Staff check the guest’s ticket and ID."],
+              [
+                "2",
+                "Wristband",
+                "Staff fit the wristband for the guest’s category.",
+              ],
+              [
+                "3",
+                "Security",
+                "Security staff check the guest and their belongings.",
+              ],
+            ].map(([number, title, text]) => (
+              <div key={number}>
+                <span>{number}</span>
+                <strong>{title}</strong>
+                <p>{text}</p>
+              </div>
+            ))}
+          </div>
           <Card
-            title="Entry areas and active lanes"
+            title="Entrances and queue lanes"
             tag={<Badge tone="amber">{t.lanes} active lanes</Badge>}
           >
             <Button onClick={addGate}>
@@ -618,17 +558,19 @@ export default function PlanForm({
               ]),
             )}
             <p className="op-muted">
-              Use each gate’s approved lane limit. Demo limits still require
-              venue approval.
+              An entrance can have several lanes working in parallel. “Active
+              lanes” means how many are open; “Lane limit” is the most the
+              entrance can support.
             </p>
           </Card>
           <Card title="Checks in each admission lane" tag={estimate}>
             <p className="op-muted">
-              Ticket + ID → Wristband → Security · 1 scanner + 1 detector wand
-              per active lane
+              Enter how many seconds one guest usually needs for each check, and
+              a slower estimate for busy periods. Each active lane needs a
+              ticket scanner, a detector wand, and staff.
             </p>
             {table(
-              ["Order / check", "Typical seconds", "Slow seconds"],
+              ["Check", "Usual time (seconds)", "Slower time (seconds)"],
               p.process_steps.steps.map((s: Plan, i: number) => [
                 `${i + 1}. ${s.name}`,
                 input(
@@ -686,8 +628,10 @@ export default function PlanForm({
               )}
             </div>
             <p className="op-muted">
-              Exception arrival rate is unspecified in the supplied plan.
-              Resolution outcomes do not imply a failure rate.
+              These desks help guests whose tickets need extra attention.
+              “Resolved” is the share allowed to continue after help; “Refused”
+              is the share unable to enter. Together they account for all guests
+              who visit the help desk (100%).
             </p>
           </Card>
           <Card title="Admission policies" tag={policy}>
@@ -695,17 +639,71 @@ export default function PlanForm({
               "Group entry rule",
               "event.admission_planning_notes.group_policy",
               "text",
+              [
+                {
+                  label:
+                    "Guests who bought together enter with the registered ticket holder",
+                  value:
+                    "tickets_purchased_together_enter_with_registered_holder",
+                },
+                ...(![
+                  "tickets_purchased_together_enter_with_registered_holder",
+                  undefined,
+                  "",
+                ].includes(p.event.admission_planning_notes.group_policy)
+                  ? [
+                      {
+                        label:
+                          p.event.admission_planning_notes.group_policy.replaceAll(
+                            "_",
+                            " ",
+                          ),
+                        value: p.event.admission_planning_notes.group_policy,
+                      },
+                    ]
+                  : []),
+              ],
             )}
             {input(
               "Wristband collection",
               "event.admission_planning_notes.wristband_collection",
               "text",
+              [
+                {
+                  label: "At the guest’s assigned entrance, during admission",
+                  value: "during_admission_at_the_category_entry_area",
+                },
+                ...(![
+                  "during_admission_at_the_category_entry_area",
+                  undefined,
+                  "",
+                ].includes(
+                  p.event.admission_planning_notes.wristband_collection,
+                )
+                  ? [
+                      {
+                        label:
+                          p.event.admission_planning_notes.wristband_collection.replaceAll(
+                            "_",
+                            " ",
+                          ),
+                        value:
+                          p.event.admission_planning_notes.wristband_collection,
+                      },
+                    ]
+                  : []),
+              ],
             )}
           </Card>
         </>
       )}
       {step === "resources" && (
         <>
+          <p className="op-draft-guidance">
+            Set the hours your team can work, then assign people to each
+            entrance. Each open lane needs qualified staff for ticket checks,
+            wristbands, and security.
+          </p>
           <Card title="Staff shift" tag={estimate}>
             {p.staff.shifts.map((s: Plan, i: number) => (
               <div className="op-grid three" key={s.id}>
@@ -771,8 +769,20 @@ export default function PlanForm({
               <Plus size={16} />
               Add missing gate roles
             </Button>
+            <p className="op-muted">
+              Count is the team you plan to use. Female + male should equal that
+              count. Available staff is the maximum number you can source for
+              this role.
+            </p>
             {table(
-              ["Role", "Count", "Female", "Male", "Rate / shift (IDR)", "Pool"],
+              [
+                "Role",
+                "Count",
+                "Female",
+                "Male",
+                "Rate / shift (IDR)",
+                "Available staff",
+              ],
               p.staff.roles.map((r: Plan, i: number) => [
                 r.name,
                 ...[
@@ -791,7 +801,9 @@ export default function PlanForm({
               p.staff.roles.flatMap((r: Plan, i: number) =>
                 (r.assignment ?? []).map((a: Plan, j: number) => [
                   r.name,
-                  gates.find((g) => g.id === a.point)?.name ?? a.point,
+                  [...gates, ...(p.venue.layout.service_points ?? [])].find(
+                    (g) => g.id === a.point,
+                  )?.name ?? a.point,
                   input(
                     `${r.name} assigned count`,
                     `staff.roles.${i}.assignment.${j}.count`,

@@ -30,6 +30,10 @@ const {
   identity,
   newDraft,
   updated,
+  arrivalSummary,
+  arrivalMessage,
+  evenArrivalProfile,
+  replaceArrivalProfiles,
 } = await import(
   `data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`
 );
@@ -149,4 +153,88 @@ test("plan and layout revisions each invalidate prior snapshots", () => {
     key,
   );
   assert.notEqual(identity(d, { ...layout, revision: 2 }), key);
+});
+
+test("General arrival error states show the missing share and reject blank, invalid or overlapping inputs", () => {
+  const profile = { "13:00-15:00": 40, "15:00-17:00": 30 };
+  assert.equal(arrivalSummary(profile).total, 70);
+  assert.match(arrivalMessage(profile), /Add 30%/);
+  assert.match(
+    arrivalMessage({ "13:00-15:00": 80, "15:00-17:00": 30 }),
+    /Remove 10%/,
+  );
+  assert.match(arrivalMessage({ "13:00-15:00": null }), /blank percentage/);
+  for (const p of [
+    {},
+    { "13:00-15:00": NaN },
+    { "13:00-15:00": -1, "15:00-17:00": 101 },
+    { "15:00-13:00": 100 },
+    { "13:00-15:00": 50, "14:00-17:00": 50 },
+  ])
+    assert.equal(arrivalSummary(p).complete, false);
+  assert.equal(
+    arrivalSummary({
+      "13:00-15:00": 33.3,
+      "15:00-17:00": 33.3,
+      "17:00-19:00": 33.4,
+    }).complete,
+    true,
+  );
+  const plan = copyDemo(),
+    id = plan.event.ticket_categories[0].id;
+  plan.event.ticket_categories[0].name = "General";
+  plan.demand.arrival_windows_percent[id] = profile;
+  assert.ok(
+    validate(plan).some(
+      (i) => i.message === "General: Add 30% more to account for all guests.",
+    ),
+  );
+});
+test("even split uses the actual event times, accounts for all guests and needs a valid planning interval", () => {
+  const profile = evenArrivalProfile({
+    arrival_generation_start: "13:00",
+    last_entry: "19:00",
+  });
+  assert.deepEqual(profile, {
+    "13:00-14:30": 25,
+    "14:30-16:00": 25,
+    "16:00-17:30": 25,
+    "17:30-19:00": 25,
+  });
+  assert.equal(arrivalSummary(profile).complete, true);
+  assert.equal(
+    arrivalSummary(
+      evenArrivalProfile({ doors_open: "13:00", last_entry: "13:03" }),
+    ).complete,
+    true,
+  );
+  assert.equal(evenArrivalProfile({}), null);
+  assert.equal(
+    evenArrivalProfile({ doors_open: "19:00", last_entry: "13:00" }),
+    null,
+  );
+});
+test("arrival updates affect only explicitly selected categories and retain unexposed plan data", () => {
+  const plan = copyDemo(),
+    before = structuredClone(plan),
+    id = plan.event.ticket_categories[0].id;
+  const profile = { "15:00-17:00": 100 };
+  const next = replaceArrivalProfiles(plan, [id], profile);
+  assert.deepEqual(plan, before);
+  assert.deepEqual(next.demand.arrival_windows_percent[id], profile);
+  assert.deepEqual(
+    next.demand.arrival_windows_percent[plan.event.ticket_categories[1].id],
+    before.demand.arrival_windows_percent[plan.event.ticket_categories[1].id],
+  );
+  assert.deepEqual(next.spatial_context, plan.spatial_context);
+  const all = replaceArrivalProfiles(
+    plan,
+    plan.event.ticket_categories.map((c) => c.id),
+    profile,
+  );
+  assert.ok(
+    all.event.ticket_categories.every(
+      (c) => arrivalSummary(all.demand.arrival_windows_percent[c.id]).complete,
+    ),
+  );
 });

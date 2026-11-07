@@ -63,7 +63,7 @@ export function Notice({
       <Info size={18} />
       <div>
         <strong>{title}</strong>
-        <p>{children}</p>
+        <div className="op-notice-content">{children}</div>
       </div>
     </div>
   );
@@ -88,7 +88,7 @@ export function Heading({
     <div className="op-heading">
       <div>
         <h1>{title}</h1>
-        {children && <p>{children}</p>}
+        {children && <div className="op-notice-content">{children}</div>}
       </div>
       {action}
     </div>

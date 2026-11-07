@@ -215,6 +215,94 @@ export function totals(p: Plan) {
     ),
   };
 }
+export type ArrivalProfile = Record<string, number | null>;
+export function arrivalSummary(profile: ArrivalProfile = {}) {
+  const entries = Object.entries(profile);
+  const values = entries.map(([, value]) => value);
+  const total = values.reduce<number>(
+    (sum, value) =>
+      sum + (typeof value === "number" && Number.isFinite(value) ? value : 0),
+    0,
+  );
+  const missing = values.filter(
+    (value) => value === null || value === undefined,
+  ).length;
+  const validShares = values.every(
+    (value) =>
+      typeof value === "number" &&
+      Number.isFinite(value) &&
+      value >= 0 &&
+      value <= 100,
+  );
+  const windows = entries
+    .map(([key]) => key.split("-").map(clockSeconds))
+    .sort((a, b) => a[0] - b[0]);
+  const validWindows = windows.every(
+    (window, i) =>
+      window.length === 2 &&
+      window.every(Number.isFinite) &&
+      window[1] > window[0] &&
+      (!i || window[0] >= windows[i - 1][1]),
+  );
+  return {
+    total,
+    missing,
+    validShares,
+    validWindows,
+    complete:
+      entries.length > 0 &&
+      validShares &&
+      validWindows &&
+      Math.abs(total - 100) <= 0.001,
+  };
+}
+export function arrivalMessage(profile: ArrivalProfile = {}) {
+  const state = arrivalSummary(profile);
+  if (!Object.keys(profile).length)
+    return "Add arrival times or use the even-split estimate.";
+  if (!state.validWindows)
+    return "Set a start and end time for each row. Time periods must not overlap.";
+  if (state.missing)
+    return `Fill in ${state.missing} blank percentage${state.missing === 1 ? "" : "s"}, or leave this estimate for later.`;
+  if (!state.validShares)
+    return "Use a percentage from 0 to 100 for each time period.";
+  if (state.complete) return "All guests are accounted for.";
+  const difference = Number(Math.abs(100 - state.total).toFixed(3));
+  return state.total < 100
+    ? `Add ${difference}% more to account for all guests.`
+    : `Remove ${difference}% so guests are counted once.`;
+}
+export function evenArrivalProfile(schedule: Plan): ArrivalProfile | null {
+  const starts = [
+    schedule.arrival_generation_start,
+    schedule.outer_area_open,
+    schedule.doors_open,
+  ].map(clockSeconds);
+  const start = starts.find(Number.isFinite),
+    end = clockSeconds(schedule.last_entry ?? schedule.main_act);
+  if (start === undefined || !Number.isFinite(end) || end <= start) return null;
+  const startMinute = start / 60,
+    span = (end - start) / 60,
+    count = Math.min(4, span);
+  const time = (minute: number) =>
+    `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
+  const result: ArrivalProfile = {};
+  for (let i = 0; i < count; i++)
+    result[
+      `${time(startMinute + Math.floor((span * i) / count))}-${time(startMinute + Math.floor((span * (i + 1)) / count))}`
+    ] = Math.floor(100 / count) + (i < 100 % count ? 1 : 0);
+  return result;
+}
+export function replaceArrivalProfiles(
+  plan: Plan,
+  ids: string[],
+  profile: ArrivalProfile,
+): Plan {
+  const next = structuredClone(plan);
+  for (const id of ids)
+    next.demand.arrival_windows_percent[id] = structuredClone(profile);
+  return next;
+}
 export function validate(p: Plan): Issue[] {
   const issues: Issue[] = [];
   const add = (step: Step, path: string, message: string) =>
@@ -297,16 +385,12 @@ export function validate(p: Plan): Issue[] {
         path + ".entry_gate",
         `${c.name}: choose an entry area.`,
       );
-    const shares = Object.values(p.demand.arrival_windows_percent[c.id] ?? {});
-    if (
-      !shares.length ||
-      shares.some((v) => typeof v !== "number" || v < 0 || v > 100) ||
-      Math.abs(shares.reduce<number>((n, v) => n + Number(v), 0) - 100) > 0.001
-    )
+    const profile = p.demand.arrival_windows_percent[c.id] ?? {};
+    if (!arrivalSummary(profile).complete)
       add(
         "attendance",
         "demand.arrival_windows_percent." + c.id,
-        `${c.name}: arrival shares must total 100%.`,
+        `${c.name}: ${arrivalMessage(profile)}`,
       );
   });
   if (
