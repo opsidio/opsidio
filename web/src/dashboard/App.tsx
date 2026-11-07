@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import PlanForm from "./PlanForm";
+import PlanAssistant from "./PlanAssistant";
 import { RequiredMark, FieldMessage } from "./FormField";
 import { Badge, Brand, BrandMark, Button, Card, GbkDemoLink, Heading, Notice } from "./ui";
 import { eventSimulationVersions, eventWorkspaceHref, readEventVersionPlan, saveEventFormVersion } from "../simulation/ui/useSimulationVersions";
@@ -213,10 +214,12 @@ export default function App() {
   function open(d: Draft, s: Step = "brief") {
     navigate(`/events/${d.id}/${s}`);
   }
-  function create(example = false) {
-    const d = newDraft(example);
+  function addDraft(d: Draft) {
     setDrafts((items) => [d, ...items]);
     open(d);
+  }
+  function create(example = false) {
+    addDraft(newDraft(example));
   }
   function change(plan: Plan) {
     if (!draft) return;
@@ -267,9 +270,7 @@ export default function App() {
       if (!planShape(plan))
         throw Error("This file is not a complete Opsidio v0.1 plan.");
       validate(plan);
-      const d = { ...newDraft(), plan };
-      setDrafts((items) => [d, ...items]);
-      open(d);
+      addDraft({ ...newDraft(), plan });
       setToast("Plan imported. Review its inputs before running.");
     } catch (e) {
       setToast(e instanceof Error ? e.message : "Could not import this plan.");
@@ -598,6 +599,7 @@ export default function App() {
                 ? "Continue an entry plan or start a new scenario."
                 : "Bring your next event into focus, one step at a time."}
             </Heading>
+            <PlanAssistant onCreate={(plan) => addDraft({ ...newDraft(), plan })} />
             {!drafts.length ? (
               <section className="op-empty">
                 <div className="op-empty-icon">
