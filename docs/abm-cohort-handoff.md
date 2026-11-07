@@ -4,7 +4,7 @@ The complete input is `contracts/examples/coldplay-gbk-demo-plan.json`. The brow
 
 All segment shares, arrival profiles, group sizes, speeds and local spawn offsets are fictional demo assumptions. Public category-to-entry routing is retained from the sourced admission scenario.
 
-## Revision 8 staffing
+## Baseline staffing
 
 | Entrance | Staffed lanes | Security | Scan | Help | Total staff |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -58,7 +58,7 @@ Infinity retains its original 500 people and Plaza Tenggara arrival. Each of its
 
 The runtime path is transport origin → public approach → assigned entry forecourt → help desk → security queue and screening → ticket scan and wristband → one-way category handover. Each entrance distributes arriving groups round-robin across its authored lanes. Each lane has its own scan and security checkpoint and bound operators. The local worker queues visitors FIFO, processes one visitor per operator, then continues the journey. It uses fixed typical times from the native process steps and native gate opening/closing clocks. Only groups selected by the editable `help_desk_visit_percent` stop at the help desk. The demo uses a fictional 1% in every profile.
 
-Every ticket category has a named destination node. These are post-security category handover points at its assigned entry area. Category handovers are spaced around that area's admitted endpoint until internal routes are reviewed. `viewing_tier` records the eventual seated or standing sector. `final_zone_route_status` is `pending_venue_review`. Seat blocks, stairs, accessible routes and stage-specific field destinations still need venue mapping.
+Every ticket category has a named destination node just inside the mapped stadium footprint on the side of its assigned entry area. The proposed post-scan links reach handover points at ground level below the illustrated roof edge. `viewing_tier` records the eventual seated or standing sector. `final_zone_route_status` is `pending_venue_review`. Seat blocks, stairs, accessible routes and stage-specific field destinations still need venue mapping.
 
 Groups spawn together with the same arrival timestamp and follow the cohort route and speed. The security pens follow the barrier layout. The panel reports the full queue and the number waiting off-scene when the pen fills. Visitors awaiting service at closing remain pending. Dynamic collision avoidance, shortest-queue choice, impatience and spontaneous route switching remain outside this demo model.
 

@@ -10,7 +10,7 @@ import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { Point, SceneProps, VenuePack } from '../simulation/types'
 
-const palette = { grass: '#667b5e', lawn: '#7c936c', concrete: '#b6b5a9', road: '#777f7d', ivory: '#e8e4d5', steel: '#7b9392', red: '#ad4c40', ink: '#183d44', cyan: '#27c5bb', amber: '#e9aa46' }
+const palette = { background: '#eef0f4', cyan: '#27c5bb', amber: '#e9aa46' }
 
 function bounds(points: readonly Point[]) {
   const xs = points.map(p => p[0]), zs = points.map(p => p[2])
@@ -98,9 +98,9 @@ function Scene(props: SceneProps & { showGuides?: boolean }) {
     } else onSelect(null)
   }
   return <>
-    <color attach="background" args={['#dbe5df']} />
+    <color attach="background" args={[palette.background]} />
     <ambientLight intensity={1.3} />
-    <hemisphereLight args={['#f8f6df', '#4b695a', 1.5]} />
+    <hemisphereLight args={['#fcfdff', '#627083', 1.5]} />
     <directionalLight position={[-180, 350, -200]} intensity={2.5} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-400} shadow-camera-right={400} shadow-camera-top={400} shadow-camera-bottom={-400} shadow-camera-far={1000} shadow-bias={-0.0004} shadow-normalBias={0.15} />
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={centre} receiveShadow onClick={moveOnGround}><planeGeometry args={[size, size]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} /></mesh>
     <group onClick={moveOnGround}>
@@ -114,13 +114,21 @@ function Scene(props: SceneProps & { showGuides?: boolean }) {
       </SceneHtml>)}
     {props.showGuides && props.view === 'layout' && <gridHelper args={[600, 120, '#84988b', '#92a18c']} position={[0, 0.16, 0]} />}
     {props.showGuides && routes.filter(r => r.points.length > 1).map(route => <Line key={route.id} segments={route.segments} points={route.points.map(p => [p[0], route.color ? 0.42 : 0.35, p[2]])} color={route.color ?? (route.kind === 'entry' ? palette.cyan : route.kind === 'connector' ? '#8c64b6' : route.kind === 'public' ? '#4d6f9f' : palette.amber)} lineWidth={route.color ? 4 : props.view === 'map' ? 2 : 3} dashed={!route.color && route.kind !== 'entry'} dashSize={route.kind === 'connector' ? 3 : 1.2} gapSize={route.kind === 'connector' ? 2 : 0.7} />)}
-    {props.showGuides && nodes.map(node => <group key={node.id} position={[node.position[0], 0.4, node.position[2]]} onClick={event => {
-      if ((props.inspectWaypoints || props.editBounds && (props.view === 'layout' || props.view === 'map')) && event.delta <= 4) { event.stopPropagation(); onSelect(node.id) }
-    }}>
-      {(props.inspectWaypoints || props.editBounds) && <mesh rotation={[-Math.PI / 2, 0, 0]}><circleGeometry args={[1.8, 12]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} side={THREE.DoubleSide} /></mesh>}
-      <mesh rotation={[-Math.PI / 2, 0, 0]}><ringGeometry args={[0.7, 1.05, 24]} /><meshBasicMaterial color={selectedId === node.id ? '#006864' : node.role === 'checkpoint' ? palette.amber : palette.cyan} side={THREE.DoubleSide} /></mesh>
-      {(props.view === 'layout' || props.inspectWaypoints && selectedId === node.id) && <SceneHtml position={[0, 1, 0]} center style={{ pointerEvents: 'none', whiteSpace: 'nowrap', font: '500 10px system-ui', color: '#173c3d', background: '#f5f4e5e8', padding: '2px 5px', borderRadius: 3 }}>{node.label}</SceneHtml>}
-    </group>)}
+    {props.showGuides && nodes.map(node => {
+      const selected = selectedId === node.id
+      // Reveal the inspected ground waypoint through the roof in overhead views.
+      const showThroughRoof = selected && node.role === 'destination' && (props.view === 'map' || props.view === 'layout')
+      return <group key={node.id} position={[node.position[0], 0.4, node.position[2]]} onClick={event => {
+        if ((props.inspectWaypoints || props.editBounds && (props.view === 'layout' || props.view === 'map')) && event.delta <= 4) { event.stopPropagation(); onSelect(node.id) }
+      }}>
+        {(props.inspectWaypoints || props.editBounds) && <mesh rotation={[-Math.PI / 2, 0, 0]}><circleGeometry args={[1.8, 12]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} side={THREE.DoubleSide} /></mesh>}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} renderOrder={showThroughRoof ? 1 : 0}>
+          <ringGeometry args={[0.7, 1.05, 24]} />
+          <meshBasicMaterial color={selected ? '#006864' : node.role === 'checkpoint' ? palette.amber : palette.cyan} depthTest={!showThroughRoof} depthWrite={!showThroughRoof} side={THREE.DoubleSide} />
+        </mesh>
+        {(props.view === 'layout' || props.inspectWaypoints && selected) && <SceneHtml position={[0, 1, 0]} center style={{ pointerEvents: 'none', whiteSpace: 'nowrap', font: '500 10px system-ui', color: '#173c3d', background: '#f5f4e5e8', padding: '2px 5px', borderRadius: 3 }}>{node.label}</SceneHtml>}
+      </group>
+    })}
     {placements.map(placement => {
       const preset = catalogue.find(p => p.id === placement.presetId)
       return preset ? <KitModel key={placement.id} preset={preset} placement={placement} selected={!!props.showGuides && selectedId === placement.id} onSelect={props.showGuides ? onSelect : () => {}} /> : null
@@ -152,7 +160,7 @@ export default function GbkCanvas(props: SceneProps & { debug?: boolean; showGui
   const labelLayer = useRef<HTMLDivElement>(null)
   return <div style={{ position: 'relative', width: '100%', height: '100%' }}>
     <div ref={labelLayer} style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 1 }} />
-    <Canvas shadows="percentage" dpr={[1, 1.75]} camera={{ position: [350, 350, 450], fov: 42, near: 2, far: 4000 }} gl={{ antialias: true }} style={{ width: '100%', height: '100%', background: '#e8ebe1' }}>
+    <Canvas shadows="percentage" dpr={[1, 1.75]} camera={{ position: [350, 350, 450], fov: 42, near: 2, far: 4000 }} gl={{ antialias: true }} style={{ width: '100%', height: '100%', background: palette.background }}>
       <SceneHtmlTarget.Provider value={labelLayer}>
         <Suspense fallback={null}><Scene {...props} />{props.children}{props.debug && <PerformanceMonitor output={performance} />}</Suspense>
       </SceneHtmlTarget.Provider>

@@ -65,7 +65,9 @@ The three marked layouts use the following centerlines. North and West retain th
 | Plaza Utara | North pedestrian approach, OSM 28212629 | 9 m | 5 | 141 m |
 | Plaza Timur · Festival | Jalan Plaza Timur west toward the stadium, OSM 555901293 | 15 m | 8 | 182 m |
 
-Pintu Kuning uses one **13.84 m event access connector** from public OSM node 4060512460 along mapped private ways 403721006 and 403721028. That one-way approach is reserved for Pintu Kuning and requires event permission. The public network excludes these private ways. The Festival and Tenggara handovers end along their own corridors before the inner stadium links.
+Pintu Kuning uses one **13.84 m event access connector** from public OSM node 4060512460 along mapped private ways 403721006 and 403721028. That one-way approach is reserved for Pintu Kuning and requires event permission. The public network excludes these private ways.
+
+After ticket scan, visitors continue from the end of their admission spine to a handover just inside the mapped stadium footprint, under the illustrated roof edge. The five links are proposals for site review. Their endpoints mark the modeled threshold, with onward seating and standing routes still to be mapped.
 
 `proposed_anchor_m` retains the sketch reference for the three moved gates. `operational_anchor_m` marks the simulated security location. The geometry tests check all 30 one-way lanes, their queue pens and service equipment, and the 15 origin-to-forecourt routes against the pinned map.
 
@@ -75,7 +77,7 @@ Pintu Kuning uses one **13.84 m event access connector** from public OSM node 40
 | Parkir Timur | 363–1,911 m |
 | Proposed passenger drop-off | 724–2,641 m |
 
-The approach walk ends at the forecourt. Admission adds the route along the entrance’s spine. In the API snapshot, `demand.time_reference: origin_spawn` means arrivals are released at the selected origin. Apply the matching distance in `venue.layout.walking_paths` once. Local playback assigns origin shares to the 76 category × behavior rows and preserves all 70,000 visitors.
+The approach walk ends at the forecourt. Admission adds the route along the entrance’s spine and the link to the stadium handover. In the API snapshot, `demand.time_reference: origin_spawn` means arrivals are released at the selected origin. Apply the matching distance in `venue.layout.walking_paths` once. Local playback assigns origin shares to the 76 category × behavior rows and preserves all 70,000 visitors.
 
 ## Rebuild and checks
 
