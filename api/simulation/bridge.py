@@ -16,6 +16,7 @@ from typing import Any, Mapping
 
 MAX_BODY_BYTES = 1_048_576
 PLAN_ID = re.compile(r"pln_[0-9A-HJKMNP-TV-Z]{26}\Z")
+OPT_ID = re.compile(r"opt_[0-9A-HJKMNP-TV-Z]{26}\Z")
 RUN_ID = re.compile(r"run_[0-9A-HJKMNP-TV-Z]{26}\Z")
 
 
@@ -191,6 +192,68 @@ class SimulationBridge:
                 exc.payload["plan_id"] = plan_id
             raise
 
+    def optimize(self, request: Any) -> dict[str, Any]:
+        if not self.config.health()["configured"]:
+            raise failure(503, "bridge_unconfigured", "The optimization service is not configured yet.", status="unconfigured")
+        self._validate_request(request)
+        plan_document = request["plan"]
+        key = hashlib.sha256(json_bytes(plan_document)).hexdigest()
+        plan = self.client.request("POST", "/v1/plans", plan_document,
+                                   idempotency_key="opsidio-opt-plan-v1-" + key)
+        plan_id = plan.get("id")
+        if not isinstance(plan_id, str) or not PLAN_ID.fullmatch(plan_id):
+            raise failure(502, "upstream_invalid_response", "The engine returned an invalid plan identity.")
+        validation = self.client.request("POST", f"/v1/plans/{plan_id}/validate")
+        if type(validation.get("valid")) is not bool or not isinstance(validation.get("issues"), list):
+            raise failure(502, "upstream_invalid_response", "The engine returned an invalid validation result.")
+        if not validation["valid"]:
+            raise failure(422, "plan_invalid", "Resolve the plan validation errors before optimizing.",
+                          status="invalid", validation=validation, plan_id=plan_id)
+        settings = {"optimization_method": "greedy", "time_limit_seconds": 180,
+                    "verify": {"replications": request["replications"], "base_seed": request["base_seed"]}}
+        request_key = hashlib.sha256(json_bytes({"plan": plan_id, "settings": settings})).hexdigest()
+        job = self.client.request("POST", f"/v1/plans/{plan_id}/optimize", settings,
+                                  idempotency_key="opsidio-opt-v1-" + request_key)
+        if (not isinstance(job.get("id"), str) or not OPT_ID.fullmatch(job["id"])
+                or job.get("plan_id") != plan_id):
+            raise failure(502, "upstream_invalid_response", "The engine returned a mismatched optimization.")
+        return {"plan_id": plan_id, "validation": validation, "optimization": job}
+
+    def optimization(self, job_id: str) -> dict[str, Any]:
+        if not OPT_ID.fullmatch(job_id):
+            raise failure(400, "invalid_id", "Invalid optimization identity.")
+        if not self.config.health()["configured"]:
+            raise failure(503, "bridge_unconfigured", "The optimization service is not configured yet.", status="unconfigured")
+        job = self.client.request("GET", f"/v1/optimizations/{job_id}")
+        if job.get("id") != job_id:
+            raise failure(502, "upstream_invalid_response", "The engine returned a mismatched optimization.")
+        return job
+
+    def cancel_optimization(self, job_id: str) -> dict[str, Any]:
+        self.optimization(job_id)
+        return self.client.request("POST", f"/v1/optimizations/{job_id}/cancel", {})
+
+    def comparison(self, job_id: str, candidate_id: str) -> dict[str, Any]:
+        job = self.optimization(job_id)
+        candidate = next((item for item in job.get("candidates", []) if item.get("plan_id") == candidate_id), None)
+        if job.get("status") != "succeeded" or candidate is None or not PLAN_ID.fullmatch(candidate_id):
+            raise failure(409, "candidate_unavailable", "Choose a candidate from a completed optimization.")
+        plan = self.client.request("GET", f"/v1/plans/{candidate_id}")
+        if plan.get("id") != candidate_id or not isinstance(plan.get("document"), dict):
+            raise failure(502, "upstream_invalid_response", "The candidate plan does not match its identity.")
+        runs = {}
+        for label, item, expected_plan in (("baseline", job.get("starting_plan") or {}, job.get("plan_id")),
+                                            ("candidate", candidate, candidate_id)):
+            run_id = item.get("des_run_id")
+            if run_id:
+                if not isinstance(run_id, str) or not RUN_ID.fullmatch(run_id):
+                    raise failure(502, "upstream_invalid_response", "The comparison has an invalid run identity.")
+                run = self.client.request("GET", f"/v1/runs/{run_id}")
+                if run.get("id") != run_id or run.get("plan_id") != expected_plan or run.get("simulation_method") != "des":
+                    raise failure(502, "upstream_invalid_response", "Comparison runs must match their plans and simulation method.")
+                runs[label] = run
+        return {"optimization_id": job_id, "plan": plan, "candidate": candidate, "runs": runs}
+
     @staticmethod
     def _validate_request(request: Any) -> None:
         errors: list[dict[str, str]] = []
@@ -217,3 +280,4 @@ class SimulationBridge:
             error = failure(422, "validation_failed", "The request has invalid fields.", status="invalid")
             error.payload["error"]["details"] = errors
             raise error
+

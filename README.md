@@ -11,7 +11,9 @@ npm ci --prefix web
 npm run dev --prefix web -- --port 5173
 ```
 
-Open [the scene](http://127.0.0.1:5173/simulation). Use `?view=map` for the transport and entry-area overview. Add `?debug=1` for renderer measurements. Use **Routes** to toggle the path guides.
+Open [Opsidio](http://127.0.0.1:5173) for the dashboard. Its event simulation remains at `/simulation?event=:id`. See the [dashboard handoff](docs/dashboard-handoff.md) for demo setup.
+
+Open the [standalone simulation workspace](http://127.0.0.1:5173/simulation/workspace). Use `?view=map` for the transport and entry-area overview. Add `?debug=1` for renderer measurements. Use **Routes** to toggle the path guides.
 
 Open **Control Panel** and select **Run simulation** to generate 70,000 fictional arrivals from `contracts/examples/coldplay-gbk-demo-plan.json`. People walk from MRT Istora Mandiri Exit B, Parkir Timur or a proposed passenger drop-off to their assigned category entrance. The **Entry area** selector focuses any of the five admission areas. **Editor → Layout** edits equipment and directed waypoints for all five gates and the shared transport origins. Pick an area, then use **Equipment** or **Waypoints** to move items on the map or enter coordinates. Move the arrival, checkpoint, and destination nodes to change the route. The separate gate marker only moves the label.
 
@@ -37,6 +39,7 @@ python3.11 -m unittest discover -s api/tests -p 'test_*.py' -v
 
 ## Handoffs
 
+- [Dashboard integration](docs/dashboard-handoff.md)
 - [Coldplay-inspired admission scenario](docs/coldplay-admission-scenario.md)
 - [Doni-format planning draft](contracts/examples/coldplay-gbk-plan-draft.json)
 - [Complete local V1 demo plan](contracts/examples/coldplay-gbk-demo-plan.json)
@@ -55,4 +58,4 @@ The footprint and surrounding map features are sourced. Building heights, stadiu
 
 Rebuild the complete example with `node --experimental-strip-types tools/build-coldplay-demo.mjs`. The editor projects coordinates, attachments, route distances, and gate operations into the same JSON snapshot used for export and optimization. A returned candidate whose staffing lacks matching spatial positions is rejected with a binding error for repair.
 
-For dashboard integration, use `web/src/simulation/ui/SimulationChrome.tsx` for the toolbar and drawer shell, `SimulationControls.tsx` and `SimulationReport.tsx` for the controlled panels, and the existing `LayoutEditor` and `OptimizationPanel`. Wrap panels in `simulation-theme` to inherit the shared palette, or supply Wira’s own `--sim-*` tokens. `/simulation?view=map&canvas=1` shows the scene without the standalone toolbar and drawers.
+For dashboard integration, use `web/src/simulation/ui/SimulationChrome.tsx` for the toolbar and drawer shell, `SimulationControls.tsx` and `SimulationReport.tsx` for the controlled panels, and the existing `LayoutEditor` and `OptimizationPanel`. Wrap panels in `simulation-theme` to inherit the shared palette, or supply Wira’s own `--sim-*` tokens. `/simulation/workspace?view=map&canvas=1` shows the scene without the standalone toolbar and drawers.
