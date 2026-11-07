@@ -28,8 +28,7 @@
   background: var(--sim-surface); border-bottom: 1px solid var(--sim-border);
 }
 .sim-toolbar-identity, .sim-toolbar-actions { display: flex; align-items: center; gap: 10px; }
-.sim-wordmark { font-weight: 760; font-size: 22px; letter-spacing: -.055em; line-height: 1; }
-.sim-wordmark span { color: var(--sim-accent); }
+.sim-toolbar .op-brand { font-size: 22px; gap: 10px; }
 .sim-toolbar-context { display: grid; gap: 3px; border-left: 1px solid var(--sim-border); padding-left: 14px; margin-left: 5px; }
 .sim-toolbar-context strong { font-size: 13px; line-height: 1.2; }
 .sim-toolbar-context small { font-size: 11px; color: var(--sim-muted); }
@@ -65,7 +64,8 @@
   .simulation-theme { --sim-toolbar-height: 91px; }
   .sim-toolbar { flex-wrap: wrap; gap: 8px; padding: 9px 12px; }
   .sim-toolbar-identity { width: 100%; }
-  .sim-wordmark { font-size: 19px; }
+  .sim-toolbar .op-brand { font-size: 19px; gap: 8px; }
+  .sim-toolbar .op-mark { width: 28px; height: 28px; }
   .sim-toolbar-context { display: flex; align-items: center; gap: 8px; }
   .sim-toolbar-context strong { font-size: 11px; }
   .sim-toolbar-context small { display: none; }
