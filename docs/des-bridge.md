@@ -89,10 +89,26 @@ The parent positions the panel. A supplied `plan` is used directly. With `plan={
 
 The panel shows configuration, engine validation errors, running state, real scorecard summary and expandable original output. If the plan or seed changes before a response arrives, that old response is not presented as the new plan's result.
 
+## GBK planning draft export
+
+The admission scenario has its own `opsidio-admission-scenario/0.1` format. It is not a Doni `PlanDocument`. Export a separate partial document with:
+
+```sh
+python3.11 -m api.simulation.compile_scenario
+```
+
+This writes [contracts/examples/coldplay-gbk-plan-draft.json](../contracts/examples/coldplay-gbk-plan-draft.json), targeting Doni's `schema_version: "0.1"` and `meta.document: "opsidio_event_input"`. The planning source remains unchanged in `data/scenarios/coldplay-gbk-demo.json`. The exporter retains the complete original scenario snapshot and canonical hash, and converts source URLs to `{title, url}` objects.
+
+All 70,000 fictional expected attendees are retained as estimates. They are not reinterpreted as sold tickets, capacity or a zero no-show policy. Infinity's existing 500 people split into nine seated/standing records using the source's fixed allocation; their original cohort, product and arrival-area IDs remain available. The resulting 20 records still sum to 70,000.
+
+The draft maps the proposed 13:00 prefunction opening, 17:30 general doors and 21:00 main act to Doni's schedule fields while retaining the entire proposal clock. Gate references are explicitly proposed. The gate records, lanes, processing times, staffing, constraints and demand curve are omitted pending authored inputs; their unresolved status is recorded in `meta`.
+
+**Schema compatibility is not live semantic validity.** The API supports partial plans, but this draft is not ready for `/simulate`. It will not pass the bridge/panel's full-plan check until the operational sections are authored. No capacity or service assumptions are silently added to make it runnable.
+
 ## Verification and limits
 
 ```sh
-python3.11 -m unittest discover -s api/tests -p 'test_des_bridge.py' -v
+python3.11 -m unittest discover -s api/tests -p 'test_*.py' -v
 npm run build --prefix web
 ```
 
