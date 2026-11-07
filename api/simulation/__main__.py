@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
@@ -31,14 +32,26 @@ def handler_for(bridge: SimulationBridge) -> type[BaseHTTPRequestHandler]:
                 pass  # A closed browser does not prove that an upstream run stopped.
 
         def do_GET(self) -> None:
-            if self.path != "/api/simulation/health":
-                self.send_json(404, failure(404, "not_found", "Unknown bridge route.").payload)
-                return
-            self.send_json(200, bridge.config.health())
+            try:
+                if self.path == "/api/simulation/health":
+                    self.send_json(200, bridge.config.health())
+                    return
+                match = re.fullmatch(r"/api/simulation/optimizations/(opt_[A-Z0-9]+)/comparison/(pln_[A-Z0-9]+)", self.path)
+                if match:
+                    self.send_json(200, bridge.comparison(*match.groups()))
+                    return
+                match = re.fullmatch(r"/api/simulation/optimizations/(opt_[A-Z0-9]+)", self.path)
+                if match:
+                    self.send_json(200, bridge.optimization(match.group(1)))
+                    return
+                raise failure(404, "not_found", "Unknown bridge route.")
+            except BridgeError as exc:
+                self.send_json(exc.http_status, exc.payload)
 
         def do_POST(self) -> None:
             try:
-                if self.path != "/api/simulation/run":
+                cancel = re.fullmatch(r"/api/simulation/optimizations/(opt_[A-Z0-9]+)/cancel", self.path)
+                if self.path not in {"/api/simulation/run", "/api/simulation/optimize"} and not cancel:
                     raise failure(404, "not_found", "Unknown bridge route.")
                 # JSON plus no CORS support prevents an unrelated web page from making
                 # a simple cross-origin form POST that spends this local server's key.
@@ -62,7 +75,12 @@ def handler_for(bridge: SimulationBridge) -> type[BaseHTTPRequestHandler]:
                     json_bytes(request)
                 except (ValueError, UnicodeError, RecursionError):
                     raise failure(400, "invalid_json", "The request body must contain valid JSON.") from None
-                self.send_json(200, bridge.run(request))
+                if cancel:
+                    self.send_json(200, bridge.cancel_optimization(cancel.group(1)))
+                elif self.path == "/api/simulation/optimize":
+                    self.send_json(202, bridge.optimize(request))
+                else:
+                    self.send_json(200, bridge.run(request))
             except BridgeError as exc:
                 self.send_json(exc.http_status, exc.payload)
 
@@ -84,3 +102,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
