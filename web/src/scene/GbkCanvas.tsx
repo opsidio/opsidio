@@ -1,5 +1,5 @@
-import { Suspense, useEffect, useMemo, useRef } from 'react'
-import { Canvas, type ThreeEvent, useThree } from '@react-three/fiber'
+import { Suspense, useEffect, useMemo, useRef, type RefObject } from 'react'
+import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber'
 import { Html, Line, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import type { KitPreset, MapArea, Placement, Point, SceneProps, VenuePack } from '../simulation/types'
@@ -193,10 +193,30 @@ function Scene(props: SceneProps) {
   </>
 }
 
+/** Samples completed frames without scheduling React renders or changing the scene. */
+function PerformanceMonitor({ output }: { output: RefObject<HTMLDivElement | null> }) {
+  const sample = useRef({ seconds: 0, frames: 0, calls: 0, triangles: 0 })
+  useFrame(({ gl }, delta) => {
+    if (delta > 1) { sample.current = { seconds: 0, frames: 0, calls: 0, triangles: 0 }; return }
+    const s = sample.current
+    s.seconds += delta; s.frames++; s.calls += gl.info.render.calls; s.triangles += gl.info.render.triangles
+    if (s.seconds < 0.5 || !output.current) return
+    const fps = Math.round(s.frames / s.seconds), calls = Math.round(s.calls / s.frames), triangles = Math.round(s.triangles / s.frames)
+    output.current.textContent = `${fps} fps · ${calls} draws · ${(triangles / 1000).toFixed(1)}k tris`
+    output.current.dataset.fps = String(fps); output.current.dataset.drawCalls = String(calls); output.current.dataset.triangles = String(triangles)
+    sample.current = { seconds: 0, frames: 0, calls: 0, triangles: 0 }
+  })
+  return null
+}
+
 /** Fresh schematic GBK bowl over the supplied mapped ground frame. Click a kit,
  * then click ground in layout view to commit one move (always at y = 0). */
-export default function GbkCanvas(props: SceneProps) {
-  return <Canvas shadows dpr={[1, 1.75]} camera={{ position: [350, 350, 450], fov: 42, near: 0.1, far: 5000 }} gl={{ antialias: true }} style={{ width: '100%', height: '100%', background: '#e8ebe1' }}>
-    <Suspense fallback={null}><Scene {...props} /></Suspense>
-  </Canvas>
+export default function GbkCanvas(props: SceneProps & { debug?: boolean; showGuides?: boolean }) {
+  const performance = useRef<HTMLDivElement>(null)
+  return <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+    <Canvas shadows dpr={[1, 1.75]} camera={{ position: [350, 350, 450], fov: 42, near: 0.1, far: 5000 }} gl={{ antialias: true }} style={{ width: '100%', height: '100%', background: '#e8ebe1' }}>
+      <Suspense fallback={null}><Scene {...props} />{props.debug && <PerformanceMonitor output={performance} />}</Suspense>
+    </Canvas>
+    {props.debug && <div ref={performance} data-scene-performance aria-label="Scene rendering performance" title="Half-second average: rendered frames per second, renderer draw calls including shadows, and triangles. Depends on browser, device and view." style={{ position: 'absolute', right: 12, bottom: 10, pointerEvents: 'none', color: '#38534b', background: '#eef1e7d9', padding: '4px 7px', borderRadius: 4, font: '10px ui-monospace, monospace', fontVariantNumeric: 'tabular-nums' }}>Measuring scene…</div>}
+  </div>
 }
