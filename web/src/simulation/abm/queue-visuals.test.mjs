@@ -83,7 +83,8 @@ test('wait color continuously reddens through the editable visual thresholds and
 
 test('bar height rises monotonically with the full queue and caps its geometry only', () => {
   let previous = 0
-  for (const count of [0, 1, 10, 100, 500, QUEUE_BAR_MAX_COUNT]) {
+  assert.equal(QUEUE_BAR_MAX_COUNT, 5000)
+  for (const count of [0, 1, 10, 100, 500, 1000, 2000, 4000, QUEUE_BAR_MAX_COUNT]) {
     const height = queueBarHeightM(count)
     assert.ok(height > previous)
     previous = height

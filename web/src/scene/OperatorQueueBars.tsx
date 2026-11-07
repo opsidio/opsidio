@@ -25,7 +25,7 @@ const noRaycast = () => {}
 /**
  * Display annotations above the original operator X/Z positions. The 6 m baseline clears
  * the authored canopies; staff and operational coordinates stay on the ground.
- * Height is sqrt(queue), capped at 1,000 people. Color is the oldest current wait.
+ * Height is sqrt(queue), capped at 5,000 people. Color is the oldest current wait.
  */
 export function OperatorQueueBars({ sampler, operators, clockRef, showLabels = true }: OperatorQueueBarsProps) {
   const { camera, size } = useThree()
