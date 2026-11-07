@@ -1,4 +1,4 @@
-import { Html } from '@react-three/drei'
+import SceneHtml from './SceneHtml'
 import type { EntryAreaMarker } from '../simulation/types'
 
 /** Proposed admission-area anchors; exact processing and access geometry is pending. */
@@ -13,13 +13,13 @@ export default function EntryAreas({ areas }: { areas: readonly EntryAreaMarker[
         <cylinderGeometry args={[0.16, 0.16, 9.5, 8]} />
         <meshBasicMaterial color={area.color} />
       </mesh>
-      <Html position={[0, 13, 0]} center zIndexRange={[30, 0]} style={{ pointerEvents: 'none' }}>
+      <SceneHtml position={[0, 13, 0]} center zIndexRange={[30, 0]} style={{ pointerEvents: 'none' }}>
         <div className="entry-area-label" style={{ borderTopColor: area.color }}>
           <strong>{area.label}</strong>
           <span>{area.attendees.toLocaleString('en-US')} demo arrivals</span>
           <small>Proposed anchor</small>
         </div>
-      </Html>
+      </SceneHtml>
     </group>)}
   </group>
 }

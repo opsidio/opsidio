@@ -7,10 +7,13 @@ import re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
+from .optimization import OptimizationBridge
 from .bridge import MAX_BODY_BYTES, BridgeConfig, BridgeError, SimulationBridge, failure, json_bytes
 
 
 def handler_for(bridge: SimulationBridge) -> type[BaseHTTPRequestHandler]:
+    workspace = OptimizationBridge(bridge)
+
     class Handler(BaseHTTPRequestHandler):
         server_version = "OpsidioBridge/0.1"
 
@@ -43,6 +46,9 @@ def handler_for(bridge: SimulationBridge) -> type[BaseHTTPRequestHandler]:
                 match = re.fullmatch(r"/api/simulation/optimizations/(opt_[A-Z0-9]+)", self.path)
                 if match:
                     self.send_json(200, bridge.optimization(match.group(1)))
+                    return
+                if self.path.startswith("/api/simulation/plans/"):
+                    self.send_json(200, workspace.get_plan(self.path.removeprefix("/api/simulation/plans/")))
                     return
                 raise failure(404, "not_found", "Unknown bridge route.")
             except BridgeError as exc:

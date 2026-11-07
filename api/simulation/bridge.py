@@ -143,7 +143,7 @@ class SimulationBridge:
         self.config = config
         self.client = client or EngineClient(config)
 
-    def run(self, request: Any) -> dict[str, Any]:
+    def run(self, request: Any, *, prepare_only: bool = False) -> dict[str, Any]:
         health = self.config.health()
         if not health["configured"]:
             raise failure(503, "bridge_unconfigured", "Configure the local bridge environment before running DES.",
@@ -175,6 +175,8 @@ class SimulationBridge:
                 error.payload["error"]["details"] = [issue for issue in validation["issues"]
                                                       if isinstance(issue, dict) and issue.get("severity") == "error"]
                 raise error
+            if prepare_only:
+                return {"status": "validated", "plan": plan, "validation": validation}
             stage = "simulate"
             # Deliberately do not cache the simulate HTTP response: the engine's natural
             # plan/snapshot/settings reuse reports its current `reused` value truthfully.

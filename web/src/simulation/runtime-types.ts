@@ -8,7 +8,7 @@ export type NavigationNode = {
   attachment?: { placementId: string; offset: Point }
 }
 
-export type NavigationEdge = { id: string; from: string; to: string }
+export type NavigationEdge = { id: string; from: string; to: string; basis?: string }
 
 export type LayoutRevision = {
   schemaVersion: 'opsidio-editor/0.1'
@@ -27,11 +27,41 @@ export type ArrivalWindow = {
 
 export type CohortDemand = {
   id: string
+  categoryId?: string
+  segmentId?: string
+  originId?: string
   count: number
   arrivalNodeId: string
   destinationNodeId: string
   windows: ArrivalWindow[]
   groupSize?: number
+  walkSpeedMps?: number
+  laneCheckpointIds?: string[]
+  helpDesk?: { passNodeId: string; checkpointNodeId: string; visitPercent: number }
+}
+
+export type ServiceStation = {
+  id: string
+  nodeId: string
+  operatorId: string
+  serviceSeconds: number
+  opensSeconds: number
+  closesSeconds: number
+  queueStartNodeId?: string
+  queueEndNodeId?: string
+  admissionStage?: 'help' | 'security' | 'scan'
+}
+export type ServiceStop = {
+  stationId: string
+  operatorId: string
+  distanceM: number
+  queueStartDistanceM?: number
+  queueEndDistanceM?: number
+  /** Arrival at the authored queue entrance, or at the checkpoint if it has no queue geometry. */
+  arrivalSeconds: number
+  startSeconds: number | null
+  endSeconds: number | null
+  queueIndex: number
 }
 
 export type AbmConfig = {
@@ -42,6 +72,7 @@ export type AbmConfig = {
   nodes: NavigationNode[]
   edges: NavigationEdge[]
   cohorts: CohortDemand[]
+  serviceStations?: ServiceStation[]
 }
 
 export type AgentJourney = {
@@ -49,10 +80,13 @@ export type AgentJourney = {
   cohortId: string
   groupId: string
   onsiteArrivalSeconds: number
+  /** Walking-only estimate for the first mandatory checkpoint. Service stops carry scheduled arrivals. */
   checkpointArrivalSeconds: number
   routeNodeIds: string[]
   points: Point[]
   walkSeconds: number
+  serviceStops?: ServiceStop[]
+  completionSeconds?: number | null
 }
 
 export type ArrivalBucket = {

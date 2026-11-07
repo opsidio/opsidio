@@ -36,3 +36,25 @@ All three agent lanes are integrated into the standalone scene. Wira can continu
 | Doni-format example | `contracts/examples/coldplay-gbk-plan-draft.json` passes the actual OpenAPI `PlanDocument` schema. Six exporter tests passed. Its 20 category records preserve 70,000 expected attendees, including the original 500 Infinity attendees. | Complete the operational sections listed in `meta.unresolved`. Live semantic validation remains pending. |
 
 The production build passes. Vite reports a large-bundle warning. In total, 49 JavaScript tests and 17 Python tests pass. Browser checks cover the integrated North-entry worker and playback, editor revision invalidation, and the bridge's explicit unconfigured state.
+
+## Local V1 checkpoint
+
+The user confirmed that V1 is the locally authored initial plan. Optimization submits that plan to Doni's API and returns V2 candidates.
+
+The complete example now lives at `contracts/examples/coldplay-gbk-demo-plan.json`. It passes the actual OpenAPI schema and contains 20 category records totaling 70,000 expected arrivals, five entry-area graphs, 45 staff positions, 75 queue-barrier panels, 15 tents, 10 tables and five detectors. The other four entry layouts are fictional rotations of the North template. All new operational values are explicit demo assumptions.
+
+The local JSON adapter feeds the worker and renderer. North editor changes update attached operators and checkpoints, and project route distance into the same exported plan. The map has overview counts, role-colored operators, checkpoint signs, stronger barrier guides and buttons to focus each entry area. The road depth-bias clipping fix is included.
+
+The browser generated all 70,000 arrivals from the full JSON. The optimization bridge and polling panel are implemented with mock coverage. Nine adapter/admission tests and four optimization tests bring the total to 79 automated tests. Remote service validation and optimization remain pending credentials. Returned native plan changes that lack matching spatial bindings require layout repair before V2 can be loaded.
+
+The cohort revision adds five behavior profiles and 76 category × segment cohorts, retaining exactly 70,000 arrivals. There are 25 onsite spawn nodes and 20 category handover nodes. Native category demand is the weighted profile aggregate. Category handovers sit around their entry area endpoint while internal sector routes await venue review. See `docs/abm-cohort-handoff.md`.
+
+The lane and processing revision adds four directed scan/security paths per entry, group-preserving round-robin lane assignment, and 40 operator service stations. The local worker schedules FIFO processing at each station using native typical process times and gate opening/closing clocks. Visitors waiting at closing remain pending. Rendering shows the first 32 queued visitors per station and reports full counts. Help staff are present, with exception demand still pending.
+
+## Mapped arrivals and queue display
+
+Three parallel agent worktrees delivered the mapped routes, origin adapter and queue visuals. Revision 5 uses MRT Istora Mandiri Exit B, Parkir Timur and a proposed taxi/ride-hailing drop-off. The 76 authored behavior cohorts expand into 228 origin-specific runtime cohorts. The browser generates 30,541 MRT, 14,841 parking and 24,618 drop-off arrivals, retaining the 70,000 total and category gates.
+
+Four lane routes per entrance pass mapped corridor, obstruction and required checkpoint checks. Three sites moved onto wider mapped corridors, with original proposed anchors retained. The 82.6 m parking connector is shown dashed and still needs review, along with shelter footprints. The approach network and queue-to-gate links have separate native walking distances.
+
+Operator bar height represents queue size and color represents the oldest wait. Waiting people progress from yellow through orange at five minutes to red at fifteen minutes. The browser verified all three origins and distinct four-lane bars at Plaza Timur. The OpenAPI schema and 91 automated tests pass. Live optimization and semantic validation still need Doni's service access.

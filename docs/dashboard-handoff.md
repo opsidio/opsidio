@@ -22,6 +22,8 @@ Routes:
 - `/simulation?event=:id`: fullscreen interactive `GbkCanvas`. `/simulation` selects the most recent draft when no ID is supplied.
 - `/settings`: demo profile and logout. `/reports`: entry point back to event comparisons.
 
+The separate `/simulation/workspace` route runs the full spatial fixture with all five entrances, local queues, version switching and waypoint traces. It is available for integration without changing the dashboard’s `/simulation` route.
+
 Drafts are saved after each edit in localStorage (`opsidio:plans:v1`). Layouts use a separate key for each event. Export the full plan from Review; export the authored layout from its existing Save / import panel. Optimization jobs and comparisons persist for the current tab in sessionStorage, including refresh recovery. Storage failures remain visible and JSON export remains available.
 
 ## V1 and the scene

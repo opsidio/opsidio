@@ -161,7 +161,7 @@ export default function KitModel({ preset, placement, selected, onSelect }: {
   useEffect(() => () => model.merged.forEach(part => part.geometry.dispose()), [model])
   const materials: Record<Finish, { color: string; roughness: number; metalness: number }> = {
     fabric: { color: '#f6f5ef', roughness: 0.88, metalness: 0 },
-    metal: { color: '#b2bac0', roughness: 0.36, metalness: 0.7 },
+    metal: { color: preset.kind === 'rowing' ? '#405867' : '#b2bac0', roughness: preset.kind === 'rowing' ? 0.7 : 0.36, metalness: preset.kind === 'rowing' ? 0.25 : 0.7 },
     dark: { color: '#3d4851', roughness: 0.52, metalness: 0.35 },
     plastic: { color: '#e6e7df', roughness: 0.62, metalness: 0.02 },
     accent: { color: '#68bda8', roughness: 0.4, metalness: 0.05 },

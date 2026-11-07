@@ -2,9 +2,10 @@ import KitModel from './KitModel'
 import StadiumModel from './StadiumModel'
 import LandscapeContext from './LandscapeContext'
 import EntryAreas from './EntryAreas'
+import SceneHtml, { SceneHtmlTarget } from './SceneHtml'
 import { Suspense, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber'
-import { Html, Line, OrbitControls } from '@react-three/drei'
+import { Line, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { Point, SceneProps, VenuePack } from '../simulation/types'
@@ -43,14 +44,16 @@ function CameraRig(props: SceneProps) {
     const cx = (stadium.minX + stadium.maxX) / 2
     const cz = (stadium.minZ + stadium.maxZ) / 2
     const entry = view === 'entry' || view === 'layout'
-    const target = new THREE.Vector3(entry ? 12 : cx, 0, entry ? -260 : cz)
+    const target = entry && props.focusPosition ? new THREE.Vector3(...props.focusPosition) : new THREE.Vector3(entry ? 12 : cx, 0, entry ? -260 : cz)
     camera.up.set(0, 1, 0)
     if (flat) {
       camera.position.set(target.x, 1400, target.z + 0.01)
     } else if (view === 'isometric') {
       camera.position.set(cx + 800, 800, cz + 800)
     } else if (entry) {
-      camera.position.set(70, 66, -350)
+      const yaw = THREE.MathUtils.degToRad(props.focusYawDeg ?? 0)
+      const c = Math.cos(yaw), s = Math.sin(yaw)
+      camera.position.set(target.x + 58 * c - 90 * s, 66, target.z - 58 * s - 90 * c)
     } else {
       camera.position.set(cx + 510, 620, cz + 650)
     }
@@ -60,7 +63,7 @@ function CameraRig(props: SceneProps) {
       controls.current.target.copy(target)
       controls.current.update()
     }
-  }, [camera, flat, set, venue.id, view])
+  }, [camera, flat, set, venue.id, view, props.focusPosition?.[0], props.focusPosition?.[2], props.focusYawDeg])
 
   return <OrbitControls ref={controls} camera={camera} makeDefault
     minDistance={6} maxDistance={2400} minZoom={0.5} maxZoom={30}
@@ -87,8 +90,8 @@ function Scene(props: SceneProps & { showGuides?: boolean }) {
   const moveOnGround = (e: ThreeEvent<MouseEvent>) => {
     if (e.delta > 4) return
     e.stopPropagation()
-    if (props.showGuides && selectedId && props.view === 'layout') {
-      const { minX, maxX, minZ, maxZ } = venue.editBounds
+    if (props.showGuides && selectedId && (props.view === 'layout' || props.view === 'map')) {
+      const { minX, maxX, minZ, maxZ } = props.editBounds ?? venue.editBounds
       onMove(selectedId, [Math.max(minX, Math.min(maxX, e.point.x)), 0, Math.max(minZ, Math.min(maxZ, e.point.z))])
     } else onSelect(null)
   }
@@ -104,14 +107,17 @@ function Scene(props: SceneProps & { showGuides?: boolean }) {
     <StadiumModel venue={venue} />
     {labelsReady && props.entryAreas && <EntryAreas areas={props.entryAreas} />}
     {labelsReady && props.showLabels && venue.landmarks.filter(landmark => /Indonesia Arena|Tennis Indoor|Istana Olahraga|Stadion Madya|Stadion Utama|Aquatic|Akuatik/.test(landmark.label)).map(landmark =>
-      <Html key={landmark.id} position={[landmark.position[0], /Stadion Utama/.test(landmark.label) ? 38 : 18, landmark.position[2]]} center distanceFactor={undefined} zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
+      <SceneHtml key={landmark.id} position={[landmark.position[0], /Stadion Utama/.test(landmark.label) ? 38 : 18, landmark.position[2]]} center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
         <span className="venue-label">{landmark.label.replace('Istana Olahraga Gelora Bung Karno', 'Istora').replace('Stadion Utama Gelora Bung Karno', 'Stadion Utama GBK')}</span>
-      </Html>)}
+      </SceneHtml>)}
     {props.showGuides && props.view === 'layout' && <gridHelper args={[600, 120, '#84988b', '#92a18c']} position={[0, 0.16, 0]} />}
-    {props.showGuides && routes.filter(r => r.points.length > 1).map(route => <Line key={route.id} points={route.points.map(p => [p[0], 0.35, p[2]])} color={route.kind === 'entry' ? palette.cyan : palette.amber} lineWidth={3} dashed={route.kind === 'exception'} dashSize={1.2} gapSize={0.7} />)}
-    {props.showGuides && nodes.map(node => <group key={node.id} position={[node.position[0], 0.4, node.position[2]]}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]}><ringGeometry args={[0.7, 1.05, 24]} /><meshBasicMaterial color={node.role === 'checkpoint' ? palette.amber : palette.cyan} side={THREE.DoubleSide} /></mesh>
-      {props.view === 'layout' && <Html position={[0, 1, 0]} center style={{ pointerEvents: 'none', whiteSpace: 'nowrap', font: '500 10px system-ui', color: '#173c3d', background: '#f5f4e5e8', padding: '2px 5px', borderRadius: 3 }}>{node.label}</Html>}
+    {props.showGuides && routes.filter(r => r.points.length > 1).map(route => <Line key={route.id} segments={route.segments} points={route.points.map(p => [p[0], route.color ? 0.42 : 0.35, p[2]])} color={route.color ?? (route.kind === 'entry' ? palette.cyan : route.kind === 'connector' ? '#8c64b6' : route.kind === 'public' ? '#4d6f9f' : palette.amber)} lineWidth={route.color ? 4 : props.view === 'map' ? 2 : 3} dashed={!route.color && route.kind !== 'entry'} dashSize={route.kind === 'connector' ? 3 : 1.2} gapSize={route.kind === 'connector' ? 2 : 0.7} />)}
+    {props.showGuides && nodes.map(node => <group key={node.id} position={[node.position[0], 0.4, node.position[2]]} onClick={event => {
+      if ((props.inspectWaypoints || props.editBounds && (props.view === 'layout' || props.view === 'map')) && event.delta <= 4) { event.stopPropagation(); onSelect(node.id) }
+    }}>
+      {(props.inspectWaypoints || props.editBounds) && <mesh rotation={[-Math.PI / 2, 0, 0]}><circleGeometry args={[1.8, 12]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} side={THREE.DoubleSide} /></mesh>}
+      <mesh rotation={[-Math.PI / 2, 0, 0]}><ringGeometry args={[0.7, 1.05, 24]} /><meshBasicMaterial color={selectedId === node.id ? '#006864' : node.role === 'checkpoint' ? palette.amber : palette.cyan} side={THREE.DoubleSide} /></mesh>
+      {(props.view === 'layout' || props.inspectWaypoints && selectedId === node.id) && <SceneHtml position={[0, 1, 0]} center style={{ pointerEvents: 'none', whiteSpace: 'nowrap', font: '500 10px system-ui', color: '#173c3d', background: '#f5f4e5e8', padding: '2px 5px', borderRadius: 3 }}>{node.label}</SceneHtml>}
     </group>)}
     {placements.map(placement => {
       const preset = catalogue.find(p => p.id === placement.presetId)
@@ -141,9 +147,13 @@ function PerformanceMonitor({ output }: { output: RefObject<HTMLDivElement | nul
  * then click ground in layout view to commit one move (always at y = 0). */
 export default function GbkCanvas(props: SceneProps & { debug?: boolean; showGuides?: boolean }) {
   const performance = useRef<HTMLDivElement>(null)
+  const labelLayer = useRef<HTMLDivElement>(null)
   return <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+    <div ref={labelLayer} style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 1 }} />
     <Canvas shadows="percentage" dpr={[1, 1.75]} camera={{ position: [350, 350, 450], fov: 42, near: 2, far: 4000 }} gl={{ antialias: true }} style={{ width: '100%', height: '100%', background: '#e8ebe1' }}>
-      <Suspense fallback={null}><Scene {...props} />{props.children}{props.debug && <PerformanceMonitor output={performance} />}</Suspense>
+      <SceneHtmlTarget.Provider value={labelLayer}>
+        <Suspense fallback={null}><Scene {...props} />{props.children}{props.debug && <PerformanceMonitor output={performance} />}</Suspense>
+      </SceneHtmlTarget.Provider>
     </Canvas>
     {props.debug && <div ref={performance} data-scene-performance aria-label="Scene rendering performance" title="Half-second average: rendered frames per second, renderer draw calls including shadows, and triangles. Depends on browser, device and view." style={{ position: 'absolute', right: 12, bottom: 10, pointerEvents: 'none', color: '#38534b', background: '#eef1e7d9', padding: '4px 7px', borderRadius: 4, font: '10px ui-monospace, monospace', fontVariantNumeric: 'tabular-nums' }}>Measuring scene…</div>}
   </div>

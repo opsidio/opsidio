@@ -1,0 +1,34 @@
+{
+  "attribution": "© OpenStreetMap contributors · ODbL 1.0",
+  "license_url": "https://www.openstreetmap.org/copyright",
+  "geometry_snapshot": "osm-source.json",
+  "origins": [
+    {
+      "id": "origin_mrt",
+      "label": "MRT Istora Mandiri · Exit B",
+      "mode": "mrt",
+      "osm_node_id": "10121357658",
+      "source_url": "https://jakartamrt.co.id/id/stasiun/stasiun-istora-mandiri",
+      "geometry_source_url": "https://www.openstreetmap.org/node/10121357658",
+      "basis": "mapped_exit_fictional_arrival_demand"
+    },
+    {
+      "id": "origin_parking",
+      "label": "Parkir Timur Senayan",
+      "mode": "parking",
+      "osm_way_id": "403720911",
+      "source_url": "https://reservation.gbk.id/venue/unit-parkir-timur-dan-hutan-kota-plaza-sudirman",
+      "geometry_source_url": "https://www.openstreetmap.org/way/403720911",
+      "basis": "mapped_parking_centroid_proposed_exit_connector"
+    },
+    {
+      "id": "origin_dropoff",
+      "label": "Taxi / GoCar / GoRide / GrabCar / GrabBike drop-off",
+      "mode": "taxi_ride_hailing",
+      "osm_node_id": "4567173335",
+      "source_url": "https://www.openstreetmap.org/node/4567173335",
+      "geometry_source_url": "https://www.openstreetmap.org/node/4567173335",
+      "basis": "mapped_parking_entrance_fictional_passenger_dropoff"
+    }
+  ]
+}

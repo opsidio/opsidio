@@ -9,6 +9,13 @@ export type LayoutIssue = {
   relatedIds?: string[]
 }
 export type RequiredRoute = { from: string; to: string }
+export type EditorArea = { id: string; label: string; position: Point }
+export type EditorMarker = { id: string; label: string; entryAreaId: string; position: Point }
+export type EditorLayout = LayoutRevision & { placementAreas?: Record<string, string>; markers?: EditorMarker[] }
+export type ReviewedOverlap = {
+  edgeId: string; from: string; to: string; basis: string; fromPosition: Point; toPosition: Point
+  placements: readonly Placement[]
+}
 export type LayoutAssumptions = {
   routeClearanceM: number
   pagodaFootWidthM: number
@@ -29,6 +36,8 @@ export type LayoutValidationOptions = {
   catalogue: readonly KitPreset[]
   requiredRoutes?: readonly RequiredRoute[]
   assumptions?: LayoutAssumptions
+  /** Explicit source-reviewed demo collisions only. Any changed geometry becomes an error. */
+  reviewedOverlaps?: readonly ReviewedOverlap[]
 }
 export type ResolvedLayoutGraph = {
   nodes: NavigationNode[]
@@ -62,6 +71,8 @@ export function inspectLayoutShape(value: unknown): LayoutIssue[] {
     else if ((value[key] as unknown[]).length > 5000) issues.push(error('collection_limit', key, `${key} is limited to 5,000 items in this editor.`))
   }
   if (issues.length) return issues
+  if (value.placementAreas !== undefined && (!object(value.placementAreas) || Object.values(value.placementAreas).some(value => !id(value)))) issues.push(error('invalid_area_assignments', 'placementAreas', 'Placement area assignments must map IDs to area IDs.'))
+  if (value.markers !== undefined && (!Array.isArray(value.markers) || value.markers.some(item => !object(item) || !id(item.id) || typeof item.label !== 'string' || !id(item.entryAreaId) || !isPoint(item.position)))) issues.push(error('invalid_markers', 'markers', 'Gate markers need unique IDs, labels, entry areas and finite XYZ coordinates.'))
   for (const [index, item] of (value.placements as unknown[]).entries()) {
     if (!object(item) || !id(item.id) || typeof item.label !== 'string' || !id(item.presetId)
       || !isPoint(item.position) || typeof item.yawDeg !== 'number' || !Number.isFinite(item.yawDeg)
@@ -167,7 +178,7 @@ export function reachableNodeIds(start: string, edges: readonly NavigationEdge[]
 }
 
 /** No automatic routing: only authored directed edges with known, clear endpoints are returned. */
-export function validateLayout(layout: LayoutRevision, options: LayoutValidationOptions): LayoutValidation {
+export function validateLayout(layout: EditorLayout, options: LayoutValidationOptions): LayoutValidation {
   const issues = inspectLayoutShape(layout)
   const graph: ResolvedLayoutGraph = { nodes: [], edges: [], routes: [], sceneNodes: [] }
   if (issues.length) return { valid: false, issues, graph }
@@ -177,6 +188,10 @@ export function validateLayout(layout: LayoutRevision, options: LayoutValidation
   const duplicatePlacements = duplicates(layout.placements, 'placements', issues)
   const duplicateNodes = duplicates(layout.nodes, 'nodes', issues)
   const duplicateEdges = duplicates(layout.edges, 'edges', issues)
+  duplicates(layout.markers ?? [], 'markers', issues)
+  for (const marker of layout.markers ?? []) {
+    if (!inBounds(marker.position, options.bounds) || Math.abs(marker.position[1]) > EPS) issues.push(error('marker_bounds', `markers.${marker.id}`, `${marker.label} must stay on the ground inside the editing envelope.`, [marker.id]))
+  }
   const presets = new Map(options.catalogue.map(preset => [preset.id, preset]))
   const placements = new Map<string, Placement>(), obstacles: Footprint[] = [], envelopes: Footprint[] = []
   const partsByPlacement = new Map<string, Footprint[]>(), physicalEnvelopes = new Map<string, Footprint>()
@@ -223,7 +238,15 @@ export function validateLayout(layout: LayoutRevision, options: LayoutValidation
     if (distance(from.position, to.position) < EPS) { issues.push(error('zero_length_edge', `edges.${edge.id}`, `${edge.id} has coincident endpoints.`, [edge.id])); continue }
     if (!inBounds(from.position, options.bounds) || !inBounds(to.position, options.bounds)) continue
     const blockers = [...new Set(obstacles.filter(obstacle => crosses(from.position, to.position, obstacle, assumptions.routeClearanceM)).map(obstacle => obstacle.placement.id))]
-    if (blockers.length) { issues.push(error('blocked_edge', `edges.${edge.id}`, `${edge.from} → ${edge.to} intersects ${blockers.join(', ')} with the assumed ${assumptions.routeClearanceM} m clearance.`, [edge.id, ...blockers])); continue }
+    if (blockers.length) {
+      const unchangedPoint = (a: Point, b: Point) => a.every((value, axis) => Math.abs(value - b[axis]) < EPS)
+      const review = options.reviewedOverlaps?.find(item => item.edgeId === edge.id && item.from === edge.from && item.to === edge.to && item.basis === edge.basis
+        && unchangedPoint(item.fromPosition, from.position) && unchangedPoint(item.toPosition, to.position)
+        && blockers.every(id => item.placements.some(placement => placement.id === id))
+        && item.placements.every(original => { const current = placements.get(original.id); return current && current.presetId === original.presetId && current.yawDeg === original.yawDeg && current.bays === original.bays && unchangedPoint(current.position, original.position) }))
+      if (review) issues.push({ code: 'reviewed_demo_overlap', severity: 'warning', path: `edges.${edge.id}`, message: `${edge.from} → ${edge.to}: unchanged source-flagged East approach overlaps ${blockers.join(', ')}. Retained for the pinned demo; site review is required. Moving this edge or equipment removes this exception.`, relatedIds: [edge.id, ...blockers] })
+      else { issues.push(error('blocked_edge', `edges.${edge.id}`, `${edge.from} → ${edge.to} intersects ${blockers.join(', ')} with the assumed ${assumptions.routeClearanceM} m clearance.`, [edge.id, ...blockers])); continue }
+    }
     graph.edges.push({ ...edge, distanceM: distance(from.position, to.position) })
     graph.routes.push({ id: edge.id, kind: edge.from.includes('help') || edge.to.includes('help') ? 'exception' : 'entry', points: [from.position, to.position] })
   }
@@ -267,14 +290,14 @@ export function createLayoutRevision(placements: Placement[]): LayoutRevision {
   return { schemaVersion: 'opsidio-editor/0.1', id: 'gbk-north-demo', revision: 1, placements: structuredClone(placements), nodes, edges }
 }
 
-export type ImportResult = { layout: LayoutRevision | null; validation: LayoutValidation | null; issues: LayoutIssue[] }
+export type ImportResult = { layout: EditorLayout | null; validation: LayoutValidation | null; issues: LayoutIssue[] }
 export function importLayoutJSON(json: string, options: LayoutValidationOptions): ImportResult {
   if (json.length > 2_000_000) return { layout: null, validation: null, issues: [error('document_limit', '$', 'Layout JSON is limited to 2 MB.')] }
   let value: unknown
   try { value = JSON.parse(json) } catch { return { layout: null, validation: null, issues: [error('invalid_json', '$', 'Cannot parse JSON. The current draft has been kept.')] } }
   const shape = inspectLayoutShape(value)
   if (shape.length) return { layout: null, validation: null, issues: shape }
-  const layout = value as LayoutRevision
+  const layout = value as EditorLayout
   const validation = validateLayout(layout, options)
   // Duplicate IDs cannot be selected unambiguously. Keep the source JSON editable instead.
   if (validation.issues.some(issue => issue.code === 'duplicate_id')) return { layout: null, validation, issues: validation.issues }
