@@ -46,3 +46,16 @@ html, body, #root, .standalone-scene {
   .scene-navigation { font-size: 9px; bottom: 30px; }
   .scene-credit { font-size: 7px; }
 }
+.entry-area-label {
+  background: #fffdf3f5;
+  border-top: 3px solid;
+  border-radius: 5px;
+  padding: 8px 10px;
+  white-space: nowrap;
+  color: #3d534b;
+  box-shadow: 0 3px 12px #1d39272b;
+}
+.entry-area-label strong, .entry-area-label span, .entry-area-label small { display: block; }
+.entry-area-label strong { font-size: 11px; }
+.entry-area-label span { margin-top: 3px; font-size: 10px; }
+.entry-area-label small { margin-top: 3px; color: #8b978c; font-size: 8px; }

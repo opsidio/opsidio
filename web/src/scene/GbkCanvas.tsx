@@ -1,7 +1,8 @@
 import KitModel from './KitModel'
 import StadiumModel from './StadiumModel'
 import LandscapeContext from './LandscapeContext'
-import { Suspense, useEffect, useMemo, useRef, type RefObject } from 'react'
+import EntryAreas from './EntryAreas'
+import { Suspense, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber'
 import { Html, Line, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
@@ -28,14 +29,14 @@ function CameraRig(props: SceneProps) {
     const aspect = size.width / Math.max(size.height, 1)
     perspective.aspect = aspect
     perspective.updateProjectionMatrix()
-    const span = view === 'layout' ? 95 : view === 'isometric' ? 620 : 900
+    const span = view === 'layout' ? 95 : view === 'isometric' ? 620 : props.entryAreas?.length ? 400 : 900
     const halfHeight = span / Math.min(aspect, 1)
     orthographic.left = -halfHeight * aspect
     orthographic.right = halfHeight * aspect
     orthographic.top = halfHeight
     orthographic.bottom = -halfHeight
     orthographic.updateProjectionMatrix()
-  }, [size.width, size.height, view, orthographic, perspective])
+  }, [size.width, size.height, view, orthographic, perspective, props.entryAreas?.length])
 
   useEffect(() => {
     const stadium = bounds(venue.stadiumOutline)
@@ -72,6 +73,14 @@ function CameraRig(props: SceneProps) {
 
 function Scene(props: SceneProps & { showGuides?: boolean }) {
   const { venue, catalogue, placements, routes, nodes, selectedId, onSelect, onMove } = props
+  const [labelsReady, setLabelsReady] = useState(false)
+  const firstFrame = useRef(true)
+  useFrame(() => {
+    if (firstFrame.current) {
+      firstFrame.current = false
+      setLabelsReady(true)
+    }
+  })
   const allPoints = [...venue.stadiumOutline, ...venue.areas.flatMap(a => a.ring), ...venue.paths.flatMap(p => p.points)]
   const world = bounds(allPoints), size = Math.max(world.maxX - world.minX, world.maxZ - world.minZ, 700) + 500
   const centre: [number, number, number] = [(world.minX + world.maxX) / 2, -0.02, (world.minZ + world.maxZ) / 2]
@@ -93,7 +102,8 @@ function Scene(props: SceneProps & { showGuides?: boolean }) {
       <LandscapeContext venue={venue} />
     </group>
     <StadiumModel venue={venue} />
-    {props.showLabels && venue.landmarks.filter(landmark => /Indonesia Arena|Tennis Indoor|Istana Olahraga|Stadion Madya|Stadion Utama|Aquatic|Akuatik/.test(landmark.label)).map(landmark =>
+    {labelsReady && props.entryAreas && <EntryAreas areas={props.entryAreas} />}
+    {labelsReady && props.showLabels && venue.landmarks.filter(landmark => /Indonesia Arena|Tennis Indoor|Istana Olahraga|Stadion Madya|Stadion Utama|Aquatic|Akuatik/.test(landmark.label)).map(landmark =>
       <Html key={landmark.id} position={[landmark.position[0], /Stadion Utama/.test(landmark.label) ? 38 : 18, landmark.position[2]]} center distanceFactor={undefined} zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
         <span className="venue-label">{landmark.label.replace('Istana Olahraga Gelora Bung Karno', 'Istora').replace('Stadion Utama Gelora Bung Karno', 'Stadion Utama GBK')}</span>
       </Html>)}
@@ -132,7 +142,7 @@ function PerformanceMonitor({ output }: { output: RefObject<HTMLDivElement | nul
 export default function GbkCanvas(props: SceneProps & { debug?: boolean; showGuides?: boolean }) {
   const performance = useRef<HTMLDivElement>(null)
   return <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-    <Canvas shadows dpr={[1, 1.75]} camera={{ position: [350, 350, 450], fov: 42, near: 2, far: 4000 }} gl={{ antialias: true }} style={{ width: '100%', height: '100%', background: '#e8ebe1' }}>
+    <Canvas shadows="percentage" dpr={[1, 1.75]} camera={{ position: [350, 350, 450], fov: 42, near: 2, far: 4000 }} gl={{ antialias: true }} style={{ width: '100%', height: '100%', background: '#e8ebe1' }}>
       <Suspense fallback={null}><Scene {...props} />{props.debug && <PerformanceMonitor output={performance} />}</Suspense>
     </Canvas>
     {props.debug && <div ref={performance} data-scene-performance aria-label="Scene rendering performance" title="Half-second average: rendered frames per second, renderer draw calls including shadows, and triangles. Depends on browser, device and view." style={{ position: 'absolute', right: 12, bottom: 10, pointerEvents: 'none', color: '#38534b', background: '#eef1e7d9', padding: '4px 7px', borderRadius: 4, font: '10px ui-monospace, monospace', fontVariantNumeric: 'tabular-nums' }}>Measuring scene…</div>}

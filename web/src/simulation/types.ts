@@ -67,7 +67,16 @@ export type RouteNode = {
 
 export type SceneView = 'orbit' | 'isometric' | 'entry' | 'map' | 'layout'
 
+export type EntryAreaMarker = {
+  id: string
+  label: string
+  position: Point
+  attendees: number
+  color: string
+}
+
 export type SceneProps = {
+  entryAreas?: readonly EntryAreaMarker[]
   debug?: boolean
   autoRotate?: boolean
   panMode?: boolean
