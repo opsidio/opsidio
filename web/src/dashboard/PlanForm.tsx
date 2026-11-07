@@ -2,6 +2,8 @@ import { useState } from "react";
 import { ArrowLeft, Plus, Trash2, MapPin, LockKeyhole } from "lucide-react";
 import { Button, Badge, Card, Notice, Heading, Forward } from "./ui";
 import ArrivalProfileEditor from "./ArrivalProfileEditor";
+import TimeField from "./TimeField";
+import StaffAssignments from "./StaffAssignments";
 import {
   get,
   set,
@@ -27,16 +29,40 @@ type Props = {
   onHome: () => void;
   onSimulation: () => void;
 };
-const schedule = [
-  ["Arrival generation starts", "arrival_generation_start"],
-  ["Outer / prefunction area opens", "outer_area_open"],
-  ["General admission opens", "doors_open"],
+const scheduleGroups = [
+  {
+    title: "Arrivals & admission",
+    fields: [
+      [
+        "Guests start arriving",
+        "arrival_generation_start",
+        "First arrivals outside the venue.",
+      ],
+      [
+        "Outer area opens",
+        "outer_area_open",
+        "Waiting areas and pre-event activities.",
+      ],
+      [
+        "Entrance gates open",
+        "doors_open",
+        "Guests can enter the event space.",
+      ],
+      ["Last admission", "last_entry", "Final time guests may enter."],
+    ],
+  },
+  {
+    title: "Show & closing",
+    fields: [
+      ["Opening act (optional)", "opening_act", ""],
+      ["Main performance", "main_act", ""],
+      ["Venue closes", "model_end", "Latest time included in this plan."],
+    ],
+  },
+];
+const specialAccess = [
   ["Wristband service opens", "redemption_open"],
   ["Wristband service closes", "redemption_close"],
-  ["Last entry", "last_entry"],
-  ["Opening act", "opening_act"],
-  ["Main act", "main_act"],
-  ["Model / venue slot ends", "model_end"],
   ["Ultimate check-in", "ultimate_check_in_start"],
   ["Ultimate experience", "ultimate_experience"],
   ["Premium doors open", "premium_concert_doors"],
@@ -74,6 +100,19 @@ export default function PlanForm({
       error = touched.has(path)
         ? issues.find((i) => i.path === path)?.message
         : undefined;
+    if (type === "time")
+      return (
+        <TimeField
+          key={path}
+          label={label}
+          value={value ?? ""}
+          onChange={(value) => change(path, value)}
+          onBlur={() => setTouched((current) => new Set([...current, path]))}
+          hint={hint}
+          error={error}
+          compact={path.startsWith("venue.layout.")}
+        />
+      );
     return (
       <label className={`op-field ${error ? "invalid" : ""}`} key={path}>
         <span>{label}</span>
@@ -385,16 +424,42 @@ export default function PlanForm({
                 : "Add the venue’s entry points in the next section."}
             </p>
           </Card>
-          <Card title="Entry timing" tag={policy}>
-            <div className="op-grid three">
-              {schedule.map(([label, key]) =>
-                input(label, "event.schedule." + key, "time"),
-              )}
-            </div>
+          <Card title="Event day timeline" tag={<Badge>WIB · UTC+7</Badge>}>
             <p className="op-muted">
-              All times use Asia/Jakarta. Package check-in and general gate
-              opening are separate policies.
+              Type a time such as <strong>17:30</strong> or{" "}
+              <strong>5:30 pm</strong>, or choose from the dropdown. Times are
+              saved in 24-hour format for {p.event.date || "your event date"}.
             </p>
+            {scheduleGroups.map((group) => (
+              <section className="op-timing-section" key={group.title}>
+                <h3>{group.title}</h3>
+                <div className="op-grid two">
+                  {group.fields.map(([label, key, hint]) =>
+                    input(
+                      label,
+                      "event.schedule." + key,
+                      "time",
+                      undefined,
+                      hint,
+                    ),
+                  )}
+                </div>
+              </section>
+            ))}
+            <details className="op-special-times">
+              <summary>
+                Wristbands & special access <span>Optional times</span>
+              </summary>
+              <p className="op-muted">
+                Use these when wristband collection, premium entry, or a package
+                experience happens separately. Existing times stay saved.
+              </p>
+              <div className="op-grid two">
+                {specialAccess.map(([label, key]) =>
+                  input(label, "event.schedule." + key, "time"),
+                )}
+              </div>
+            </details>
           </Card>
         </>
       )}
@@ -704,17 +769,64 @@ export default function PlanForm({
             entrance. Each open lane needs qualified staff for ticket checks,
             wristbands, and security.
           </p>
-          <Card title="Staff shift" tag={estimate}>
-            {p.staff.shifts.map((s: Plan, i: number) => (
-              <div className="op-grid three" key={s.id}>
-                {input("Shift starts", `staff.shifts.${i}.start`, "time")}
-                {input("Shift ends", `staff.shifts.${i}.end`, "time")}
-                {input(
-                  "Meal break (minutes)",
-                  `staff.shifts.${i}.meal_break_minutes`,
-                )}
-              </div>
-            ))}
+          <Card
+            title="Staff shifts"
+            tag={estimate}
+            action={
+              <Button
+                onClick={() => {
+                  const next = structuredClone(p);
+                  next.staff.shifts.push({
+                    id: "shift_" + crypto.randomUUID(),
+                    name: `Shift ${p.staff.shifts.length + 1}`,
+                    start: "",
+                    end: "",
+                    meal_break_minutes: null,
+                  });
+                  onChange(next);
+                }}
+              >
+                <Plus size={15} />
+                Add shift
+              </Button>
+            }
+          >
+            {p.staff.shifts.map((s: Plan, i: number) => {
+              const used = p.staff.roles.some(
+                (role: Plan) => role.shift === s.id,
+              );
+              return (
+                <section className="op-shift-row" key={s.id}>
+                  <header>
+                    <strong>{s.name ?? `Shift ${i + 1}`}</strong>
+                    <Button
+                      disabled={used}
+                      title={
+                        used
+                          ? "Reassign roles before removing this shift"
+                          : undefined
+                      }
+                      onClick={() => {
+                        const next = structuredClone(p);
+                        next.staff.shifts.splice(i, 1);
+                        onChange(next);
+                      }}
+                    >
+                      <Trash2 size={14} />
+                      Remove shift
+                    </Button>
+                  </header>
+                  <div className="op-grid three">
+                    {input("Shift starts", `staff.shifts.${i}.start`, "time")}
+                    {input("Shift ends", `staff.shifts.${i}.end`, "time")}
+                    {input(
+                      "Meal break (minutes)",
+                      `staff.shifts.${i}.meal_break_minutes`,
+                    )}
+                  </div>
+                </section>
+              );
+            })}
             {input(
               "Meal allowance per person (IDR)",
               "staff.meal_allowance_idr_per_person",
@@ -784,7 +896,7 @@ export default function PlanForm({
                 "Available staff",
               ],
               p.staff.roles.map((r: Plan, i: number) => [
-                r.name,
+                input(`${r.name} role name`, `staff.roles.${i}.name`, "text"),
                 ...[
                   "count",
                   "gender.female",
@@ -795,27 +907,7 @@ export default function PlanForm({
               ]),
             )}
           </Card>
-          <Card title="Staff assignments" tag={policy}>
-            {table(
-              ["Role", "Assigned point", "Assigned count"],
-              p.staff.roles.flatMap((r: Plan, i: number) =>
-                (r.assignment ?? []).map((a: Plan, j: number) => [
-                  r.name,
-                  [...gates, ...(p.venue.layout.service_points ?? [])].find(
-                    (g) => g.id === a.point,
-                  )?.name ?? a.point,
-                  input(
-                    `${r.name} assigned count`,
-                    `staff.roles.${i}.assignment.${j}.count`,
-                  ),
-                ]),
-              ),
-            )}
-            <p className="op-muted">
-              Assigned staff must cover each active lane and the full opening
-              hours.
-            </p>
-          </Card>
+          <StaffAssignments plan={p} onChange={onChange} />
           <Card title="Equipment inventory" tag={estimate}>
             {p.constraints.equipment.items.map((e: Plan, i: number) => (
               <div className="op-equipment" key={e.id}>
