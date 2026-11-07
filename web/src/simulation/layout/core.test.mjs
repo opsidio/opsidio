@@ -19,6 +19,23 @@ const simple = (placements = [], from = [-50, 0, -50], to = [-50, 0, 50]) => ({
   edges: [{ id: 'a-b', from: 'a', to: 'b' }],
 })
 
+test('a specifically reviewed unchanged overlap warns, but modified or new collisions remain errors', () => {
+  const layout = simple([kit('reviewed-barrier', 'barrier-230', 0, 0)], [0, 0, -50], [0, 0, 50])
+  layout.edges[0].basis = 'proposed_admission_overlap_site_review_required'
+  const options = { ...wideOptions, reviewedOverlaps: [{ edgeId: 'a-b', from: 'a', to: 'b', basis: layout.edges[0].basis, fromPosition: [...layout.nodes[0].position], toPosition: [...layout.nodes[1].position], placements: structuredClone(layout.placements) }] }
+  const reviewed = validateLayout(layout, options)
+  assert.equal(reviewed.valid, true)
+  assert.equal(reviewed.issues[0].code, 'reviewed_demo_overlap')
+  assert.equal(reviewed.graph.edges.length, 1)
+  const changedKit = structuredClone(layout); changedKit.placements[0].position[0] += 0.1
+  assert.ok(codes(validateLayout(changedKit, options)).includes('blocked_edge'))
+  const changedNode = structuredClone(layout); changedNode.nodes[0].position[0] += 0.1
+  assert.ok(codes(validateLayout(changedNode, options)).includes('blocked_edge'))
+  const extraKit = structuredClone(layout); extraKit.placements.push(kit('new-table', 'table-183', 0, 12))
+  assert.ok(codes(validateLayout(extraKit, options)).includes('blocked_edge'))
+  assert.ok(codes(validateLayout(layout, wideOptions)).includes('blocked_edge'))
+})
+
 test('the prepared graph is explicit, passes checks and retains all model placement IDs', () => {
   const layout = baseline(), result = validateLayout(layout, options)
   assert.equal(result.valid, true)

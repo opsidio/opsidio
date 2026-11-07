@@ -1,9 +1,20 @@
 import type { AgentJourney, ServiceStop } from '../runtime-types'
 
+const QUEUE_SPACING_M = 0.8
+const QUEUE_ADVANCE_SECONDS = 0.75
+
+type PreparedPen = {
+  lengthM: number
+  callUpSeconds: number
+  distancesM: Float64Array
+  visibleCount: number
+}
 type PreparedQueue = {
   stationId: string; operatorId: string
   arrivals: Float64Array; starts: Float64Array; ends: Float64Array; indices: Uint32Array
-  sampledAt: number; started: number
+  stops: ServiceStop[]
+  pen?: PreparedPen
+  sampledAt: number; started: number; arrived: number
 }
 type PreparedMotions = { starts: Float64Array; ends: Float64Array; indices: Uint32Array; maxDuration: number }
 type PreparedRoute = { coordinates: Float64Array; cumulativeM: Float64Array; totalM: number }
@@ -24,12 +35,21 @@ export type JourneySampler = {
 }
 export type PositionTarget = { [index: number]: number; length: number }
 export type JourneyPhase = 'not-arrived' | 'walking' | 'waiting' | 'processing' | 'arrived'
-export type CrowdSampleStats = { visibleCount: number; walkingCount: number; waitingCount?: number; processingCount?: number; completedCount?: number }
+export type CrowdSampleStats = {
+  visibleCount: number
+  walkingCount: number
+  waitingCount?: number
+  visibleWaitingCount?: number
+  overflowWaitingCount?: number
+  processingCount?: number
+  completedCount?: number
+}
 export type OperatorQueueState = {
   operatorId: string
   /** Null means this operator has no authored service queue in this result. */
   stationId: string | null
   queuedCount: number
+  overflowCount: number
   oldestWaitSeconds: number
   processing: boolean
 }
@@ -96,7 +116,7 @@ function prepareAdmission(sampler: JourneySampler, journeys: readonly AgentJourn
   let maxDuration = 0
   for (const [index, journey] of journeys.entries()) {
     const route = sampler.routes[sampler.routeIndices[index]]
-    const speed = journey.walkSeconds > 0 ? route.totalM / journey.walkSeconds : 1
+    const speed = walkingSpeed(sampler, index)
     let time = journey.onsiteArrivalSeconds, distance = 0
     function movement(end: number) {
       if (end > time) {
@@ -117,13 +137,48 @@ function prepareAdmission(sampler: JourneySampler, journeys: readonly AgentJourn
   }
   sampler.queues = new Map([...grouped].map(([id, entries]) => {
     entries.sort((a, b) => a.stop.queueIndex - b.stop.queueIndex)
-    return [id, { stationId: id, operatorId: entries[0].stop.operatorId, arrivals: Float64Array.from(entries, item => item.stop.arrivalSeconds), starts: Float64Array.from(entries, item => item.stop.startSeconds ?? Infinity), ends: Float64Array.from(entries, item => item.stop.endSeconds ?? Infinity), indices: Uint32Array.from(entries, item => item.index), sampledAt: NaN, started: 0 }]
+    return [id, {
+      stationId: id, operatorId: entries[0].stop.operatorId,
+      arrivals: Float64Array.from(entries, item => item.stop.arrivalSeconds),
+      starts: Float64Array.from(entries, item => item.stop.startSeconds ?? Infinity),
+      ends: Float64Array.from(entries, item => item.stop.endSeconds ?? Infinity),
+      indices: Uint32Array.from(entries, item => item.index),
+      stops: entries.map(item => item.stop),
+      pen: preparePen(sampler, entries),
+      sampledAt: NaN, started: 0, arrived: 0,
+    }]
   }))
   sampler.operatorQueues = new Map([...sampler.queues.values()].map(queue => [queue.operatorId, queue]))
   const order = Uint32Array.from(motionStarts, (_, index) => index)
   order.sort((a, b) => motionStarts[a] - motionStarts[b] || motionIndices[a] - motionIndices[b])
   sampler.motions = { starts: Float64Array.from(order, index => motionStarts[index]), ends: Float64Array.from(order, index => motionEnds[index]), indices: Uint32Array.from(order, index => motionIndices[index]), maxDuration }
   sampler.completed = Float64Array.from(completed.sort((a, b) => a - b))
+}
+
+function walkingSpeed(sampler: JourneySampler, index: number): number {
+  const length = sampler.routes[sampler.routeIndices[index]].totalM
+  const duration = sampler.walkSeconds[index]
+  return length > 0 && duration > 0 ? length / duration : 1
+}
+
+function preparePen(sampler: JourneySampler, entries: readonly { stop: ServiceStop; index: number }[]): PreparedPen | undefined {
+  let lengthM = Infinity, maxApproachM = 0
+  for (const { stop } of entries) {
+    const start = stop.queueStartDistanceM, end = stop.queueEndDistanceM
+    if (start === undefined || end === undefined || !Number.isFinite(start) || !Number.isFinite(end)
+      || start < 0 || end <= start || end > stop.distanceM) return undefined
+    lengthM = Math.min(lengthM, end - start)
+    maxApproachM = Math.max(maxApproachM, stop.distanceM - start)
+  }
+  let callUpSeconds = 0
+  for (const { stop, index } of entries) {
+    const headToCounterM = stop.distanceM - stop.queueStartDistanceM! - lengthM
+    callUpSeconds = Math.max(callUpSeconds, headToCounterM / walkingSpeed(sampler, index))
+  }
+  return {
+    lengthM, callUpSeconds, visibleCount: 0,
+    distancesM: new Float64Array(Math.min(entries.length, Math.floor(maxApproachM / QUEUE_SPACING_M) + 1)),
+  }
 }
 
 function upperBound(values: Float64Array, value: number): number {
@@ -137,11 +192,49 @@ function upperBound(values: Float64Array, value: number): number {
   return low
 }
 
+/** Cache the same FIFO frame for queue positions, crowd totals, and operator annotations. */
+function sampleQueue(sampler: JourneySampler, queue: PreparedQueue, seconds: number): void {
+  if (queue.sampledAt === seconds) return
+  queue.sampledAt = seconds
+  queue.arrived = upperBound(queue.arrivals, seconds)
+  queue.started = upperBound(queue.starts, seconds)
+  const pen = queue.pen
+  if (!pen) return
+  pen.visibleCount = 0
+  if (queue.started >= queue.arrived) return
+
+  const called = Math.min(queue.arrived, upperBound(queue.starts, seconds + pen.callUpSeconds))
+  let advanceRemaining = 0
+  if (called > 0) {
+    const lastCallSeconds = queue.starts[called - 1] - pen.callUpSeconds
+    const nextStartSeconds = queue.starts[called] ?? Infinity
+    const duration = Math.min(QUEUE_ADVANCE_SECONDS, nextStartSeconds - queue.starts[called - 1])
+    if (duration > 0) advanceRemaining = Math.max(0, 1 - (seconds - lastCallSeconds) / duration)
+  }
+
+  let previousDistanceM = Infinity
+  for (let rank = queue.started; rank < queue.arrived && pen.visibleCount < pen.distancesM.length; rank++) {
+    const speed = walkingSpeed(sampler, queue.indices[rank])
+    const distanceWalkedM = (seconds - queue.arrivals[rank]) * speed
+    let targetM = pen.lengthM - (rank - called + advanceRemaining) * QUEUE_SPACING_M
+    if (rank < called) {
+      const stop = queue.stops[rank]
+      const counterM = stop.distanceM - stop.queueStartDistanceM!
+      const approachRemaining = pen.callUpSeconds > 0 ? (queue.starts[rank] - seconds) / pen.callUpSeconds : 0
+      targetM = counterM - (counterM - pen.lengthM) * approachRemaining
+    }
+    const distanceM = Math.min(targetM, distanceWalkedM, previousDistanceM - QUEUE_SPACING_M)
+    if (distanceM < 0) break
+    pen.distancesM[pen.visibleCount++] = distanceM
+    previousDistanceM = distanceM
+  }
+}
+
 /** Allocate once, including explicitly requested idle operators. Reuse with sampleOperatorQueueStates. */
 export function createOperatorQueueStates(sampler: JourneySampler, operatorIds?: readonly string[]): OperatorQueueState[] {
   return [...(operatorIds ?? sampler.operatorQueues?.keys() ?? [])].map(operatorId => ({
     operatorId, stationId: sampler.operatorQueues?.get(operatorId)?.stationId ?? null,
-    queuedCount: 0, oldestWaitSeconds: 0, processing: false,
+    queuedCount: 0, overflowCount: 0, oldestWaitSeconds: 0, processing: false,
   }))
 }
 
@@ -153,13 +246,15 @@ export function sampleOperatorQueueStates(
   for (const state of output) {
     const queue = sampler.operatorQueues?.get(state.operatorId)
     if (!queue) {
-      state.stationId = null; state.queuedCount = 0; state.oldestWaitSeconds = 0; state.processing = false
+      state.stationId = null; state.queuedCount = 0; state.overflowCount = 0
+      state.oldestWaitSeconds = 0; state.processing = false
       continue
     }
-    const arrived = upperBound(queue.arrivals, seconds), started = upperBound(queue.starts, seconds)
-    queue.started = started; queue.sampledAt = seconds
+    sampleQueue(sampler, queue, seconds)
+    const { arrived, started } = queue
     state.stationId = queue.stationId
     state.queuedCount = Math.max(0, arrived - started)
+    state.overflowCount = state.queuedCount - (queue.pen?.visibleCount ?? 0)
     state.oldestWaitSeconds = state.queuedCount > 0 ? Math.max(0, seconds - queue.arrivals[started]) : 0
     state.processing = started > 0 && queue.ends[started - 1] > seconds
   }
@@ -187,24 +282,32 @@ function writePosition(sampler: JourneySampler, index: number, seconds: number, 
   else if (elapsed >= duration) { phase = 'arrived'; distance = route.totalM }
   else { phase = 'walking'; distance = route.totalM * elapsed / duration }
   if (elapsed >= 0 && sampler.queues && sampler.stops) {
-    let delay = 0
+    const speed = walkingSpeed(sampler, index)
+    let movementStartSeconds = sampler.arrivalSeconds[index], movementStartM = 0
     phase = 'walking'
-    distance = route.totalM * elapsed / duration
+    distance = elapsed * speed
     for (const stop of sampler.stops[index]) {
-      if (seconds < stop.arrivalSeconds) break
-      if (stop.startSeconds === null || seconds < stop.startSeconds) {
-        const queue = sampler.queues.get(stop.stationId)!
-        if (queue.sampledAt !== seconds) { queue.started = upperBound(queue.starts, seconds); queue.sampledAt = seconds }
-        const rank = Math.max(0, stop.queueIndex - queue.started)
-        phase = 'waiting'; distance = Math.max(0, stop.distanceM - (rank + 1) * 0.8)
+      const entranceM = stop.queueStartDistanceM ?? stop.distanceM
+      if (seconds < stop.arrivalSeconds) {
+        distance = Math.min(entranceM, movementStartM + (seconds - movementStartSeconds) * speed)
         break
       }
-      if (stop.endSeconds !== null && seconds < stop.endSeconds) {
+      if (stop.startSeconds === null || seconds < stop.startSeconds) {
+        const queue = sampler.queues.get(stop.stationId)!
+        sampleQueue(sampler, queue, seconds)
+        const rank = stop.queueIndex - queue.started
+        const pen = queue.pen
+        phase = 'waiting'
+        distance = entranceM + (pen && rank >= 0 && rank < pen.visibleCount ? pen.distancesM[rank] : 0)
+        break
+      }
+      if (stop.endSeconds === null || seconds < stop.endSeconds) {
         phase = 'processing'; distance = stop.distanceM
         break
       }
-      delay += stop.endSeconds! - stop.arrivalSeconds
-      distance = route.totalM * Math.max(0, elapsed - delay) / duration
+      movementStartSeconds = stop.endSeconds
+      movementStartM = stop.distanceM
+      distance = movementStartM + (seconds - movementStartSeconds) * speed
     }
     if (phase === 'walking' && distance >= route.totalM) phase = 'arrived'
   }
@@ -227,7 +330,7 @@ function writePosition(sampler: JourneySampler, index: number, seconds: number, 
   return phase
 }
 
-/** Allocation-free if the caller reuses output. Before/after travel clamps to endpoints. */
+/** Allocation-free. Off-scene waiters use the entrance as a reference position. */
 export function sampleJourneyPosition(
   sampler: JourneySampler, journeyIndex: number, seconds: number, output: PositionTarget, offset = 0,
 ): JourneyPhase {
@@ -239,16 +342,17 @@ export function sampleJourneyPosition(
 
 function sampleAdmissionCrowd(sampler: JourneySampler, seconds: number, positions: Float32Array, indices: Uint32Array, stats: CrowdSampleStats): CrowdSampleStats {
   const capacity = Math.min(Math.floor(positions.length / 3), indices.length)
-  let written = 0, waiting = 0, processing = 0, walking = 0
+  let written = 0, waiting = 0, visibleWaiting = 0, processing = 0, walking = 0
   for (const queue of sampler.queues!.values()) {
-    const arrived = upperBound(queue.arrivals, seconds)
-    const started = upperBound(queue.starts, seconds)
-    queue.started = started; queue.sampledAt = seconds
+    sampleQueue(sampler, queue, seconds)
+    const { arrived, started } = queue
     waiting += Math.max(0, arrived - started)
-    for (let rank = started; rank < Math.min(arrived, started + 32) && written < capacity; rank++) {
+    const shownUntil = started + (queue.pen?.visibleCount ?? 0)
+    for (let rank = started; rank < shownUntil && written < capacity; rank++) {
       indices[written] = queue.indices[rank]
       writePosition(sampler, queue.indices[rank], seconds, positions, written * 3)
       written++
+      visibleWaiting++
     }
     if (started > 0 && queue.ends[started - 1] > seconds) {
       processing++
@@ -271,13 +375,14 @@ function sampleAdmissionCrowd(sampler: JourneySampler, seconds: number, position
     }
   }
   stats.visibleCount = written; stats.walkingCount = walking
-  stats.waitingCount = waiting; stats.processingCount = processing
+  stats.waitingCount = waiting; stats.visibleWaitingCount = visibleWaiting
+  stats.overflowWaitingCount = waiting - visibleWaiting; stats.processingCount = processing
   stats.completedCount = upperBound(sampler.completed!, seconds)
   return stats
 }
 
 /**
- * Writes packed XYZ positions and original journey indices for walking people.
+ * Writes packed XYZ positions and journey indices for the visible crowd.
  * Uses a bounded, binary-searched arrival interval, not a full population scan.
  * If capped, samples evenly through active arrival order across cohorts and time.
  * Passing a reusable stats object makes the entire frame allocation-free.

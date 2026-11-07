@@ -43,11 +43,11 @@ Infinity retains its original 500 people and Plaza Tenggara arrival. Each of its
 
 ## Spawning and destinations
 
-The runtime path is transport origin → public approach → assigned entry forecourt → queue → ticket scan → security → category handover. Four directed lane routes per entry distribute arriving groups round-robin. Each lane has its own scan and security checkpoint and bound operators. The local worker queues visitors FIFO, processes one visitor per operator, then continues the journey. It uses fixed typical times from the native process steps and native gate opening/closing clocks. The help branch is authored, with exception demand still pending.
+The runtime path is transport origin → public approach → assigned entry forecourt → help desk → security queue and screening → ticket scan and wristband → one-way category handover. Four directed lane routes per entry distribute arriving groups round-robin. Each lane has its own scan and security checkpoint and bound operators. The local worker queues visitors FIFO, processes one visitor per operator, then continues the journey. It uses fixed typical times from the native process steps and native gate opening/closing clocks. Only groups selected by the editable `help_desk_visit_percent` stop at the help desk. The demo uses a fictional 1% in every profile.
 
 Every ticket category has a named destination node. These are post-security category handover points at its assigned entry area. Category handovers are spaced around that area's admitted endpoint until internal routes are reviewed. `viewing_tier` records the eventual seated or standing sector. `final_zone_route_status` is `pending_venue_review`. Seat blocks, stairs, accessible routes and stage-specific field destinations still need venue mapping.
 
-Groups spawn together with the same arrival timestamp and follow the cohort route and speed. The front 32 waiting visitors per station are rendered, with full queue counts in the panel. Visitors awaiting service at closing remain pending. Dynamic collision avoidance, shortest-queue choice, impatience and spontaneous route switching remain outside this demo model.
+Groups spawn together with the same arrival timestamp and follow the cohort route and speed. The security pens follow the barrier layout. The panel reports the full queue and the number waiting off-scene when the pen fills. Visitors awaiting service at closing remain pending. Dynamic collision avoidance, shortest-queue choice, impatience and spontaneous route switching remain outside this demo model.
 
 ## JSON boundary
 

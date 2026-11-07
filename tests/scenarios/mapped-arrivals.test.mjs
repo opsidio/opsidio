@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { distance, pointSegmentDistance, publicGraph, venue } from '../../tools/arrival-network.mjs'
-import { DEMO_REQUIRED_ROUTES, localToWorld, validateLayout } from '../../web/src/simulation/layout/core.ts'
+import { localToWorld, validateLayout } from '../../web/src/simulation/layout/core.ts'
 import { catalogue } from '../../web/src/simulation/model.ts'
 
 const plan = JSON.parse(readFileSync(new URL('../../contracts/examples/coldplay-gbk-demo-plan.json', import.meta.url)))
@@ -29,6 +29,19 @@ const samples = (a, b) => {
 }
 const renderedPaths = ids => venue.paths.filter(path => ids.some(id => path.id.startsWith(`osm-way-${id}-`)))
 const corridorDistance = (p, paths) => Math.min(...paths.flatMap(path => path.points.slice(1).map((b, i) => pointSegmentDistance(p, path.points[i], b))))
+const laneSegment = (edges, from, to) => {
+  const chain = []
+  const visited = new Set()
+  while (from !== to) {
+    assert.ok(!visited.has(from), `loop in lane from ${from} to ${to}`)
+    visited.add(from)
+    const next = edges.filter(edge => edge.from === from)
+    assert.equal(next.length, 1, `expected an unbranched lane between ${from} and ${to}`)
+    chain.push(next[0])
+    from = next[0].to
+  }
+  return chain
+}
 
 test('transport releases, native distances and cohort totals agree', () => {
   assert.deepEqual(origins.map(item => item.id), ['origin_mrt', 'origin_parking', 'origin_dropoff'])
@@ -56,7 +69,7 @@ test('public routes use visible shared OSM edges without zero-length joins', () 
   for (const edge of navigation.edges) {
     const a = nodes.get(edge.from_node_id), b = nodes.get(edge.to_node_id)
     assert.ok(a && b && distance(position(a), position(b)) > 0.001, edge.id)
-    if (edge.basis !== 'mapped_public_walking_network') continue
+    if (!edge.osm_way_id) continue
     const leg = publicGraph.get(a.osm_node_id)?.get(b.osm_node_id)
     assert.equal(leg?.wayId, edge.osm_way_id, edge.id)
     const paths = renderedPaths([edge.osm_way_id])
@@ -64,9 +77,33 @@ test('public routes use visible shared OSM edges without zero-length joins', () 
   }
 })
 
-test('all four admission lanes stay within their mapped corridors and clear the kit', () => {
+test('clear mapped approaches avoid kit, with one flagged leg serving only the East forecourt', () => {
+  const overlaps = plan.spatial_context.approach_network.review_overlaps
+  assert.equal(overlaps.length, 1)
+  const review = overlaps[0]
+  assert.equal(review.entry_area_id, 'plaza_timur')
+  const edge = navigation.edges.find(edge => edge.id === review.edge_id)
+  assert.equal(edge.basis, 'proposed_admission_overlap_site_review_required')
+  assert.equal(edge.osm_way_id, review.osm_way_id)
+  const reviewedEdges = navigation.edges.filter(item => item.id !== review.edge_id)
+  for (const approach of approaches) {
+    assert.equal(hasPath(approach.origin_id, approach.arrival_node_id, reviewedEdges), approach.entry_area_id !== review.entry_area_id)
+  }
+  const checked = validateLayout({
+    schemaVersion: 'opsidio-editor/0.1', id: 'whole-demo', revision: plan.spatial_context.revision,
+    placements,
+    nodes: navigation.nodes.map(node => ({ id: node.id, role: node.role, position: position(node) })),
+    edges: navigation.edges.map(item => ({ id: item.id, from: item.from_node_id, to: item.to_node_id })),
+  }, { bounds: { minX: -900, maxX: 900, minZ: -900, maxZ: 900 }, catalogue })
+  const blocked = checked.issues.filter(issue => issue.code === 'blocked_edge')
+  assert.deepEqual(blocked.map(issue => issue.relatedIds), [[review.edge_id, ...review.placement_ids]])
+})
+
+test('help, security and scan form one-way lanes within the mapped corridor and clear of equipment', () => {
   const stations = plan.spatial_context.service_stations
-  assert.equal(stations.length, 40)
+  assert.equal(plan.spatial_context.one_way_admission, true)
+  assert.ok(plan.behavior_context.profiles.every(profile => profile.help_desk_visit_percent === 1))
+  assert.equal(stations.length, 45)
   assert.equal(plan.spatial_context.operators.length, 45)
   for (const area of areas) {
     const group = navigation.nodes.filter(node => node.entry_area_id === area.id)
@@ -76,7 +113,7 @@ test('all four admission lanes stay within their mapped corridors and clear the 
     const north = area.id === 'plaza_utara', key = id => north ? id : `${area.id}_${id}`
     const paths = renderedPaths(area.corridor.osm_way_ids)
     const width = area.corridor.illustrative_width_m
-    const checked = validateLayout({ schemaVersion: 'opsidio-editor/0.1', id: area.id, revision: 5, placements: kit, nodes: group.map(node => ({ id: node.id, role: node.role, position: node.position_m ?? [0, 0, 0], ...(node.attachment && { attachment: { placementId: node.attachment.placement_id, offset: node.attachment.offset_m } }) })), edges: edges.map(edge => ({ id: edge.id, from: edge.from_node_id, to: edge.to_node_id })) }, { bounds: north ? venue.editBounds : { minX: -900, maxX: 900, minZ: -900, maxZ: 900 }, catalogue, requiredRoutes: north ? DEMO_REQUIRED_ROUTES : [] })
+    const checked = validateLayout({ schemaVersion: 'opsidio-editor/0.1', id: area.id, revision: plan.spatial_context.revision, placements: kit, nodes: group.map(node => ({ id: node.id, role: node.role, position: node.position_m ?? [0, 0, 0], ...(node.attachment && { attachment: { placementId: node.attachment.placement_id, offset: node.attachment.offset_m } }) })), edges: edges.map(edge => ({ id: edge.id, from: edge.from_node_id, to: edge.to_node_id })) }, { bounds: north ? venue.editBounds : { minX: -900, maxX: 900, minZ: -900, maxZ: 900 }, catalogue })
     assert.ok(checked.valid, `${area.id}: ${checked.issues.map(issue => issue.message).join(' | ')}`)
     const buildings = venue.areas.filter(item => item.kind === 'building')
     for (const edge of edges) for (const p of samples(position(nodes.get(edge.from_node_id)), position(nodes.get(edge.to_node_id)))) {
@@ -94,13 +131,49 @@ test('all four admission lanes stay within their mapped corridors and clear the 
       const pl = placements.find(item => item.id === operator.attachment.placement_id)
       assert.ok(corridorDistance(localToWorld(operator.attachment.offset_m, pl), paths) < width / 2 - 0.3, operator.id)
     }
-    assert.equal(plan.venue.layout.gates.find(item => item.id === area.gate_id).lanes[0].count, 4)
+    const gate = plan.venue.layout.gates.find(item => item.id === area.gate_id)
+    assert.equal(gate.lanes[0].count, 4)
+    assert.deepEqual(gate.lanes[0].steps, ['security_inspection', 'eticket_scan', 'wristband_fit'])
+    const help = stations.find(station => station.node_id === area.help_checkpoint_node_id)
+    const desk = plan.venue.layout.service_points.find(point => point.id === help.point_id)
+    assert.deepEqual(desk.lanes[0].steps, ['help_desk_resolution'])
+    assert.equal(desk.lanes[0].serves, 'visitors_with_exception')
+    assert.ok(hasPath(key('arrival'), area.help_pass_node_id, edges))
+    assert.ok(hasPath(area.help_pass_node_id, help.node_id, edges))
+    assert.equal(hasPath(help.node_id, area.help_pass_node_id, edges), false)
     for (const lane of [1, 2, 3, 4]) {
       const prefix = lane === 2 ? '' : `lane_${lane}_`, scan = key(`${prefix}scan_checkpoint`), security = key(`${prefix}security_checkpoint`)
-      assert.ok(hasPath(key('arrival'), scan, edges))
-      assert.ok(hasPath(scan, security, edges))
-      assert.ok(hasPath(security, key('destination'), edges))
-      assert.equal(hasPath(scan, key('destination'), edges, new Set([security])), false, `lane ${lane} bypasses security at ${area.id}`)
+      assert.ok(hasPath(area.help_pass_node_id, security, edges, new Set([help.node_id])))
+      assert.ok(hasPath(help.node_id, security, edges))
+      assert.equal(hasPath(key('arrival'), security, edges, new Set([area.help_pass_node_id])), false, `${security} bypasses help desk pass`)
+      assert.ok(hasPath(security, scan, edges))
+      assert.ok(hasPath(scan, key('destination'), edges))
+      assert.equal(hasPath(scan, security, edges), false, `lane ${lane} loops back to security at ${area.id}`)
+      assert.equal(hasPath(key('arrival'), scan, edges, new Set([security])), false, `lane ${lane} bypasses security at ${area.id}`)
+      assert.equal(hasPath(security, key('destination'), edges, new Set([scan])), false, `lane ${lane} bypasses scan at ${area.id}`)
+      const securityStation = stations.find(station => station.node_id === security)
+      const tail = nodes.get(securityStation.queue_start_node_id), head = nodes.get(securityStation.queue_end_node_id)
+      assert.equal(tail.attachment.placement_id, key(`row_${lane - 1}_0`))
+      assert.equal(head.attachment.placement_id, key(`row_${lane - 1}_2`))
+      assert.equal(hasPath(key('arrival'), security, edges, new Set([tail.id])), false, `${security} bypasses its queue pen`)
+
+      const { widthM: panelLength, depthM: panelDepth } = catalogue.find(item => item.id === 'barrier-230')
+      const innerRail = (row, side) => [0, 1, 2].flatMap(panel => {
+        const placement = kit.find(item => item.id === key(`row_${row}_${panel}`))
+        return [panelLength / 2, -panelLength / 2].map(x => localToWorld([x, 0, side * panelDepth / 2], placement))
+      })
+      const pen = [...innerRail(lane - 1, 1), ...innerRail(lane, -1).reverse()]
+      const waitingEdges = laneSegment(checked.graph.edges, tail.id, head.id)
+      for (const edge of waitingEdges) for (const sample of samples(position(nodes.get(edge.from)), position(nodes.get(edge.to)))) {
+        assert.ok(inside(sample, pen), `${edge.id} leaves the fenced waiting lane`)
+      }
+      const waitingLength = waitingEdges.reduce((sum, edge) => sum + edge.distanceM, 0)
+      const callUpLength = laneSegment(checked.graph.edges, head.id, security).reduce((sum, edge) => sum + edge.distanceM, 0)
+      assert.ok(waitingLength >= 6 && waitingLength <= 7, `${security} pen length ${waitingLength}`)
+      assert.ok(callUpLength > 0 && callUpLength < 7, `${security} call-up length ${callUpLength}`)
+      const scanStation = stations.find(station => station.node_id === scan)
+      assert.equal(scanStation.queue_start_node_id, undefined)
+      assert.equal(scanStation.queue_end_node_id, undefined)
     }
   }
 })

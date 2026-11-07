@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Html } from '@react-three/drei'
+import SceneHtml from './SceneHtml'
 import type { Point } from '../simulation/types'
 
 export type ArrivalOriginMarker = {
@@ -43,13 +43,13 @@ export default function ArrivalOrigins({ origins, showLabels }: {
           <cylinderGeometry args={[.35, .35, 4, 6]} />
           <meshBasicMaterial color={color} />
         </mesh>
-        {ready && showLabels && <Html position={[0, 5, 0]} zIndexRange={[18, 0]} style={{ pointerEvents: 'none' }}>
+        {ready && showLabels && <SceneHtml position={[0, 5, 0]} zIndexRange={[18, 0]} style={{ pointerEvents: 'none' }}>
           <div className="arrival-origin-label" style={{ borderTopColor: color, transform: offset }}>
             <strong>{dropoff ? 'Taxi & ride-hailing drop-off' : origin.label}</strong>
             <span>{origin.attendees.toLocaleString()} planned arrivals</span>
             <small>{dropoff ? 'Taxi / GoCar / GoRide / GrabCar / GrabBike' : origin.mode === 'mrt' ? 'Station exit → assigned entry gate' : 'Parked visitors → assigned entry gate'}</small>
           </div>
-        </Html>}
+        </SceneHtml>}
       </group>
     })}
   </group>

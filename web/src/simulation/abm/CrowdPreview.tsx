@@ -31,7 +31,8 @@ export function CrowdPreview({
   const buffers = useMemo(() => ({
     positions: new Float32Array(capacity * 3), indices: new Uint32Array(capacity),
     stats: { visibleCount: 0, walkingCount: 0 } as CrowdSampleStats, matrix: new Matrix4(), color: new Color(),
-    lastTime: NaN, lastNotifyTime: -Infinity, lastVisible: -1, lastWalking: -1, lastWaiting: -1, lastProcessing: -1, lastCompleted: -1,
+    lastTime: NaN, lastNotifyTime: -Infinity, lastVisible: -1, lastWalking: -1, lastWaiting: -1,
+    lastVisibleWaiting: -1, lastProcessing: -1, lastCompleted: -1,
   }), [sampler, capacity])
   const offsets = useMemo(() => {
     const values = new Float32Array(sampler.count * 2)
@@ -66,9 +67,10 @@ export function CrowdPreview({
         if (phase === 'waiting') writeWaitColor(sampleJourneyWaitSeconds(sampler, index, seconds), buffers.color)
         else buffers.color.set(phase === 'processing' ? '#359c9b' : color)
         bodies.current.setColorAt(slot, buffers.color)
-        const x = buffers.positions[slot * 3] + offsets[index * 2] * spread
+        const walkingSpread = phase === 'walking' ? spread : 0
+        const x = buffers.positions[slot * 3] + offsets[index * 2] * walkingSpread
         const y = buffers.positions[slot * 3 + 1]
-        const z = buffers.positions[slot * 3 + 2] + offsets[index * 2 + 1] * spread
+        const z = buffers.positions[slot * 3 + 2] + offsets[index * 2 + 1] * walkingSpread
         buffers.matrix.makeTranslation(x, y + 0.8, z)
         bodies.current.setMatrixAt(slot, buffers.matrix)
         buffers.matrix.makeTranslation(x, y + 1.5, z)
@@ -82,11 +84,14 @@ export function CrowdPreview({
       buffers.lastTime = seconds
     }
     if (onSampleStats && clock.elapsedTime - buffers.lastNotifyTime >= 0.25
-      && (buffers.lastVisible !== buffers.stats.visibleCount || buffers.lastWalking !== buffers.stats.walkingCount || buffers.lastWaiting !== buffers.stats.waitingCount || buffers.lastProcessing !== buffers.stats.processingCount || buffers.lastCompleted !== buffers.stats.completedCount)) {
+      && (buffers.lastVisible !== buffers.stats.visibleCount || buffers.lastWalking !== buffers.stats.walkingCount
+        || buffers.lastWaiting !== buffers.stats.waitingCount || buffers.lastVisibleWaiting !== buffers.stats.visibleWaitingCount
+        || buffers.lastProcessing !== buffers.stats.processingCount || buffers.lastCompleted !== buffers.stats.completedCount)) {
       buffers.lastNotifyTime = clock.elapsedTime
       buffers.lastVisible = buffers.stats.visibleCount
       buffers.lastWalking = buffers.stats.walkingCount
       buffers.lastWaiting = buffers.stats.waitingCount ?? 0
+      buffers.lastVisibleWaiting = buffers.stats.visibleWaitingCount ?? 0
       buffers.lastProcessing = buffers.stats.processingCount ?? 0
       buffers.lastCompleted = buffers.stats.completedCount ?? 0
       // Low-frequency notification copy; all per-frame geometry work reuses buffers.

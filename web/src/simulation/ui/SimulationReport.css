@@ -1,0 +1,80 @@
+.sim-report {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  background: var(--sim-surface, #fff);
+  color: var(--sim-text, #15211e);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.sim-report :is(p, h2, dl, dd) { margin: 0; }
+
+.sim-report__header,
+.sim-report__snapshot,
+.sim-report__progress > div,
+.sim-report__detail > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sim-report h2 { font-size: 20px; line-height: 1.2; }
+
+.sim-report .sim-report__eyebrow {
+  color: var(--sim-muted, #56645e);
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.sim-report__meta,
+.sim-report__snapshot,
+.sim-report__note {
+  color: var(--sim-muted, #56645e);
+  font-size: 12px;
+}
+
+.sim-report__meta { display: flex; flex-wrap: wrap; gap: 5px 12px; }
+.sim-report__snapshot { padding-top: 12px; border-top: 1px solid var(--sim-border, #dce2dd); }
+.sim-report__snapshot time { color: var(--sim-text, #15211e); font-weight: 600; font-variant-numeric: tabular-nums; }
+.sim-report__metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+
+.sim-report__metric,
+.sim-report__empty {
+  padding: 11px 12px;
+  background: var(--sim-raised, #f6f8f7);
+  border: 1px solid var(--sim-border, #dce2dd);
+  border-radius: 8px;
+}
+
+.sim-report__metric dt { color: var(--sim-muted, #56645e); font-size: 12px; }
+.sim-report__metric dd { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.sim-report__progress { display: grid; gap: 5px; }
+.sim-report__progress progress { width: 100%; height: 7px; accent-color: var(--sim-accent, #24664c); }
+.sim-report__detail { display: grid; gap: 5px; }
+.sim-report__detail dt { color: var(--sim-muted, #56645e); }
+.sim-report__detail dd { font-variant-numeric: tabular-nums; font-weight: 600; }
+.sim-report__empty { display: grid; gap: 8px; }
+.sim-report__empty p { color: var(--sim-muted, #56645e); }
+.sim-report__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.sim-report :is(button, .sim-report__import) {
+  border: 1px solid var(--sim-border, #dce2dd);
+  border-radius: 7px;
+  background: var(--sim-raised, #f6f8f7);
+  color: var(--sim-text, #15211e);
+  font: inherit;
+  font-weight: 600;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+
+.sim-report .sim-report__close { min-width: 32px; padding: 3px 7px; font-size: 17px; }
+.sim-report .sim-report__primary { justify-self: start; color: var(--sim-on-accent, #fff); background: var(--sim-accent, #24664c); border-color: var(--sim-accent, #24664c); font-weight: 700; }
+.sim-report button:disabled { opacity: .55; cursor: default; }
+.sim-report :is(button:focus-visible, .sim-report__import:focus-within) { outline: 2px solid var(--sim-accent, #24664c); outline-offset: 2px; }
+.sim-report__import { position: relative; }
+.sim-report__import input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.sim-report__error { color: var(--sim-danger, #9f292d); overflow-wrap: anywhere; }

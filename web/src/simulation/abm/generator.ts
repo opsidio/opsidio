@@ -1,5 +1,5 @@
 import { scheduleAdmission } from './admission.ts'
-import type { AbmConfig, AbmResult, AgentJourney, CohortDemand, NavigationNode } from '../runtime-types'
+import type { AbmConfig, AbmResult, AgentJourney, CohortDemand, NavigationNode, ServiceStation } from '../runtime-types'
 import type { Point } from '../types'
 import type { AbmWorkerRequest, AbmWorkerResponse } from './worker-protocol'
 
@@ -12,8 +12,9 @@ const finite = (value: unknown): value is number => typeof value === 'number' &&
 const validPoint = (point: unknown): point is Point => Array.isArray(point) && point.length === 3 && point.every(finite)
 
 type Arc = { to: string; distance: number }
-type Graph = { nodes: Map<string, NavigationNode>; outgoing: Map<string, Arc[]> }
-type Route = { nodeIds: string[]; points: Point[]; distance: number; checkpointDistance: number }
+type Graph = { nodes: Map<string, NavigationNode>; outgoing: Map<string, Arc[]>; orderedIds: string[] }
+type Path = { nodeIds: string[]; points: Point[]; distance: number }
+type Route = Path & { checkpointDistance: number }
 
 function validateGraph(config: AbmConfig, issues: string[]): Graph | null {
   if (!Array.isArray(config.nodes) || !Array.isArray(config.edges)) {
@@ -58,23 +59,21 @@ function validateGraph(config: AbmConfig, issues: string[]): Graph | null {
   }
   if (issues.length) return null
   for (const arcs of outgoing.values()) arcs.sort((a, b) => compareIds(a.to, b.to))
-  return { nodes, outgoing }
+  return { nodes, outgoing, orderedIds: [...nodes.keys()].sort(compareIds) }
 }
 
 /** Shortest geometric route on the authored directed graph; no obstacle or crowd model. */
-function shortestRoute(graph: Graph, origin: string, destination: string, internalOrigin = false): Route | string {
+function shortestPath(graph: Graph, origin: string, destination: string, excluded?: string): Path | string {
   if (!graph.nodes.has(origin)) return `arrival node "${origin}" is missing`
   if (!graph.nodes.has(destination)) return `destination node "${destination}" is missing`
-  if (!internalOrigin && graph.nodes.get(origin)!.role !== 'arrival') return `origin "${origin}" must have role "arrival"`
   const distances = new Map<string, number>([[origin, 0]])
   const previous = new Map<string, string>()
   const visited = new Set<string>()
-  const ids = [...graph.nodes.keys()].sort(compareIds)
   while (true) {
     let current: string | undefined
     let nearest = Infinity
     // Stable ID order breaks equal-distance ties, independently of input array order.
-    for (const id of ids) {
+    for (const id of graph.orderedIds) {
       const distance = distances.get(id) ?? Infinity
       if (!visited.has(id) && distance < nearest) {
         current = id
@@ -85,7 +84,7 @@ function shortestRoute(graph: Graph, origin: string, destination: string, intern
     if (current === destination) break
     visited.add(current)
     for (const arc of graph.outgoing.get(current)!) {
-      if (visited.has(arc.to)) continue
+      if (arc.to === excluded || visited.has(arc.to)) continue
       const distance = nearest + arc.distance
       if (distance < (distances.get(arc.to) ?? Infinity)) {
         distances.set(arc.to, distance)
@@ -95,14 +94,8 @@ function shortestRoute(graph: Graph, origin: string, destination: string, intern
   }
   const nodeIds = [destination]
   while (nodeIds[0] !== origin) nodeIds.unshift(previous.get(nodeIds[0])!)
-  const checkpointIndex = nodeIds.findIndex(id => graph.nodes.get(id)!.role === 'checkpoint')
-  if (checkpointIndex < 0) return `route ${origin} -> ${destination} has no checkpoint; checkpoint arrival cannot be derived`
   const points = nodeIds.map(id => [...graph.nodes.get(id)!.position] as Point)
-  let checkpointDistance = 0
-  for (let index = 1; index <= checkpointIndex; index++) {
-    checkpointDistance += Math.hypot(...points[index].map((value, axis) => value - points[index - 1][axis]))
-  }
-  return { nodeIds, points, distance: distances.get(destination)!, checkpointDistance }
+  return { nodeIds, points, distance: distances.get(destination)! }
 }
 
 function validateCohort(cohort: CohortDemand, horizon: number): string[] {
@@ -114,6 +107,12 @@ function validateCohort(cohort: CohortDemand, horizon: number): string[] {
     issues.push('groupSize must be a positive safe integer')
   }
   if (cohort.laneCheckpointIds !== undefined && (!Array.isArray(cohort.laneCheckpointIds) || !cohort.laneCheckpointIds.length || cohort.laneCheckpointIds.some(id => !validId(id)) || new Set(cohort.laneCheckpointIds).size !== cohort.laneCheckpointIds.length)) issues.push('laneCheckpointIds needs distinct authored checkpoint IDs')
+  if (cohort.helpDesk !== undefined) {
+    const help = cohort.helpDesk
+    if (!help || !validId(help.passNodeId) || !validId(help.checkpointNodeId) || !finite(help.visitPercent) || help.visitPercent < 0 || help.visitPercent > 100 || !cohort.laneCheckpointIds?.length) {
+      issues.push('helpDesk needs a passage, a checkpoint, a 0–100% visit share and authored security lanes')
+    }
+  }
   if (cohort.walkSpeedMps !== undefined && (!finite(cohort.walkSpeedMps) || cohort.walkSpeedMps <= 0)) issues.push('walkSpeedMps must be finite and positive')
   if (!Array.isArray(cohort.windows) || cohort.windows.length === 0) {
     issues.push('at least one arrival window is required')
@@ -143,9 +142,9 @@ function validateCohort(cohort: CohortDemand, horizon: number): string[] {
 }
 
 /** Each cohort has its own stream, so adding/reordering another cohort cannot shift it. */
-function cohortRandom(seed: number, cohortId: string): () => number {
+function cohortRandom(seed: number, cohortId: string, stream?: string): () => number {
   let state = 2166136261
-  const key = JSON.stringify([seed, cohortId])
+  const key = JSON.stringify(stream === undefined ? [seed, cohortId] : [seed, cohortId, stream])
   for (let index = 0; index < key.length; index++) state = Math.imul(state ^ key.charCodeAt(index), 16777619)
   return () => {
     state = (state + 0x6D2B79F5) | 0
@@ -153,6 +152,61 @@ function cohortRandom(seed: number, cohortId: string): () => number {
     value ^= value + Math.imul(value ^ (value >>> 7), value | 61)
     return ((value ^ (value >>> 14)) >>> 0) / 4294967296
   }
+}
+
+function resolveRoute(
+  graph: Graph, paths: Map<string, Path | string>, stages: Map<string, ServiceStation['admissionStage']>,
+  cohort: CohortDemand, via: string | null, visitHelp: boolean,
+): Route | string {
+  const { arrivalNodeId, destinationNodeId, helpDesk } = cohort
+  if (!graph.nodes.has(arrivalNodeId)) return `arrival node "${arrivalNodeId}" is missing`
+  if (graph.nodes.get(arrivalNodeId)!.role !== 'arrival') return `origin "${arrivalNodeId}" must have role "arrival"`
+  if (via && graph.nodes.get(via)?.role !== 'checkpoint') return `lane node "${via}" must be a checkpoint`
+  const waypoints = [arrivalNodeId]
+  if (helpDesk) {
+    if (graph.nodes.get(helpDesk.passNodeId)?.role !== 'waypoint' || stages.get(helpDesk.checkpointNodeId) !== 'help') return 'help passage or desk station is missing'
+    waypoints.push(helpDesk.passNodeId)
+    if (visitHelp) waypoints.push(helpDesk.checkpointNodeId)
+  }
+  if (via) waypoints.push(via)
+  waypoints.push(destinationNodeId)
+
+  const nodeIds: string[] = [], points: Point[] = []
+  let distance = 0
+  for (let index = 1; index < waypoints.length; index++) {
+    const from = waypoints[index - 1], to = waypoints[index]
+    const helpNode = helpDesk?.checkpointNodeId
+    const excluded = helpNode !== from && helpNode !== to ? helpNode : undefined
+    const key = JSON.stringify([from, to, excluded])
+    let path = paths.get(key)
+    if (!path) {
+      path = shortestPath(graph, from, to, excluded)
+      paths.set(key, path)
+    }
+    if (typeof path === 'string') return path
+    nodeIds.push(...path.nodeIds.slice(index === 1 ? 0 : 1))
+    points.push(...path.points.slice(index === 1 ? 0 : 1))
+    distance += path.distance
+  }
+
+  if (helpDesk) {
+    const checkpointIds = nodeIds.filter(id => graph.nodes.get(id)!.role === 'checkpoint')
+    const required = visitHelp ? [helpDesk.checkpointNodeId, via] : [via]
+    const scanId = checkpointIds[required.length]
+    const terminal = graph.nodes.get(destinationNodeId)
+    if (stages.get(via!) !== 'security' || stages.get(scanId) !== 'scan' || checkpointIds.length !== required.length + 1
+      || required.some((id, index) => checkpointIds[index] !== id)
+      || new Set(nodeIds).size !== nodeIds.length || terminal?.role !== 'destination' || graph.outgoing.get(destinationNodeId)!.length) {
+      return 'admission route must pass the help desk, then security and ticket scan, and end at a terminal handover'
+    }
+  }
+  const checkpointIndex = helpDesk ? nodeIds.indexOf(via!) : nodeIds.findIndex(id => graph.nodes.get(id)!.role === 'checkpoint')
+  if (checkpointIndex < 0) return `route ${arrivalNodeId} -> ${destinationNodeId} has no checkpoint; checkpoint arrival cannot be derived`
+  let checkpointDistance = 0
+  for (let index = 1; index <= checkpointIndex; index++) {
+    checkpointDistance += Math.hypot(...points[index].map((value, axis) => value - points[index - 1][axis]))
+  }
+  return { nodeIds, points, distance, checkpointDistance }
 }
 
 /**
@@ -184,6 +238,8 @@ export function generateAbm(config: AbmConfig): AbmResult {
     if (cohort && validId(cohort.id)) idCounts.set(cohort.id, (idCounts.get(cohort.id) ?? 0) + 1)
   }
   const routes = new Map<string, Route | string>()
+  const paths = new Map<string, Path | string>()
+  const stages = new Map(config.serviceStations?.map(station => [station.nodeId, station.admissionStage]))
   const cohorts = [...config.cohorts].sort((a, b) => compareIds(a?.id ?? '', b?.id ?? ''))
   const requestedCount = cohorts.reduce((sum, cohort) => sum + (Number.isSafeInteger(cohort?.count) && cohort.count > 0 ? cohort.count : 0), 0)
   if (!Number.isSafeInteger(requestedCount) || requestedCount > MAX_GENERATED_JOURNEYS) {
@@ -201,31 +257,32 @@ export function generateAbm(config: AbmConfig): AbmResult {
       result.issues.push(...issues.map(issue => `Cohort "${cohort.id ?? '(missing id)'}": ${issue}.`))
       continue
     }
-    const routeOptions: Route[] = []
+    const routeOptions: { ordinary: Route; help?: Route }[] = []
+    const helpDesk = cohort.helpDesk
+    const helpVisitPercent = helpDesk?.visitPercent ?? 0
     for (const via of cohort.laneCheckpointIds ?? [null]) {
-      const routeKey = JSON.stringify([cohort.arrivalNodeId, via, cohort.destinationNodeId])
-      let route = routes.get(routeKey)
-      if (!route) {
-        if (via === null) route = shortestRoute(graph, cohort.arrivalNodeId, cohort.destinationNodeId)
-        else {
-          const before = shortestRoute(graph, cohort.arrivalNodeId, via)
-          const after = graph.nodes.get(via)?.role === 'checkpoint' ? shortestRoute(graph, via, cohort.destinationNodeId, true) : `lane node "${via}" must be a checkpoint`
-          if (typeof before === 'string') route = before
-          else if (typeof after === 'string') route = after
-          else route = { nodeIds: [...before.nodeIds, ...after.nodeIds.slice(1)], points: [...before.points, ...after.points.slice(1)], distance: before.distance + after.distance, checkpointDistance: before.checkpointDistance }
+      const routeFor = (visitHelp: boolean) => {
+        const key = JSON.stringify([cohort.arrivalNodeId, via, cohort.destinationNodeId, helpDesk?.passNodeId, helpDesk?.checkpointNodeId, visitHelp])
+        let route = routes.get(key)
+        if (!route) {
+          route = resolveRoute(graph, paths, stages, cohort, via, visitHelp)
+          routes.set(key, route)
         }
-        routes.set(routeKey, route)
+        if (typeof route === 'string') result.issues.push(`Cohort "${cohort.id}": ${route}.`)
+        return route
       }
-      if (typeof route === 'string') result.issues.push(`Cohort "${cohort.id}": ${route}.`)
-      else routeOptions.push(route)
+      const ordinary = routeFor(false)
+      const help = helpVisitPercent > 0 ? routeFor(true) : undefined
+      if (typeof ordinary !== 'string' && typeof help !== 'string') routeOptions.push({ ordinary, help })
     }
     if (routeOptions.length !== (cohort.laneCheckpointIds?.length ?? 1)) continue
     const walkSpeed = cohort.walkSpeedMps ?? config.walkSpeedMps
-    if (routeOptions.some(route => !Number.isFinite(config.horizonSeconds + route.distance / walkSpeed))) {
+    if (routeOptions.some(({ ordinary, help }) => !Number.isFinite(config.horizonSeconds + Math.max(ordinary.distance, help?.distance ?? 0) / walkSpeed))) {
       result.issues.push(`Cohort "${cohort.id}": route travel time is not finite at the configured walk speed.`)
       continue
     }
     const random = cohortRandom(config.seed, cohort.id)
+    const helpRandom = helpVisitPercent > 0 ? cohortRandom(config.seed, cohort.id, 'help-desk') : undefined
     const windows = [...cohort.windows].filter(window => window.sharePercent > 0)
       .sort((a, b) => a.startSeconds - b.startSeconds || a.endSeconds - b.endSeconds)
     const totalShare = windows.reduce((sum, window) => sum + window.sharePercent, 0)
@@ -244,7 +301,8 @@ export function generateAbm(config: AbmConfig): AbmResult {
     let personIndex = 0
     let groupIndex = 0
     while (personIndex < cohort.count) {
-      const route = routeOptions[groupIndex % routeOptions.length]
+      const option = routeOptions[groupIndex % routeOptions.length]
+      const route = option.help && helpRandom && helpRandom() * 100 < helpVisitPercent ? option.help : option.ordinary
       const walkSeconds = route.distance / walkSpeed
       const checkpointSeconds = route.checkpointDistance / walkSpeed
       let draw = random() * totalShare

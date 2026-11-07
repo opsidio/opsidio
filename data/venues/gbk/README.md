@@ -53,15 +53,17 @@ OSM polygons can be approximate, incomplete or stale. This pack is a coordinate 
 
 [Arrival origin sources](arrival-origins.json) refer to the existing pinned OSM extract. MRT Istora Mandiri Exit B and the mapped parking entrance are shared network nodes; the latter is a **proposed** taxi and ride-hailing drop-off. Parkir Timur uses the centre of its mapped parking polygon. Its **82.6 m proposed walking connector** to the public network needs on-site confirmation. No vehicles are simulated.
 
-V1 joins the shortest walking routes from all three origins to the five entrance forecourts. The graph uses visible footways, pedestrian paths, steps, living streets and allowed service roads. Adjacency comes from shared OSM nodes. Restricted ways and gates, polygon outlines and off-map segments are excluded. Mapped routes may share ground with fictional admission stations, so event access, closures and accessible routing remain unverified.
+V1 joins the shortest walking routes from all three origins to the five entrance forecourts. The graph uses visible footways, pedestrian paths, steps, living streets and allowed service roads. Adjacency comes from shared OSM nodes. Restricted ways and gates, polygon outlines and off-map segments are excluded. Mapped approaches avoid the modeled pens except for one flagged East/Festival access leg, `approach_417744527_417744522` (OSM way 496569523). It remains connected for the demo and needs site review. Event access, closures and accessible routing remain unverified.
 
-North and West use mapped pedestrian corridors. The East, Southeast and Yellow four-lane layouts use separate sections of Jalan Lingkar Stadion: the original approaches there are too narrow for the illustrated lane spacing. `proposed_anchor_m` retains the original scenario marker, while `operational_anchor_m` is the illustrated scan location. These positions are for the demo and do not identify confirmed gates. The tests sample all admission route legs against the 7.5 m rendered corridors and check all four scan/security sequences, barrier/table/detector footprints and operator positions. The illustrated 10 m shelters overhang the rendered corridor and require site review before equipment placement.
+North and West use mapped pedestrian corridors. The East, Southeast and Yellow four-lane layouts use separate sections of Jalan Lingkar Stadion: the original approaches there are too narrow for the illustrated lane spacing. `proposed_anchor_m` retains the original scenario marker, while `operational_anchor_m` is the illustrated security location. These positions are for the demo and do not identify confirmed gates. The tests sample all admission route legs against the 7.5 m rendered corridors and check all four security/scan sequences, barrier/table/detector footprints and operator positions. The illustrated 10 m shelters overhang the rendered corridor and require site review before equipment placement.
+
+CAT 4 visitors assigned to Pintu Kuning join the ring at the Jalan Plaza Selatan junction and share part of the road with Plaza Tenggara visitors who have already passed security. The junction lies 27.5 m beyond the Tenggara security tent centre and 19.5 m before its scan tent centre along the demo route. All Tenggara journeys use their own forecourt and security checkpoint. Closing the shared ring segment disconnects Pintu Kuning from all three origins in the current mapped graph, so the shared section still needs event review. [Mapped junction](https://www.openstreetmap.org/node/309878212)
 
 | Origin | Approach walk to entrance forecourt |
 | --- | ---: |
-| MRT Istora Mandiri Exit B | 906–1,373 m |
-| Parkir Timur | 581–1,176 m |
-| Proposed passenger drop-off | 971–1,438 m |
+| MRT Istora Mandiri Exit B | 1,245–2,576 m |
+| Parkir Timur | 581–1,911 m |
+| Proposed passenger drop-off | 1,311–2,641 m |
 
 Each entrance adds about 141 m of walking across its admission layout. For Doni's API, `demand.time_reference: origin_spawn` means arrivals are released at the selected origin; `venue.layout.walking_paths` contains the 15 origin-to-queue approach distances. Apply that walk once. The category × behavior rows remain at 76; local playback assigns the origin split while preserving all 70,000 visitors.
 
