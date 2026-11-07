@@ -40,6 +40,8 @@ const {
   moveStaffAssignment,
   addStaffAssignment,
   removeStaffAssignment,
+  isRequiredField,
+  firstBlockingIssue,
 } = await import(
   `data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`
 );
@@ -332,4 +334,145 @@ test("assignment validation rejects fractional people, missing lane groups, over
   );
   plan.staff.shifts[0].start = "18:00";
   assert.ok(validate(plan).some((i) => i.path === "staff.roles.0.shift"));
+});
+
+test("required simulation times block progression while optional show times stay optional", () => {
+  const plan = copyDemo();
+  for (const key of ["arrival_generation_start", "model_end"]) {
+    const missing = set(plan, "event.schedule." + key, "");
+    assert.equal(isRequiredField("event.schedule." + key, missing), true);
+    assert.ok(
+      validate(missing).some((i) => i.path === "event.schedule." + key),
+    );
+    assert.equal(firstBlockingIssue(missing, "attendance").step, "brief");
+    assert.equal(firstBlockingIssue(missing, "simulation").step, "brief");
+  }
+  for (const key of [
+    "opening_act",
+    "ultimate_check_in_start",
+    "premium_concert_doors",
+  ]) {
+    const optional = set(plan, "event.schedule." + key, "");
+    assert.equal(isRequiredField("event.schedule." + key, optional), false);
+    assert.ok(
+      !validate(optional).some((i) => i.path === "event.schedule." + key),
+    );
+  }
+});
+test("empty plans cannot skip forward through tabs, review or simulation", () => {
+  const plan = blankPlan();
+  assert.equal(firstBlockingIssue(plan, "brief"), undefined);
+  for (const target of [
+    "attendance",
+    "checks",
+    "resources",
+    "targets",
+    "review",
+    "simulation",
+  ])
+    assert.equal(firstBlockingIssue(plan, target).step, "brief");
+  assert.equal(firstBlockingIssue(copyDemo(), "simulation"), undefined);
+});
+test("validation blocks the first incomplete section and allows going back to it", () => {
+  let plan = set(
+    copyDemo(),
+    "event.ticket_categories.0.expected_attendees_estimate",
+    null,
+  );
+  assert.equal(firstBlockingIssue(plan, "checks").step, "attendance");
+  assert.equal(firstBlockingIssue(plan, "review").step, "attendance");
+  assert.equal(firstBlockingIssue(plan, "attendance"), undefined);
+  plan = set(copyDemo(), "staff.shifts.0.start", "");
+  assert.equal(firstBlockingIssue(plan, "targets").step, "resources");
+  assert.equal(firstBlockingIssue(plan, "simulation").step, "resources");
+});
+test("all exposed required groups validate missing values and accept explicit zero where meaningful", () => {
+  const plan = copyDemo();
+  const paths = [
+    "event.name",
+    "event.date",
+    "meta.timezone",
+    "venue.name",
+    "event.expected_attendees_estimate",
+    "event.audience_profile.typical_group_size",
+    "event.audience_profile.female_percent",
+    "venue.layout.gates.0.name",
+    "venue.layout.gates.0.lanes.0.count",
+    "process_steps.steps.0.time_per_person_seconds.typical",
+    "staff.roles.0.name",
+    "staff.roles.0.gender.female",
+    "staff.roles.0.shift",
+    "staff.roles.0.assignment.0.count",
+    "staff.shifts.0.meal_break_minutes",
+    "constraints.equipment.items.0.available",
+    "constraints.budget.staff_cap_idr",
+    "constraints.safety.max_density_persons_per_m2.queue_zones",
+  ];
+  for (const path of paths) {
+    assert.equal(isRequiredField(path, plan), true, path);
+    const broken = set(
+      plan,
+      path,
+      typeof path === "string" &&
+        [
+          "event.name",
+          "meta.timezone",
+          "venue.name",
+          "staff.roles.0.name",
+          "staff.roles.0.shift",
+          "venue.layout.gates.0.name",
+        ].includes(path)
+        ? ""
+        : null,
+    );
+    assert.ok(
+      validate(broken).some((i) => i.path === path),
+      path,
+    );
+  }
+  const zero = set(plan, "event.capacity.no_show_percent_estimate", 0);
+  assert.ok(
+    !validate(zero).some(
+      (i) => i.path === "event.capacity.no_show_percent_estimate",
+    ),
+  );
+  assert.ok(
+    validate(set(plan, "event.audience_profile.typical_group_size", 0)).some(
+      (i) => i.path === "event.audience_profile.typical_group_size",
+    ),
+  );
+});
+test("arrivals outside the required simulation period cannot proceed", () => {
+  const plan = copyDemo(),
+    id = plan.event.ticket_categories[0].id;
+  plan.demand.arrival_windows_percent[id] = { "23:00-23:59": 100 };
+  assert.ok(
+    validate(plan).some(
+      (i) => i.path === "demand.arrival_windows_percent." + id,
+    ),
+  );
+  assert.equal(firstBlockingIssue(plan, "checks").step, "attendance");
+});
+
+test("missing inputs report the field to fix instead of treating unknown values as zero", () => {
+  const plan = copyDemo();
+  const shift = set(plan, "staff.shifts.0.end", "");
+  assert.ok(validate(shift).some((i) => i.path === "staff.shifts.0.end"));
+  assert.ok(
+    !validate(shift).some((i) => /^staff\.roles\.\d+\.shift$/.test(i.path)),
+  );
+  const assignment = set(plan, "staff.roles.0.assignment.0.count", null);
+  assert.ok(
+    validate(assignment).some(
+      (i) => i.path === "staff.roles.0.assignment.0.count",
+    ),
+  );
+  assert.ok(!validate(assignment).some((i) => i.path === "staff.roles"));
+  const budget = set(plan, "constraints.budget.staff_cap_idr", null);
+  assert.equal(
+    validate(budget).filter(
+      (i) => i.path === "constraints.budget.staff_cap_idr",
+    ).length,
+    1,
+  );
 });
