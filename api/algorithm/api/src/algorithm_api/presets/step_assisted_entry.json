@@ -1,0 +1,20 @@
+{
+  "id": "assisted_entry",
+  "step": {
+    "id": "assisted_entry",
+    "name": "Assisted entry",
+    "what_happens": "An escort meets the visitor, guides them through the priority lane, and takes them to the platform or the seat.",
+    "done_by": [
+      "accessibility_escort"
+    ],
+    "equipment": [],
+    "applies_to": "accessible_visitors",
+    "time_per_person_seconds": {
+      "typical": 120,
+      "slow": 300
+    },
+    "slow_when": [
+      "The visitor arrives at a far parking area."
+    ]
+  }
+}

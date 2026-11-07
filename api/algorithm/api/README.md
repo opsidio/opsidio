@@ -13,6 +13,26 @@ API_KEY=local-test-key DATABASE_PATH=./corridor.sqlite3 uv run uvicorn algorithm
 
 The public health check is `GET /health`. All `/v3` routes require `X-API-Key`.
 
+## Create and simulate an event-entry plan
+
+Use `/v4` for full event documents. Create a partial plan or send the complete source document.
+
+```sh
+curl -sS http://127.0.0.1:8000/v4/plans \
+  -H 'X-API-Key: local-test-key' -H 'Content-Type: application/json' -d '{}'
+
+curl -sS -X POST http://127.0.0.1:8000/v4/plans/PLAN_ID/validate \
+  -H 'X-API-Key: local-test-key' -H 'Content-Type: application/json' -d '{}'
+
+curl -sS -X POST http://127.0.0.1:8000/v4/plans/PLAN_ID/simulate \
+  -H 'X-API-Key: local-test-key' -H 'Content-Type: application/json' \
+  -d '{"simulation_method":"des"}'
+```
+
+The simulation method must be `flow` or `des`. DES defaults to 20 replications.
+Runs preserve the complete input document as an immutable snapshot.
+Event-entry plans and runs use separate SQLite tables from corridor records.
+
 ## Create and run a plan
 
 ```sh

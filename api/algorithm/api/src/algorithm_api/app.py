@@ -18,6 +18,8 @@ from starlette.exceptions import HTTPException
 from .engine import ComputationTimeout, compare_lanes, simulate
 from .models import OptimizationResource, PlanDocument, PlanResource, RunResource, canonical_hash
 from .store import ReplayWrite, Store
+from .event_store import EventStore
+from .event_routes import register_event_routes
 
 LIMITATIONS = [
     "Synthetic visitors and inputs; no personal visitor records.",
@@ -42,11 +44,18 @@ def utcnow():
 def create_app(*, database_path: str, api_key: str) -> FastAPI:
     app = FastAPI(openapi_url=None, docs_url=None, redoc_url=None)
     store = Store(database_path)
+    event_store = EventStore(database_path)
     mutation_lock = threading.Lock()
 
     @app.exception_handler(HTTPException)
     async def http_error(request, exc):
-        return error(exc.status_code, "not_found" if exc.status_code == 404 else "http_error", str(exc.detail))
+        headers = exc.headers
+        if exc.status_code == 405:
+            route = request.scope.get("route")
+            path = getattr(route, "path", request.url.path)
+            allowed = sorted({method for candidate in app.routes if getattr(candidate, "path", None) == path for method in (getattr(candidate, "methods", None) or set())})
+            headers = {**(headers or {}), "Allow": ", ".join(allowed)}
+        return error(exc.status_code, "not_found" if exc.status_code == 404 else "http_error", str(exc.detail), headers=headers)
 
     @app.exception_handler(Exception)
     async def unexpected_error(request, exc):
@@ -55,7 +64,7 @@ def create_app(*, database_path: str, api_key: str) -> FastAPI:
 
     @app.middleware("http")
     async def authenticate(request: Request, call_next):
-        if request.url.path.startswith("/v3/"):
+        if request.url.path.startswith(("/v3/", "/v4/")):
             supplied = request.headers.get("X-API-Key", "")
             if not api_key or not secrets.compare_digest(supplied.encode(), api_key.encode()):
                 return error(401, "invalid_api_key", "Invalid or missing API key")
@@ -187,6 +196,7 @@ def create_app(*, database_path: str, api_key: str) -> FastAPI:
         resource = store.get_optimization(optimization_id)
         return resource if resource else error(404, "optimization_not_found", "Optimization not found")
 
+    register_event_routes(app, store=event_store, mutation_lock=mutation_lock)
     return app
 
 

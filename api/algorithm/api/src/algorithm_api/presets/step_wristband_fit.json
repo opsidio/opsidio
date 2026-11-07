@@ -1,0 +1,36 @@
+{
+  "id": "wristband_fit",
+  "step": {
+    "id": "wristband_fit",
+    "name": "Wristband fitting",
+    "what_happens": "Crew picks the wristband color for the category and closes it on the visitor's wrist. The wristband carries a QR code for the gate scan.",
+    "done_by": [
+      "ticketing_crew",
+      "help_desk_agent"
+    ],
+    "equipment": [
+      "wristband"
+    ],
+    "applies_to": "all_visitors",
+    "time_per_person_seconds": {
+      "typical": 10,
+      "slow": 25
+    },
+    "slow_when": [
+      "The visitor asks for a looser fit.",
+      "A group of friends wants to be served together."
+    ],
+    "rules": [
+      "One wristband per person. A broken or removed wristband is not replaced after entry."
+    ],
+    "exceptions": [
+      {
+        "id": "wristband_broken_while_fitting",
+        "what": "The clasp breaks or the size is wrong.",
+        "share_percent": 0.5,
+        "outcome": "continue",
+        "extra_minutes": 1
+      }
+    ]
+  }
+}

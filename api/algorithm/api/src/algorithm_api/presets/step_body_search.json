@@ -1,0 +1,45 @@
+{
+  "id": "body_search",
+  "step": {
+    "id": "body_search",
+    "name": "Body search",
+    "what_happens": "An officer of the same gender pats the visitor down lightly and passes a hand-held metal detector over the body.",
+    "done_by": [
+      "security_officer",
+      "security_supervisor"
+    ],
+    "equipment": [
+      "metal_detector_wand"
+    ],
+    "applies_to": "all_visitors",
+    "time_per_person_seconds": {
+      "typical": 7,
+      "slow": 20
+    },
+    "slow_when": [
+      "The visitor wears a jacket or many accessories.",
+      "The wand alarms on a belt or jewelry."
+    ],
+    "rules": [
+      "Female visitors are searched only by female officers.",
+      "Officers never ask a visitor to remove a hijab.",
+      "A visitor can ask for a search behind a screen."
+    ],
+    "exceptions": [
+      {
+        "id": "wand_alarm",
+        "what": "The wand alarms and the officer checks again.",
+        "share_percent": 3,
+        "outcome": "secondary_check",
+        "extra_minutes": 1
+      },
+      {
+        "id": "private_search_request",
+        "what": "The visitor asks for a search behind a screen.",
+        "share_percent": 0.5,
+        "outcome": "secondary_check",
+        "extra_minutes": 3
+      }
+    ]
+  }
+}
