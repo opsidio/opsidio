@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
-  title: Corridor Simulation API
-  version: 3.0.0
-  description: Deterministic synthetic corridor simulation and lane comparison.
+  title: Event Entry Simulation API
+  version: 4.0.0
+  description: Corridor v3 and event-entry v4 simulation APIs.
 servers:
 - url: http://127.0.0.1:8000
 security:
@@ -16,6 +16,12 @@ tags:
   description: Deterministic simulation results.
 - name: optimizations
   description: Feasible lane comparisons.
+- name: Presets
+  description: Read-only event-entry presets.
+- name: Plans
+  description: Editable event-entry plans.
+- name: Runs
+  description: Computed event-entry simulation runs.
 paths:
   /health:
     get:
@@ -38,6 +44,15 @@ paths:
           $ref: '#/components/responses/Error'
         '503':
           $ref: '#/components/responses/Error'
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [GET]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
   /v3/plans:
     post:
       operationId: createCorridorPlan
@@ -45,8 +60,6 @@ paths:
       description: Validate and save a complete immutable corridor plan.
       tags:
       - plans
-      parameters:
-      - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -165,6 +178,15 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [POST]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
   /v3/plans/{plan_id}:
     get:
       operationId: getCorridorPlan
@@ -285,6 +307,15 @@ paths:
           $ref: '#/components/responses/Error'
         '404':
           $ref: '#/components/responses/Error'
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [GET]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
   /v3/plans/{plan_id}/simulate:
     post:
       operationId: simulateCorridorPlan
@@ -294,7 +325,6 @@ paths:
       - runs
       parameters:
       - $ref: '#/components/parameters/PlanId'
-      - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -371,6 +401,15 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         '503':
           $ref: '#/components/responses/Error'
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [POST]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
   /v3/runs/{run_id}:
     get:
       operationId: getCorridorRun
@@ -438,6 +477,15 @@ paths:
           $ref: '#/components/responses/Error'
         '404':
           $ref: '#/components/responses/Error'
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [GET]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
   /v3/plans/{plan_id}/optimize:
     post:
       operationId: optimizeCorridorPlan
@@ -447,7 +495,6 @@ paths:
       - optimizations
       parameters:
       - $ref: '#/components/parameters/PlanId'
-      - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -499,6 +546,15 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         '503':
           $ref: '#/components/responses/Error'
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [POST]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
   /v3/optimizations/{optimization_id}:
     get:
       operationId: getCorridorOptimization
@@ -541,6 +597,937 @@ paths:
           $ref: '#/components/responses/Error'
         '404':
           $ref: '#/components/responses/Error'
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [GET]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
+  /v4/venue-presets:
+    get:
+      operationId: listEventVenuePresets
+      summary: List venue presets
+      description: List read-only venue presets when selecting a venue configuration to apply to an event plan.
+      tags: [Presets]
+      parameters:
+      - name: limit
+        in: query
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      - name: cursor
+        in: query
+        schema: {type: string}
+      responses:
+        '200':
+          description: Successful response.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PresetPage"}
+              example: {data: [], next_cursor: null}
+        '401':
+          $ref: "#/components/responses/Error"
+        '404':
+          $ref: "#/components/responses/Error"
+        '422':
+          $ref: "#/components/responses/ValidationError"
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [GET]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
+  /v4/venue-presets/{preset_id}:
+    get:
+      operationId: getEventVenuePreset
+      summary: Get a venue preset
+      description: Get a read-only venue preset before applying it to an event plan.
+      tags: [Presets]
+      parameters:
+      - name: preset_id
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '200':
+          description: Successful response.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Preset"}
+              example: {id: tennis_indoor_senayan}
+        '401':
+          $ref: "#/components/responses/Error"
+        '404':
+          $ref: "#/components/responses/Error"
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [GET]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
+  /v4/step-presets:
+    get:
+      operationId: listEventStepPresets
+      summary: List step presets
+      description: List the available read-only process-step presets before adding steps to a plan.
+      tags: [Presets]
+      parameters:
+      - name: limit
+        in: query
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      - name: cursor
+        in: query
+        schema: {type: string}
+      responses:
+        '200':
+          description: Successful response.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PresetPage"}
+              example: {data: [], next_cursor: null}
+        '401':
+          $ref: "#/components/responses/Error"
+        '404':
+          $ref: "#/components/responses/Error"
+        '422':
+          $ref: "#/components/responses/ValidationError"
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [GET]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
+  /v4/step-presets/{preset_id}:
+    get:
+      operationId: getEventStepPreset
+      summary: Get a step preset
+      description: Get one read-only process-step preset before applying it to a plan.
+      tags: [Presets]
+      parameters:
+      - name: preset_id
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '200':
+          description: Successful response.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Preset"}
+              example: {id: tennis_indoor_senayan}
+        '401':
+          $ref: "#/components/responses/Error"
+        '404':
+          $ref: "#/components/responses/Error"
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [GET]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
+  /v4/plans:
+    post:
+      operationId: createEventPlan
+      summary: Create an event plan
+      description: Create a full event-entry plan from an empty, partial, or complete source document.
+      tags: [Plans]
+      parameters:
+      - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object}
+            example: {}
+      responses:
+        '201':
+          description: Successful response.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/EventPlanResource"}
+              example:
+                id: epl_example
+                parent_plan_id: null
+                optimization_id: null
+                candidate_kind: null
+                created_at: "2026-11-07T00:00:00Z"
+                updated_at: "2026-11-07T00:00:00Z"
+                document: {schema_version: "0.1", meta: {document: opsidio_event_input}}
+        '401':
+          $ref: "#/components/responses/Error"
+        '404':
+          $ref: "#/components/responses/Error"
+        '409':
+          $ref: "#/components/responses/Error"
+        '413':
+          $ref: "#/components/responses/Error"
+        '422':
+          $ref: "#/components/responses/ValidationError"
+        '429':
+          $ref: "#/components/responses/TooManyRequests"
+        '503':
+          $ref: "#/components/responses/Error"
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [POST, GET]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
+    get:
+      operationId: listEventPlans
+      summary: List event plans
+      description: List event-entry plans in newest-first order using cursor pagination.
+      tags: [Plans]
+      parameters:
+      - name: limit
+        in: query
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      - name: cursor
+        in: query
+        schema: {type: string}
+      responses:
+        '200':
+          description: Successful response.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/EventPlanPage"}
+              example: {data: [], next_cursor: null}
+        '401':
+          $ref: "#/components/responses/Error"
+        '404':
+          $ref: "#/components/responses/Error"
+        '422':
+          $ref: "#/components/responses/ValidationError"
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [POST, GET]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
+  /v4/plans/{plan_id}:
+    get:
+      operationId: getEventPlan
+      summary: Get an event plan
+      description: Read the full event-entry plan document and its saved source context.
+      tags: [Plans]
+      parameters:
+      - name: plan_id
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '200':
+          description: Successful response.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/EventPlanResource"}
+              example:
+                id: epl_example
+                parent_plan_id: null
+                optimization_id: null
+                candidate_kind: null
+                created_at: "2026-11-07T00:00:00Z"
+                updated_at: "2026-11-07T00:00:00Z"
+                document: {schema_version: "0.1", meta: {document: opsidio_event_input}}
+        '401':
+          $ref: "#/components/responses/Error"
+        '404':
+          $ref: "#/components/responses/Error"
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [GET, PATCH, DELETE]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
+    patch:
+      operationId: updateEventPlan
+      summary: Update an event plan
+      description: Patch editable plan fields using JSON Merge Patch semantics. Use item routes to change steps or roles.
+      tags: [Plans]
+      parameters:
+      - name: plan_id
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object}
+            example: {}
+      responses:
+        '200':
+          description: Successful response.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/EventPlanResource"}
+              example:
+                id: epl_example
+                parent_plan_id: null
+                optimization_id: null
+                candidate_kind: null
+                created_at: "2026-11-07T00:00:00Z"
+                updated_at: "2026-11-07T00:00:00Z"
+                document: {schema_version: "0.1", meta: {document: opsidio_event_input}}
+        '401':
+          $ref: "#/components/responses/Error"
+        '404':
+          $ref: "#/components/responses/Error"
+        '409':
+          $ref: "#/components/responses/Error"
+        '413':
+          $ref: "#/components/responses/Error"
+        '422':
+          $ref: "#/components/responses/ValidationError"
+        '429':
+          $ref: "#/components/responses/TooManyRequests"
+        '503':
+          $ref: "#/components/responses/Error"
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [GET, PATCH, DELETE]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
+    delete:
+      operationId: deleteEventPlan
+      summary: Delete an event plan
+      description: Delete an event-entry plan and its saved event runs.
+      tags: [Plans]
+      parameters:
+      - name: plan_id
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '204':
+          description: Resource deleted.
+        '401':
+          $ref: "#/components/responses/Error"
+        '404':
+          $ref: "#/components/responses/Error"
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [GET, PATCH, DELETE]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
+  /v4/plans/{plan_id}/steps:
+    post:
+      operationId: createEventStep
+      summary: Create a process step
+      description: Add one process step to a plan while preserving other step IDs.
+      tags: [Plans]
+      parameters:
+      - name: plan_id
+        in: path
+        required: true
+        schema: {type: string}
+      - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object}
+            example: {}
+      responses:
+        '201':
+          description: Successful response.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/EventPlanResource"}
+              example:
+                id: epl_example
+                parent_plan_id: null
+                optimization_id: null
+                candidate_kind: null
+                created_at: "2026-11-07T00:00:00Z"
+                updated_at: "2026-11-07T00:00:00Z"
+                document: {schema_version: "0.1", meta: {document: opsidio_event_input}}
+        '401':
+          $ref: "#/components/responses/Error"
+        '404':
+          $ref: "#/components/responses/Error"
+        '409':
+          $ref: "#/components/responses/Error"
+        '413':
+          $ref: "#/components/responses/Error"
+        '422':
+          $ref: "#/components/responses/ValidationError"
+        '429':
+          $ref: "#/components/responses/TooManyRequests"
+        '503':
+          $ref: "#/components/responses/Error"
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [POST]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
+  /v4/plans/{plan_id}/steps/{step_id}:
+    patch:
+      operationId: updateEventStep
+      summary: Update a process step
+      description: Patch one existing process step without changing its ID.
+      tags: [Plans]
+      parameters:
+      - name: plan_id
+        in: path
+        required: true
+        schema: {type: string}
+      - name: step_id
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object}
+            example: {}
+      responses:
+        '200':
+          description: Successful response.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/EventPlanResource"}
+              example:
+                id: epl_example
+                parent_plan_id: null
+                optimization_id: null
+                candidate_kind: null
+                created_at: "2026-11-07T00:00:00Z"
+                updated_at: "2026-11-07T00:00:00Z"
+                document: {schema_version: "0.1", meta: {document: opsidio_event_input}}
+        '401':
+          $ref: "#/components/responses/Error"
+        '404':
+          $ref: "#/components/responses/Error"
+        '409':
+          $ref: "#/components/responses/Error"
+        '413':
+          $ref: "#/components/responses/Error"
+        '422':
+          $ref: "#/components/responses/ValidationError"
+        '429':
+          $ref: "#/components/responses/TooManyRequests"
+        '503':
+          $ref: "#/components/responses/Error"
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [PATCH, DELETE]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
+    delete:
+      operationId: deleteEventStep
+      summary: Delete a process step
+      description: Remove one process step from a plan.
+      tags: [Plans]
+      parameters:
+      - name: plan_id
+        in: path
+        required: true
+        schema: {type: string}
+      - name: step_id
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '204':
+          description: Resource deleted.
+        '401':
+          $ref: "#/components/responses/Error"
+        '404':
+          $ref: "#/components/responses/Error"
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [PATCH, DELETE]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
+  /v4/plans/{plan_id}/roles:
+    post:
+      operationId: createEventRole
+      summary: Create a staff role
+      description: Add one staff role to a plan while preserving other role IDs.
+      tags: [Plans]
+      parameters:
+      - name: plan_id
+        in: path
+        required: true
+        schema: {type: string}
+      - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object}
+            example: {}
+      responses:
+        '201':
+          description: Successful response.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/EventPlanResource"}
+              example:
+                id: epl_example
+                parent_plan_id: null
+                optimization_id: null
+                candidate_kind: null
+                created_at: "2026-11-07T00:00:00Z"
+                updated_at: "2026-11-07T00:00:00Z"
+                document: {schema_version: "0.1", meta: {document: opsidio_event_input}}
+        '401':
+          $ref: "#/components/responses/Error"
+        '404':
+          $ref: "#/components/responses/Error"
+        '409':
+          $ref: "#/components/responses/Error"
+        '413':
+          $ref: "#/components/responses/Error"
+        '422':
+          $ref: "#/components/responses/ValidationError"
+        '429':
+          $ref: "#/components/responses/TooManyRequests"
+        '503':
+          $ref: "#/components/responses/Error"
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [POST]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
+  /v4/plans/{plan_id}/roles/{role_id}:
+    patch:
+      operationId: updateEventRole
+      summary: Update a staff role
+      description: Patch one existing staff role without changing its ID.
+      tags: [Plans]
+      parameters:
+      - name: plan_id
+        in: path
+        required: true
+        schema: {type: string}
+      - name: role_id
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object}
+            example: {}
+      responses:
+        '200':
+          description: Successful response.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/EventPlanResource"}
+              example:
+                id: epl_example
+                parent_plan_id: null
+                optimization_id: null
+                candidate_kind: null
+                created_at: "2026-11-07T00:00:00Z"
+                updated_at: "2026-11-07T00:00:00Z"
+                document: {schema_version: "0.1", meta: {document: opsidio_event_input}}
+        '401':
+          $ref: "#/components/responses/Error"
+        '404':
+          $ref: "#/components/responses/Error"
+        '409':
+          $ref: "#/components/responses/Error"
+        '413':
+          $ref: "#/components/responses/Error"
+        '422':
+          $ref: "#/components/responses/ValidationError"
+        '429':
+          $ref: "#/components/responses/TooManyRequests"
+        '503':
+          $ref: "#/components/responses/Error"
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [PATCH, DELETE]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
+    delete:
+      operationId: deleteEventRole
+      summary: Delete a staff role
+      description: Remove one staff role from a plan.
+      tags: [Plans]
+      parameters:
+      - name: plan_id
+        in: path
+        required: true
+        schema: {type: string}
+      - name: role_id
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '204':
+          description: Resource deleted.
+        '401':
+          $ref: "#/components/responses/Error"
+        '404':
+          $ref: "#/components/responses/Error"
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [PATCH, DELETE]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
+  /v4/plans/{plan_id}/apply-venue-preset:
+    post:
+      operationId: applyEventVenuePreset
+      summary: Apply a venue preset
+      description: Replace the plan venue with one packaged venue preset and its source notes.
+      tags: [Plans]
+      parameters:
+      - name: plan_id
+        in: path
+        required: true
+        schema: {type: string}
+      - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object}
+            example: {}
+      responses:
+        '200':
+          description: Successful response.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/EventPlanResource"}
+              example:
+                id: epl_example
+                parent_plan_id: null
+                optimization_id: null
+                candidate_kind: null
+                created_at: "2026-11-07T00:00:00Z"
+                updated_at: "2026-11-07T00:00:00Z"
+                document: {schema_version: "0.1", meta: {document: opsidio_event_input}}
+        '401':
+          $ref: "#/components/responses/Error"
+        '404':
+          $ref: "#/components/responses/Error"
+        '409':
+          $ref: "#/components/responses/Error"
+        '413':
+          $ref: "#/components/responses/Error"
+        '422':
+          $ref: "#/components/responses/ValidationError"
+        '429':
+          $ref: "#/components/responses/TooManyRequests"
+        '503':
+          $ref: "#/components/responses/Error"
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [POST]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
+  /v4/plans/{plan_id}/apply-step-preset:
+    post:
+      operationId: applyEventStepPreset
+      summary: Apply a step preset
+      description: Add one packaged process-step preset to the plan.
+      tags: [Plans]
+      parameters:
+      - name: plan_id
+        in: path
+        required: true
+        schema: {type: string}
+      - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object}
+            example: {}
+      responses:
+        '200':
+          description: Successful response.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/EventPlanResource"}
+              example:
+                id: epl_example
+                parent_plan_id: null
+                optimization_id: null
+                candidate_kind: null
+                created_at: "2026-11-07T00:00:00Z"
+                updated_at: "2026-11-07T00:00:00Z"
+                document: {schema_version: "0.1", meta: {document: opsidio_event_input}}
+        '401':
+          $ref: "#/components/responses/Error"
+        '404':
+          $ref: "#/components/responses/Error"
+        '409':
+          $ref: "#/components/responses/Error"
+        '413':
+          $ref: "#/components/responses/Error"
+        '422':
+          $ref: "#/components/responses/ValidationError"
+        '429':
+          $ref: "#/components/responses/TooManyRequests"
+        '503':
+          $ref: "#/components/responses/Error"
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [POST]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
+  /v4/plans/{plan_id}/validate:
+    post:
+      operationId: validateEventPlan
+      summary: Validate an event plan
+      description: Check document shape and readiness before running a simulation.
+      tags: [Plans]
+      parameters:
+      - name: plan_id
+        in: path
+        required: true
+        schema: {type: string}
+      - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object}
+            example: {}
+      responses:
+        '200':
+          description: Successful response.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ValidationResult"}
+              example: {valid: false, issues: [{severity: error, code: missing_section, field: event, message: Event data is required}]}
+        '401':
+          $ref: "#/components/responses/Error"
+        '404':
+          $ref: "#/components/responses/Error"
+        '409':
+          $ref: "#/components/responses/Error"
+        '413':
+          $ref: "#/components/responses/Error"
+        '422':
+          $ref: "#/components/responses/ValidationError"
+        '429':
+          $ref: "#/components/responses/TooManyRequests"
+        '503':
+          $ref: "#/components/responses/Error"
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [POST]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
+  /v4/plans/{plan_id}/simulate:
+    post:
+      operationId: simulateEventPlan
+      summary: Simulate an event plan
+      description: Compute and save a flow or discrete-event report from the full event plan. Calculations have a 60-second deadline.
+      tags: [Runs]
+      parameters:
+      - name: plan_id
+        in: path
+        required: true
+        schema: {type: string}
+      - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/SimulationSettings"}
+            example: {simulation_method: flow}
+      responses:
+        '200':
+          description: Successful response.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/EventRunResource"}
+              example:
+                id: ern_example
+                plan_id: epl_example
+                purpose: plain
+                created_at: "2026-11-07T00:00:00Z"
+                snapshot_hash: abc123
+                snapshot_document: {schema_version: "0.1"}
+                simulation_method: flow
+                request_settings: {simulation_method: flow}
+                resolved_settings: {simulation_method: flow, replications: 1, base_seed: null}
+                engine_version: event_entry_v1
+                runtime_ms: 1
+                output: {meta: {example: false}}
+                limitations: []
+        '401':
+          $ref: "#/components/responses/Error"
+        '404':
+          $ref: "#/components/responses/Error"
+        '409':
+          $ref: "#/components/responses/Error"
+        '413':
+          $ref: "#/components/responses/Error"
+        '422':
+          $ref: "#/components/responses/ValidationError"
+        '429':
+          $ref: "#/components/responses/TooManyRequests"
+        '503':
+          $ref: "#/components/responses/Error"
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [POST]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
+  /v4/plans/{plan_id}/runs:
+    get:
+      operationId: listEventRuns
+      summary: List event runs
+      description: List saved runs for one event plan in newest-first cursor order.
+      tags: [Runs]
+      parameters:
+      - name: plan_id
+        in: path
+        required: true
+        schema: {type: string}
+      - name: limit
+        in: query
+        schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      - name: cursor
+        in: query
+        schema: {type: string}
+      responses:
+        '200':
+          description: Successful response.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/EventRunPage"}
+              example: {data: [], next_cursor: null}
+        '401':
+          $ref: "#/components/responses/Error"
+        '404':
+          $ref: "#/components/responses/Error"
+        '422':
+          $ref: "#/components/responses/ValidationError"
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [GET]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
+  /v4/runs/{run_id}:
+    get:
+      operationId: getEventRun
+      summary: Get an event run
+      description: Read a saved run and its immutable full-document snapshot.
+      tags: [Runs]
+      parameters:
+      - name: run_id
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '200':
+          description: Successful response.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/EventRunResource"}
+              example:
+                id: ern_example
+                plan_id: epl_example
+                purpose: plain
+                created_at: "2026-11-07T00:00:00Z"
+                snapshot_hash: abc123
+                snapshot_document: {schema_version: "0.1"}
+                simulation_method: flow
+                request_settings: {simulation_method: flow}
+                resolved_settings: {simulation_method: flow, replications: 1, base_seed: null}
+                engine_version: event_entry_v1
+                runtime_ms: 1
+                output: {meta: {example: false}}
+                limitations: []
+        '401':
+          $ref: "#/components/responses/Error"
+        '404':
+          $ref: "#/components/responses/Error"
+        '405':
+          description: Method is not allowed.
+          headers:
+            Allow:
+              schema: {type: string, enum: [GET]}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Error"}
+              example: {error: {code: http_error, message: Method not allowed}}
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -574,6 +1561,76 @@ components:
       schema:
         type: string
   schemas:
+    EventPlanResource:
+      type: object
+      required: [id, parent_plan_id, optimization_id, candidate_kind, created_at, updated_at, document]
+      properties:
+        id: {type: string}
+        parent_plan_id: {type: [string, "null"]}
+        optimization_id: {type: [string, "null"]}
+        candidate_kind: {type: [string, "null"]}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        document: {type: object, additionalProperties: true}
+    EventRunResource:
+      type: object
+      required: [id, plan_id, purpose, created_at, snapshot_hash, snapshot_document, simulation_method, request_settings, resolved_settings, engine_version, runtime_ms, output, limitations]
+      properties:
+        id: {type: string}
+        plan_id: {type: string}
+        purpose: {const: plain}
+        created_at: {type: string, format: date-time}
+        snapshot_hash: {type: string}
+        snapshot_document: {type: object, additionalProperties: true}
+        simulation_method: {type: string, enum: [flow, des]}
+        request_settings: {type: object, additionalProperties: true}
+        resolved_settings: {type: object, additionalProperties: true}
+        engine_version: {type: string}
+        runtime_ms: {type: number, minimum: 0}
+        output: {type: object, additionalProperties: true}
+        limitations: {type: array, items: {type: string}}
+    EventPlanPage:
+      type: object
+      required: [data, next_cursor]
+      properties:
+        data: {type: array, items: {$ref: "#/components/schemas/EventPlanResource"}}
+        next_cursor: {type: [string, "null"]}
+    EventRunPage:
+      type: object
+      required: [data, next_cursor]
+      properties:
+        data: {type: array, items: {$ref: "#/components/schemas/EventRunResource"}}
+        next_cursor: {type: [string, "null"]}
+    Preset: {type: object, required: [id], properties: {id: {type: string}}, additionalProperties: true}
+    PresetPage:
+      type: object
+      required: [data, next_cursor]
+      properties:
+        data: {type: array, items: {$ref: "#/components/schemas/Preset"}}
+        next_cursor: {type: [string, "null"]}
+    ValidationResult:
+      type: object
+      required: [valid, issues]
+      properties:
+        valid: {type: boolean}
+        issues:
+          type: array
+          items:
+            type: object
+            required: [severity, code, field, message]
+            properties:
+              severity: {type: string, enum: [error, warning]}
+              code: {type: string}
+              field: {type: string}
+              message: {type: string}
+    SimulationSettings:
+      type: object
+      required: [simulation_method]
+      properties:
+        simulation_method: {type: string, enum: [flow, des]}
+        replications: {type: integer, minimum: 1, maximum: 100}
+        base_seed: {type: integer}
+      additionalProperties: false
     Health:
       type: object
       required:

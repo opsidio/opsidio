@@ -1,0 +1,43 @@
+{
+  "id": "eticket_scan",
+  "step": {
+    "id": "eticket_scan",
+    "name": "E-ticket scan",
+    "what_happens": "Crew scans the dynamic QR code in the visitor's ticketing app. The system checks that the ticket is valid and unused.",
+    "done_by": [
+      "ticketing_crew",
+      "door_crew",
+      "ticketing_supervisor",
+      "help_desk_agent"
+    ],
+    "equipment": [
+      "handheld_scanner"
+    ],
+    "applies_to": "all_visitors",
+    "time_per_person_seconds": {
+      "typical": 6,
+      "slow": 25
+    },
+    "slow_when": [
+      "The phone screen is dim or cracked.",
+      "The visitor must log in to the app first.",
+      "Mobile data is weak in the crowd."
+    ],
+    "exceptions": [
+      {
+        "id": "qr_invalid_or_used",
+        "what": "The QR code is invalid, already used, or for another event.",
+        "share_percent": 0.3,
+        "outcome": "help_desk",
+        "extra_minutes": 2
+      },
+      {
+        "id": "app_login_problem",
+        "what": "The visitor cannot open the ticket in the app.",
+        "share_percent": 2,
+        "outcome": "step_aside_and_return",
+        "extra_minutes": 4
+      }
+    ]
+  }
+}
