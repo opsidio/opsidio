@@ -1,0 +1,63 @@
+{
+  "schema_version": "corridor-1",
+  "name": "Synthetic two-visitor scan",
+  "geometry_revision": "synthetic-corridor-v1",
+  "route": {
+    "nodes": [
+      {
+        "id": "arrival",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      },
+      {
+        "id": "scan",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 5
+        }
+      },
+      {
+        "id": "admission",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 5
+        }
+      }
+    ],
+    "scan_node_id": "scan"
+  },
+  "arrivals": {
+    "count": 2,
+    "start_seconds": 0,
+    "end_seconds": 0
+  },
+  "walking_speed_mps": 1,
+  "scan": {
+    "lanes": 1,
+    "physical_slots": 2,
+    "available_staff": 2,
+    "available_scanners": 2,
+    "service_seconds": 10,
+    "staff_cost_per_lane": {
+      "amount": "100.00",
+      "currency": "IDR"
+    },
+    "scanner_cost_per_lane": {
+      "amount": "50.00",
+      "currency": "IDR"
+    }
+  },
+  "targets": {
+    "max_peak_scan_queue": 0
+  },
+  "budget": {
+    "amount": "600.00",
+    "currency": "IDR"
+  },
+  "horizon_seconds": 30
+}

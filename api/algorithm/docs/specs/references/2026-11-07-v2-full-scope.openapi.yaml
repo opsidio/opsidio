@@ -1,0 +1,5136 @@
+openapi: 3.1.0
+info:
+  title: Opsidio algorithm API
+  version: 2.0.0
+  description: Approved v2 contract. Build partial event-entry plans, simulate with ABM by default or explicit flow/DES,
+    and optimize using ABM scoring and verification. Document money uses integer IDR; event clock times use Asia/Jakarta.
+    Resource timestamps use UTC RFC 3339. See product ADR 0001.
+  x-contract-status: approved
+servers:
+- url: http://127.0.0.1:8000
+  description: Local
+security:
+- ApiKeyAuth: []
+tags:
+- name: health
+  description: Service status.
+- name: presets
+  description: Read-only venue and step presets that a plan can copy.
+- name: plans
+  description: Editable plan documents and their steps and roles.
+- name: runs
+  description: Simulation runs of a plan snapshot.
+- name: optimizations
+  description: Queued searches for a better plan.
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Get service health
+      description: Returns 200 while the service runs. It needs the API key, like every other operation. Call it
+        to check that the service is up and that the key works. It changes nothing.
+      tags:
+      - health
+      responses:
+        '200':
+          description: The service runs.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+              example:
+                status: ok
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v2/venue-presets:
+    get:
+      operationId: listVenuePresets
+      summary: List venue presets
+      description: Returns the ID, name, and summary of each venue preset. Call it to pick a preset for applyVenuePreset.
+        It changes nothing.
+      tags:
+      - presets
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: One page of venue presets.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VenuePresetPage'
+              example:
+                data:
+                - id: tennis_indoor_senayan
+                  name: Tennis Indoor Senayan
+                  summary: Default lanes, gates, zones, and known problems of Tennis Indoor Senayan.
+                next_cursor: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+          description: The `limit` or `cursor` query parameter is invalid (`validation_failed`).
+  /v2/venue-presets/{preset_id}:
+    get:
+      operationId: getVenuePreset
+      summary: Get a venue preset
+      description: Returns one venue preset with its full venue block and the sources that it names. Call it to
+        inspect a venue before you apply it. It changes nothing.
+      tags:
+      - presets
+      parameters:
+      - $ref: '#/components/parameters/PresetId'
+      responses:
+        '200':
+          description: The venue preset.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VenuePreset'
+              example:
+                id: tennis_indoor_senayan
+                name: Tennis Indoor Senayan
+                summary: Default lanes, gates, zones, and known problems of Tennis Indoor Senayan.
+                venue:
+                  id: tennis_indoor_senayan
+                  name: Tennis Indoor Senayan
+                  layout:
+                    zones:
+                    - id: zone_priority_queue
+                      type: queue
+                      area_m2: 64
+                    service_points: []
+                    gates: []
+                    walking_paths: []
+                    visitor_flow:
+                    - order: 1
+                      point: redemption_tent
+                      required: true
+                  known_problems: []
+                sources:
+                  gbk_venue:
+                    title: GBK — Tennis Indoor venue page
+                    url: https://gbk.id/venue/tennis-indoor-31
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The venue preset does not exist (`preset_not_found`).
+  /v2/step-presets:
+    get:
+      operationId: listStepPresets
+      summary: List step presets
+      description: Returns the ID and name of each step preset. Call it to pick a step for applyStepPreset. It changes
+        nothing.
+      tags:
+      - presets
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: One page of step presets.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StepPresetPage'
+              example:
+                data:
+                - id: eticket_scan
+                  name: E-ticket scan
+                next_cursor: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+          description: The `limit` or `cursor` query parameter is invalid (`validation_failed`).
+  /v2/step-presets/{preset_id}:
+    get:
+      operationId: getStepPreset
+      summary: Get a step preset
+      description: Returns one step preset as a step. Call it to inspect a step before you apply it. It changes
+        nothing.
+      tags:
+      - presets
+      parameters:
+      - $ref: '#/components/parameters/PresetId'
+      responses:
+        '200':
+          description: The step preset.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Step'
+              example:
+                id: wristband_check
+                name: Wristband check at the gate
+                applies_to: all_visitors
+                time_per_person_seconds:
+                  typical: 3
+                  slow: 10
+                exceptions:
+                - id: wrong_gate
+                  share_percent: 2
+                  outcome: redirect_to_correct_gate
+                  extra_minutes: 0.5
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The step preset does not exist (`preset_not_found`).
+  /v2/plans:
+    post:
+      operationId: createPlan
+      summary: Create a plan
+      description: Creates a plan from an empty object, part of a document, or a full document. Call it first; then
+        fill the plan with the other plan operations. A new plan gets `schema_version` "0.1" and `meta.document`
+        opsidio_event_input. Cross-part rules wait for validatePlan.
+      tags:
+      - plans
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanDocument'
+            example:
+              event:
+                schedule:
+                  outer_area_open: '15:30'
+                  doors_open: '17:30'
+                  main_act: '19:45'
+      responses:
+        '201':
+          description: The plan was created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plan'
+              example:
+                id: pln_01JC9W3K8Q6Y2M4T5R7V9X1Z3B
+                parent_plan_id: null
+                optimization_id: null
+                candidate_kind: null
+                created_at: '2026-11-05T07:52:38Z'
+                updated_at: '2026-11-05T07:52:38Z'
+                document:
+                  schema_version: '0.1'
+                  meta:
+                    document: opsidio_event_input
+                  event:
+                    schedule:
+                      outer_area_open: '15:30'
+                      doors_open: '17:30'
+                      main_act: '19:45'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The Idempotency-Key was used with a different body (`idempotency_key_reused`).
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+          description: The document fails the shape checks (`validation_failed`).
+    get:
+      operationId: listPlans
+      summary: List plans
+      description: Returns plans without their documents, newest first. Call it to find a plan ID, including the
+        candidate plans of optimizations. It changes nothing.
+      tags:
+      - plans
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: One page of plans.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanPage'
+              example:
+                data:
+                - id: pln_01JC9W3K8Q6Y2M4T5R7V9X1Z3B
+                  parent_plan_id: null
+                  optimization_id: null
+                  candidate_kind: null
+                  created_at: '2026-11-05T07:52:38Z'
+                  updated_at: '2026-11-05T08:10:02Z'
+                next_cursor: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+          description: The `limit` or `cursor` query parameter is invalid (`validation_failed`).
+  /v2/plans/{plan_id}:
+    parameters:
+    - $ref: '#/components/parameters/PlanId'
+    get:
+      operationId: getPlan
+      summary: Get a plan
+      description: Returns the plan with its whole document. Call it to read the current steps, roles, and other
+        parts. No operation reads one step or one role. It changes nothing.
+      tags:
+      - plans
+      responses:
+        '200':
+          description: The plan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plan'
+              example:
+                id: pln_01JC9W3K8Q6Y2M4T5R7V9X1Z3B
+                parent_plan_id: null
+                optimization_id: null
+                candidate_kind: null
+                created_at: '2026-11-05T07:52:38Z'
+                updated_at: '2026-11-05T08:10:02Z'
+                document:
+                  schema_version: '0.1'
+                  event: {}
+                  venue: {}
+                  process_steps: {}
+                  staff: {}
+                  constraints: {}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The plan does not exist (`plan_not_found`).
+    patch:
+      operationId: updatePlan
+      summary: Update a plan
+      description: Applies a JSON Merge Patch (RFC 7386) to the plan document. A list in the patch replaces the
+        whole list, and null removes a part. Call it for every part except steps and roles, which have their own
+        operations. The server validates the merged document.
+      tags:
+      - plans
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanPatch'
+            example:
+              constraints:
+                budget:
+                  staff_cap_idr: 65000000
+                  equipment_cap_idr: 40000000
+      responses:
+        '200':
+          description: The changed plan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plan'
+              example:
+                id: pln_01JC9W3K8Q6Y2M4T5R7V9X1Z3B
+                parent_plan_id: null
+                optimization_id: null
+                candidate_kind: null
+                created_at: '2026-11-05T07:52:38Z'
+                updated_at: '2026-11-05T08:10:02Z'
+                document:
+                  schema_version: '0.1'
+                  constraints:
+                    budget:
+                      staff_cap_idr: 65000000
+                      equipment_cap_idr: 40000000
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The plan does not exist (`plan_not_found`).
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+          description: The merged document fails the shape checks (`validation_failed`), or the patch touches `process_steps.steps`
+            or `staff.roles` (`use_item_endpoint`).
+    delete:
+      operationId: deletePlan
+      summary: Delete a plan
+      description: Deletes the plan with its runs and optimizations. Candidate plans of its optimizations stay,
+        with the old `parent_plan_id`. Call it only when no optimization of the plan is queued or running.
+      tags:
+      - plans
+      responses:
+        '204':
+          description: The plan was deleted.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The plan does not exist (`plan_not_found`).
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: An optimization of the plan is queued or running (`optimization_active`).
+  /v2/plans/{plan_id}/steps:
+    parameters:
+    - $ref: '#/components/parameters/PlanId'
+    post:
+      operationId: createStep
+      summary: Add a step to a plan
+      description: Adds one step to `process_steps.steps`. Call it to define a process step that lanes use. It returns
+        the whole plan. To copy a known step, call applyStepPreset instead.
+      tags:
+      - plans
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Step'
+            example:
+              id: body_search
+              name: Body search
+              applies_to: all_visitors
+              time_per_person_seconds:
+                typical: 7
+                slow: 20
+              exceptions:
+              - id: wand_alarm
+                share_percent: 3
+                outcome: secondary_check
+                extra_minutes: 1
+      responses:
+        '201':
+          description: The step was added. The body is the changed plan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plan'
+              example:
+                id: pln_01JC9W3K8Q6Y2M4T5R7V9X1Z3B
+                parent_plan_id: null
+                optimization_id: null
+                candidate_kind: null
+                created_at: '2026-11-05T07:52:38Z'
+                updated_at: '2026-11-05T08:10:02Z'
+                document:
+                  schema_version: '0.1'
+                  process_steps:
+                    steps:
+                    - id: body_search
+                      name: Body search
+                      applies_to: all_visitors
+                      time_per_person_seconds:
+                        typical: 7
+                        slow: 20
+                      exceptions:
+                      - id: wand_alarm
+                        share_percent: 3
+                        outcome: secondary_check
+                        extra_minutes: 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The plan does not exist (`plan_not_found`).
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The plan already has a step with that ID (`step_exists`), or the Idempotency-Key was used
+            with a different body (`idempotency_key_reused`).
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+          description: The step fails the shape checks (`validation_failed`).
+  /v2/plans/{plan_id}/steps/{step_id}:
+    parameters:
+    - $ref: '#/components/parameters/PlanId'
+    - $ref: '#/components/parameters/StepId'
+    patch:
+      operationId: updateStep
+      summary: Update a step
+      description: Applies a JSON Merge Patch (RFC 7386) to one step. The step ID cannot change. Call it to change
+        step times or exceptions. It returns the whole plan.
+      tags:
+      - plans
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StepPatch'
+            example:
+              time_per_person_seconds:
+                slow: 25
+      responses:
+        '200':
+          description: The changed plan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plan'
+              example:
+                id: pln_01JC9W3K8Q6Y2M4T5R7V9X1Z3B
+                parent_plan_id: null
+                optimization_id: null
+                candidate_kind: null
+                created_at: '2026-11-05T07:52:38Z'
+                updated_at: '2026-11-05T08:12:40Z'
+                document:
+                  schema_version: '0.1'
+                  process_steps:
+                    steps:
+                    - id: body_search
+                      applies_to: all_visitors
+                      time_per_person_seconds:
+                        typical: 7
+                        slow: 25
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The plan (`plan_not_found`) or the step (`step_not_found`) does not exist.
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+          description: The changed step fails the shape checks (`validation_failed`).
+    delete:
+      operationId: deleteStep
+      summary: Delete a step
+      description: Removes one step from `process_steps.steps`. Lanes that still name the step get an `unknown_reference`
+        error in validatePlan. Call it to drop a step from the process.
+      tags:
+      - plans
+      responses:
+        '204':
+          description: The step was removed.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The plan (`plan_not_found`) or the step (`step_not_found`) does not exist.
+  /v2/plans/{plan_id}/roles:
+    parameters:
+    - $ref: '#/components/parameters/PlanId'
+    post:
+      operationId: createRole
+      summary: Add a role to a plan
+      description: Adds one role to `staff.roles`, with its counts, rates, and assignments. Call it to staff lanes
+        and duties. It returns the whole plan.
+      tags:
+      - plans
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Role'
+            example:
+              id: accessibility_escort
+              name: Accessibility escort
+              count: 2
+              gender:
+                female: 1
+                male: 1
+              shift: sh_doors
+              can_do:
+              - assisted_entry
+              rate_idr_per_shift: 300000
+              overtime_idr_per_hour: 45000
+              pool_limit_total: 3
+              extra_staff_lead_time_days: 3
+              assignment:
+              - point: gate_priority
+                duty: escort
+                count: 2
+      responses:
+        '201':
+          description: The role was added. The body is the changed plan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plan'
+              example:
+                id: pln_01JC9W3K8Q6Y2M4T5R7V9X1Z3B
+                parent_plan_id: null
+                optimization_id: null
+                candidate_kind: null
+                created_at: '2026-11-05T07:52:38Z'
+                updated_at: '2026-11-05T08:14:00Z'
+                document:
+                  schema_version: '0.1'
+                  staff:
+                    roles:
+                    - id: accessibility_escort
+                      count: 2
+                      gender:
+                        female: 1
+                        male: 1
+                      shift: sh_doors
+                      can_do:
+                      - assisted_entry
+                      rate_idr_per_shift: 300000
+                      pool_limit_total: 3
+                      extra_staff_lead_time_days: 3
+                      assignment:
+                      - point: gate_priority
+                        duty: escort
+                        count: 2
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The plan does not exist (`plan_not_found`).
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The plan already has a role with that ID (`role_exists`), or the Idempotency-Key was used
+            with a different body (`idempotency_key_reused`).
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+          description: The role fails the shape checks (`validation_failed`).
+  /v2/plans/{plan_id}/roles/{role_id}:
+    parameters:
+    - $ref: '#/components/parameters/PlanId'
+    - $ref: '#/components/parameters/RoleId'
+    patch:
+      operationId: updateRole
+      summary: Update a role
+      description: Applies a JSON Merge Patch (RFC 7386) to one role. The role ID cannot change, and a list in the
+        patch, such as `assignment`, replaces the whole list. Call it to change counts, rates, or assignments. It
+        returns the whole plan.
+      tags:
+      - plans
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RolePatch'
+            example:
+              count: 3
+              gender:
+                female: 2
+      responses:
+        '200':
+          description: The changed plan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plan'
+              example:
+                id: pln_01JC9W3K8Q6Y2M4T5R7V9X1Z3B
+                parent_plan_id: null
+                optimization_id: null
+                candidate_kind: null
+                created_at: '2026-11-05T07:52:38Z'
+                updated_at: '2026-11-05T08:15:00Z'
+                document:
+                  schema_version: '0.1'
+                  staff:
+                    roles:
+                    - id: accessibility_escort
+                      count: 3
+                      gender:
+                        female: 2
+                        male: 1
+                      shift: sh_doors
+                      can_do:
+                      - assisted_entry
+                      rate_idr_per_shift: 300000
+                      pool_limit_total: 3
+                      extra_staff_lead_time_days: 3
+                      assignment:
+                      - point: gate_priority
+                        duty: escort
+                        count: 2
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The plan (`plan_not_found`) or the role (`role_not_found`) does not exist.
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+          description: The changed role fails the shape checks (`validation_failed`).
+    delete:
+      operationId: deleteRole
+      summary: Delete a role
+      description: Removes one role from `staff.roles`. Call it to drop a role and all of its assignments.
+      tags:
+      - plans
+      responses:
+        '204':
+          description: The role was removed.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The plan (`plan_not_found`) or the role (`role_not_found`) does not exist.
+  /v2/plans/{plan_id}/apply-venue-preset:
+    parameters:
+    - $ref: '#/components/parameters/PlanId'
+    post:
+      operationId: applyVenuePreset
+      summary: Apply a venue preset to a plan
+      description: Replaces the whole `venue` block with the preset's venue, and adds the preset's sources to `sources`.
+        Call it to load a known venue with its default lanes and known problems. It returns the whole plan.
+      tags:
+      - plans
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplyPresetRequest'
+            example:
+              preset_id: tennis_indoor_senayan
+      responses:
+        '200':
+          description: The changed plan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plan'
+              example:
+                id: pln_01JC9W3K8Q6Y2M4T5R7V9X1Z3B
+                parent_plan_id: null
+                optimization_id: null
+                candidate_kind: null
+                created_at: '2026-11-05T07:52:38Z'
+                updated_at: '2026-11-05T08:16:00Z'
+                document:
+                  schema_version: '0.1'
+                  venue:
+                    id: tennis_indoor_senayan
+                    name: Tennis Indoor Senayan
+                  sources:
+                    gbk_venue:
+                      title: GBK — Tennis Indoor venue page
+                      url: https://gbk.id/venue/tennis-indoor-31
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The plan (`plan_not_found`) or the venue preset (`preset_not_found`) does not exist.
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The Idempotency-Key was used with a different body (`idempotency_key_reused`).
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+          description: The body fails the shape checks (`validation_failed`).
+  /v2/plans/{plan_id}/apply-step-preset:
+    parameters:
+    - $ref: '#/components/parameters/PlanId'
+    post:
+      operationId: applyStepPreset
+      summary: Apply a step preset to a plan
+      description: Adds the preset's step to `process_steps.steps`. It adds only the step that the caller asks for.
+        Call it once for each known step that the lanes need. It returns the whole plan.
+      tags:
+      - plans
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplyPresetRequest'
+            example:
+              preset_id: eticket_scan
+      responses:
+        '200':
+          description: The changed plan.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plan'
+              example:
+                id: pln_01JC9W3K8Q6Y2M4T5R7V9X1Z3B
+                parent_plan_id: null
+                optimization_id: null
+                candidate_kind: null
+                created_at: '2026-11-05T07:52:38Z'
+                updated_at: '2026-11-05T08:17:00Z'
+                document:
+                  schema_version: '0.1'
+                  process_steps:
+                    steps:
+                    - id: eticket_scan
+                      name: E-ticket scan
+                      applies_to: all_visitors
+                      time_per_person_seconds:
+                        typical: 6
+                        slow: 25
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The plan (`plan_not_found`) or the step preset (`preset_not_found`) does not exist.
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The plan already has a step with the preset's ID (`step_exists`), or the Idempotency-Key
+            was used with a different body (`idempotency_key_reused`).
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+          description: The body fails the shape checks (`validation_failed`).
+  /v2/plans/{plan_id}/validate:
+    parameters:
+    - $ref: '#/components/parameters/PlanId'
+    post:
+      operationId: validatePlan
+      summary: Validate a plan
+      description: Check base validity and ABM readiness separately after editing a draft. Base errors block every
+        method; ABM-scoped issues block ABM and optimization, while valid legacy flow/DES remain usable. This operation
+        changes nothing.
+      tags:
+      - plans
+      responses:
+        '200':
+          description: The validation result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationResult'
+              example:
+                valid: false
+                issues:
+                - severity: error
+                  code: unknown_reference
+                  field: venue.layout.gates[gate_floor].lanes[female].steps[0]
+                  message: Step bag_check is not in process_steps.steps
+                  scope: base
+                - severity: warning
+                  code: hard_limit_broken
+                  field: staff.roles[security_officer].count
+                  message: Count 50 is above pool_limit_total 48
+                  scope: base
+                abm_ready: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The plan does not exist (`plan_not_found`).
+  /v2/plans/{plan_id}/simulate:
+    parameters:
+    - $ref: '#/components/parameters/PlanId'
+    post:
+      operationId: simulatePlan
+      summary: Simulate a plan
+      description: Run a frozen plan synchronously and store its computed result. Omitted method selects ABM; explicit
+        flow/DES use their genuine engines and accept valid legacy distance-only plans. ABM requires complete usable
+        geometry. Reuse only a completed plain run of this plan with identical full snapshot, scenario, method,
+        seeds, replications, engine version, and resolved settings. Simulation makes no model calls.
+      tags:
+      - runs
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimulateRequest'
+            examples:
+              default_abm:
+                summary: Default ABM settings
+                value: {}
+              abm:
+                summary: Explicit ABM replications
+                value:
+                  simulation_method: abm
+                  replications: 20
+                  base_seed: 20261127
+              legacy_des:
+                summary: Explicit legacy DES
+                value:
+                  simulation_method: des
+                  replications: 20
+                  base_seed: 20261127
+              legacy_flow:
+                summary: Explicit legacy flow
+                value:
+                  simulation_method: flow
+      responses:
+        '200':
+          description: The run.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+              examples:
+                abm:
+                  $ref: '#/components/examples/AbmRun'
+                legacy_des:
+                  $ref: '#/components/examples/Run'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The plan does not exist (`plan_not_found`).
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The Idempotency-Key was used with a different body (`idempotency_key_reused`).
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '422':
+          description: Shape errors return validation_failed. Invalid ABM geometry or plan readiness returns plan_invalid
+            with field, code, scope, and message. Valid geometry-free plans remain usable through explicit flow/DES.
+            Supplied invalid extensions fail validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: plan_invalid
+                  message: ABM requires complete geometry
+                  details:
+                  - field: spatial
+                    code: missing_geometry
+                    scope: abm
+                    message: Supply usable directed geometry or explicitly select flow or des
+  /v2/plans/{plan_id}/runs:
+    parameters:
+    - $ref: '#/components/parameters/PlanId'
+    get:
+      operationId: listRuns
+      summary: List the runs of a plan
+      description: Returns the plan's runs without their output documents, newest first. Filter by `purpose` to
+        find plain runs or the runs of an optimization. Call getRun for the output. It changes nothing.
+      tags:
+      - runs
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      - name: purpose
+        in: query
+        description: Return only runs with this purpose.
+        schema:
+          $ref: '#/components/schemas/RunPurpose'
+      responses:
+        '200':
+          description: One page of runs.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunPage'
+              example:
+                data:
+                - id: run_01JC9X0A1B2C3D4E5F6G7H8J9K
+                  plan_id: pln_01JC9W3K8Q6Y2M4T5R7V9X1Z3B
+                  optimization_id: null
+                  purpose: plain
+                  simulation_method: des
+                  snapshot_hash: ba21dbc1dd9eefd3683f15d4fc36e8ede76c58af9b044e0738026ef2ac07be6e
+                  reuse_key: 4287b21792950bbf19e7068a914ebd19e6245e4e9450cf8323bc918cedd44473
+                  reused: false
+                  runtime_ms: 5203
+                  created_at: '2026-11-05T07:53:10Z'
+                next_cursor: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The plan does not exist (`plan_not_found`).
+        '422':
+          $ref: '#/components/responses/ValidationError'
+          description: The `limit`, `cursor`, or `purpose` query parameter is invalid (`validation_failed`).
+  /v2/runs/{run_id}:
+    parameters:
+    - $ref: '#/components/parameters/RunId'
+    get:
+      operationId: getRun
+      summary: Get a run
+      description: Returns one run with its output document. Call it to read the results of a run that listRuns
+        or an optimization names. It changes nothing.
+      tags:
+      - runs
+      responses:
+        '200':
+          description: The run.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Run'
+              examples:
+                run:
+                  $ref: '#/components/examples/Run'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The run does not exist (`run_not_found`).
+  /v2/plans/{plan_id}/optimize:
+    parameters:
+    - $ref: '#/components/parameters/PlanId'
+    post:
+      operationId: optimizePlan
+      summary: Optimize a plan
+      description: Queue an ABM search over an immutable complete plan snapshot. All scoring, probes, candidates,
+        and verification use ABM with frozen matched seeds; geometry and participant behavior remain fixed. Default
+        greedy uses all five levers, 200 kept moves, and a 600-second search limit. Verification defaults to 50
+        replications outside the search timer. Recommend at most one strict verified improvement. Explicit verify:null
+        produces no recommendation. Poll getOptimization; llm_guided calls OpenAI only in the worker.
+      tags:
+      - optimizations
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OptimizeRequest'
+            examples:
+              default:
+                summary: Default optimization method
+                value:
+                  optimization_method: greedy
+                  levers:
+                  - move_staff
+                  - change_lanes
+                  - open_earlier
+                  - change_staff
+                  - rent_equipment
+                  decision_date: '2026-11-05'
+                  max_kept_moves: 200
+                  time_limit_seconds: 600
+                  verify:
+                    replications: 50
+                    base_seed: 20261127
+                  scoring:
+                    replications: 20
+                    base_seed: 20261127
+              llm_guided:
+                summary: LLM-guided optimization method
+                value:
+                  optimization_method: llm_guided
+                  levers:
+                  - move_staff
+                  - change_lanes
+                  - open_earlier
+                  - change_staff
+                  - rent_equipment
+                  decision_date: '2026-11-05'
+                  max_kept_moves: 200
+                  time_limit_seconds: 600
+                  verify:
+                    replications: 50
+                    base_seed: 20261127
+                  scoring:
+                    replications: 20
+                    base_seed: 20261127
+      responses:
+        '202':
+          description: The optimization was queued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Optimization'
+              example:
+                id: opt_01JC9Y5N2B7C4D6F8G0H2J4K6M
+                plan_id: pln_01JC9W3K8Q6Y2M4T5R7V9X1Z3B
+                status: queued
+                error: null
+                request:
+                  optimization_method: greedy
+                  levers:
+                  - move_staff
+                  - change_lanes
+                  - open_earlier
+                  - change_staff
+                  - rent_equipment
+                  decision_date: '2026-11-05'
+                  max_kept_moves: 200
+                  time_limit_seconds: 600
+                  verify:
+                    replications: 50
+                    base_seed: 20261127
+                  scoring:
+                    replications: 20
+                    base_seed: 20261127
+                progress: null
+                starting_plan: null
+                candidates: []
+                history: []
+                probes: []
+                stop_reason: null
+                llm: null
+                created_at: '2026-11-05T08:00:00Z'
+                started_at: null
+                finished_at: null
+                search_duration_ms: 0
+                verification_duration_ms: 0
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The plan does not exist (`plan_not_found`).
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The Idempotency-Key was used with a different body (`idempotency_key_reused`).
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '422':
+          description: The body fails the shape checks (`validation_failed`), the plan has validation errors (`plan_invalid`),
+            or the plan breaks hard limits (`hard_limits_broken`). The `code` of each `hard_limits_broken` detail
+            is the limit name. The method `llm_guided` fails with `optimization_method_unavailable` when the server
+            has no OpenAI key. An unknown `optimization_method` is a `validation_failed` error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                validation_failed:
+                  summary: The body fails a check
+                  value:
+                    error:
+                      code: validation_failed
+                      message: The request has invalid fields
+                      details:
+                      - field: event.schedule.doors_open
+                        message: Must be a time in HH:MM format
+                optimization_method_unavailable:
+                  summary: The server has no OpenAI key
+                  value:
+                    error:
+                      code: optimization_method_unavailable
+                      message: The optimization method llm_guided is not available on this server
+                      details:
+                      - field: optimization_method
+                        message: The server has no OpenAI key
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /v2/plans/{plan_id}/optimizations:
+    parameters:
+    - $ref: '#/components/parameters/PlanId'
+    get:
+      operationId: listOptimizations
+      summary: List the optimizations of a plan
+      description: Returns the plan's optimizations, newest first. Call it to find an optimization ID or to see
+        which searches still run. It changes nothing.
+      tags:
+      - optimizations
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: One page of optimizations.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OptimizationPage'
+              example:
+                data:
+                - id: opt_01JC9Y5N2B7C4D6F8G0H2J4K6M
+                  plan_id: pln_01JC9W3K8Q6Y2M4T5R7V9X1Z3B
+                  status: running
+                  error: null
+                  request:
+                    optimization_method: greedy
+                    levers:
+                    - move_staff
+                    - change_lanes
+                    - open_earlier
+                    - change_staff
+                    - rent_equipment
+                    decision_date: '2026-11-05'
+                    max_kept_moves: 200
+                    time_limit_seconds: 600
+                    verify:
+                      replications: 50
+                      base_seed: 20261127
+                    scoring:
+                      replications: 20
+                      base_seed: 20261127
+                  progress:
+                    rounds: 2
+                    runs: 96
+                    kept_moves: 2
+                    elapsed_seconds: 14.8
+                    best_score:
+                      missed_checks: 2
+                      shortfall: 0.26
+                      cost_idr: 96665000
+                  starting_plan: null
+                  candidates: []
+                  history: []
+                  probes: []
+                  stop_reason: null
+                  llm: null
+                  created_at: '2026-11-05T08:00:00Z'
+                  started_at: '2026-11-05T08:00:01Z'
+                  finished_at: null
+                  search_duration_ms: 0
+                  verification_duration_ms: 0
+                next_cursor: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The plan does not exist (`plan_not_found`).
+        '422':
+          $ref: '#/components/responses/ValidationError'
+          description: The `limit` or `cursor` query parameter is invalid (`validation_failed`).
+  /v2/optimizations/{optimization_id}:
+    parameters:
+    - $ref: '#/components/parameters/OptimizationId'
+    get:
+      operationId: getOptimization
+      summary: Get an optimization
+      description: Returns the status, progress, and result of one optimization. The result holds `recommended`
+        on the candidates and, for `llm_guided`, the `llm` block. Poll it after optimizePlan until the status is
+        succeeded, failed, or cancelled. It changes nothing.
+      tags:
+      - optimizations
+      responses:
+        '200':
+          description: The optimization.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Optimization'
+              examples:
+                succeeded:
+                  $ref: '#/components/examples/Optimization'
+                llm_guided:
+                  $ref: '#/components/examples/OptimizationLlmGuided'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The optimization does not exist (`optimization_not_found`).
+  /v2/optimizations/{optimization_id}/cancel:
+    parameters:
+    - $ref: '#/components/parameters/OptimizationId'
+    post:
+      operationId: cancelOptimization
+      summary: Cancel an optimization
+      description: Cancels an optimization. A queued optimization becomes cancelled at once. A running optimization
+        gets a cancellation request and keeps the status running until the worker ends it; poll getOptimization
+        until the status is succeeded, failed, or cancelled. Call it when the search is no longer needed. This operation
+        has no request body. Empty transport and an empty JSON object use the same bodyless idempotency identity.
+        A nonempty body returns 422 validation_failed before idempotency lookup; it does not create a changed-body
+        conflict case.
+      tags:
+      - optimizations
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: The cancelled optimization.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Optimization'
+              example:
+                id: opt_01JC9Y5N2B7C4D6F8G0H2J4K6M
+                plan_id: pln_01JC9W3K8Q6Y2M4T5R7V9X1Z3B
+                status: cancelled
+                error: null
+                request:
+                  optimization_method: greedy
+                  levers:
+                  - move_staff
+                  - change_lanes
+                  - open_earlier
+                  - change_staff
+                  - rent_equipment
+                  decision_date: '2026-11-05'
+                  max_kept_moves: 200
+                  time_limit_seconds: 600
+                  verify: null
+                  scoring:
+                    replications: 20
+                    base_seed: 20261127
+                progress: null
+                starting_plan: null
+                candidates: []
+                history: []
+                probes: []
+                stop_reason: null
+                llm: null
+                created_at: '2026-11-05T08:00:00Z'
+                started_at: null
+                finished_at: '2026-11-05T08:00:03Z'
+                search_duration_ms: 0
+                verification_duration_ms: 0
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: The optimization does not exist (`optimization_not_found`).
+        '409':
+          $ref: '#/components/responses/Conflict'
+          description: The optimization already ended (`optimization_finished`), or the Idempotency-Key was used
+            with a different body (`idempotency_key_reused`).
+        '422':
+          $ref: '#/components/responses/ValidationError'
+          description: The Idempotency-Key header is invalid (`validation_failed`).
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      description: Maximum number of items on one page.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Cursor:
+      name: cursor
+      in: query
+      description: The next_cursor value from the previous page. Leave it out for the first page.
+      schema:
+        type: string
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      description: A unique value for each create request, such as a UUID.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 255
+    PlanId:
+      name: plan_id
+      in: path
+      required: true
+      description: Plan ID.
+      schema:
+        type: string
+        pattern: ^pln_[0-9A-HJKMNP-TV-Z]{26}$
+      example: pln_01JC9W3K8Q6Y2M4T5R7V9X1Z3B
+    RunId:
+      name: run_id
+      in: path
+      required: true
+      description: Run ID.
+      schema:
+        type: string
+        pattern: ^run_[0-9A-HJKMNP-TV-Z]{26}$
+      example: run_01JC9X0A1B2C3D4E5F6G7H8J9K
+    OptimizationId:
+      name: optimization_id
+      in: path
+      required: true
+      description: Optimization ID.
+      schema:
+        type: string
+        pattern: ^opt_[0-9A-HJKMNP-TV-Z]{26}$
+      example: opt_01JC9Y5N2B7C4D6F8G0H2J4K6M
+    StepId:
+      name: step_id
+      in: path
+      required: true
+      description: Step ID inside the plan.
+      schema:
+        type: string
+        pattern: ^[a-z0-9_]{1,64}$
+      example: body_search
+    RoleId:
+      name: role_id
+      in: path
+      required: true
+      description: Role ID inside the plan.
+      schema:
+        type: string
+        pattern: ^[a-z0-9_]{1,64}$
+      example: accessibility_escort
+    PresetId:
+      name: preset_id
+      in: path
+      required: true
+      description: Preset ID.
+      schema:
+        type: string
+        pattern: ^[a-z0-9_]{1,64}$
+      example: tennis_indoor_senayan
+  examples:
+    Run:
+      summary: A des run
+      value:
+        id: run_01JC9X0A1B2C3D4E5F6G7H8J9K
+        plan_id: pln_01JC9W3K8Q6Y2M4T5R7V9X1Z3B
+        optimization_id: null
+        purpose: plain
+        simulation_method: des
+        snapshot_hash: ba21dbc1dd9eefd3683f15d4fc36e8ede76c58af9b044e0738026ef2ac07be6e
+        reuse_key: 4287b21792950bbf19e7068a914ebd19e6245e4e9450cf8323bc918cedd44473
+        reused: false
+        runtime_ms: 5203
+        created_at: '2026-11-05T07:53:10Z'
+        output:
+          schema_version: '0.1'
+          meta:
+            document: opsidio_event_output
+            example: false
+          run_manifest:
+            run_id: run_01JC9X0A1B2C3D4E5F6G7H8J9K
+            plan:
+              plan_id: pln_01JC9W3K8Q6Y2M4T5R7V9X1Z3B
+              parent_plan_id: null
+              plan_hash_sha256: ba21dbc1dd9eefd3683f15d4fc36e8ede76c58af9b044e0738026ef2ac07be6e
+            scenario:
+              id: scn_base
+            model:
+              engine_version: 0.1.0
+            replications:
+              count: 20
+              base_seed: 20261127
+            idempotency_key: 4287b21792950bbf19e7068a914ebd19e6245e4e9450cf8323bc918cedd44473
+            uncomputed_fields:
+            - peak_density.zones[*].with_rain_plan_persons
+            - movement_diagnostics
+            simulation_method: des
+            extensions:
+              spatial: null
+              participant_behavior: null
+            geometry_revision: null
+            editor_revision: null
+            resolved_movement: null
+            effective_routes: []
+            method_limitations:
+            - Static logical distances at 1 m/s; no collision, congestion, adaptive routing, or ABM cohesion.
+            runtime:
+              total_ms: 5203
+          scorecard:
+            summary: 'The plan misses 1 of 2 checks: P90 gate wait, all gates.'
+            checks:
+            - id: chk_redemption_wait
+              target_ref: constraints.service_targets.redemption_wait
+              metric: P90 redemption wait, all visitors
+              target_minutes_max: 20
+              result_minutes:
+                mean: 0.9
+                p05: 0.3
+                p95: 2.0
+              replications_met: 20
+              status: met
+              shortfall: 0
+            - id: chk_gate_wait
+              target_ref: constraints.service_targets.gate_wait
+              metric: P90 gate wait, all gates
+              target_minutes_max: 20
+              result_minutes:
+                mean: 32.7
+                p05: 30.1
+                p95: 36.2
+              replications_met: 0
+              status: missed
+              shortfall: 0.635
+            rule_checks:
+              rules:
+              - rule: rule_same_gender_search
+                status: pass
+              - rule: rule_breaks
+                status: not_tested
+          known_problem_checks:
+            checks:
+            - id: kp_crowded_entrance
+              risk: high
+              result: The gate imbalance index is 1.94.
+              linked_checks:
+              - chk_gate_wait
+              - chk_density_queue_zones
+          time_to_clear: {}
+          max_queue_length: {}
+          wait_time: {}
+          staff_utilization: {}
+          staffing_cost: {}
+          peak_density: {}
+          bottleneck_report: {}
+          entry_outcomes: {}
+          support_services: {}
+          stock_check: {}
+          arrival_and_access: {}
+          walking_time:
+            total:
+              distance_m:
+                mean: 0
+                p05: 0
+                p95: 0
+              free_flow_time_seconds:
+                mean: 0
+                p05: 0
+                p95: 0
+              observed_movement_time_seconds:
+                mean: 0
+                p05: 0
+                p95: 0
+              movement_delay_seconds:
+                mean: 0
+                p05: 0
+                p95: 0
+            by_route: []
+          movement_diagnostics: null
+      description: Illustrative response shape only. Values are not measured results, calibration, or benchmark
+        evidence.
+    Optimization:
+      summary: A finished greedy optimization with ABM selection
+      value:
+        id: opt_01JC9Y5N2B7C4D6F8G0H2J4K6M
+        plan_id: pln_01JC9W3K8Q6Y2M4T5R7V9X1Z3B
+        status: succeeded
+        error: null
+        request:
+          optimization_method: greedy
+          levers:
+          - move_staff
+          - change_lanes
+          - open_earlier
+          - change_staff
+          - rent_equipment
+          decision_date: '2026-11-05'
+          max_kept_moves: 200
+          time_limit_seconds: 600
+          verify:
+            replications: 50
+            base_seed: 20261127
+          scoring:
+            replications: 20
+            base_seed: 20261127
+        progress:
+          rounds: 6
+          runs: 288
+          kept_moves: 5
+          elapsed_seconds: 41.2
+          best_score:
+            missed_checks: 1
+            shortfall: 0.02
+            cost_idr: 97915000
+        starting_plan:
+          snapshot_hash: ba21dbc1dd9eefd3683f15d4fc36e8ede76c58af9b044e0738026ef2ac07be6e
+          scoring_run_id: run_01JC9Y6A8B0C2D4E6F8G0H2J4K
+          verification_run_id: run_01JC9Y9Z1A3B5C7D9E1F3G5H7J
+          score:
+            missed_checks: 3
+            shortfall: 0.946
+            cost_idr: 94195000
+          verification_checks:
+            met: 5
+            at_risk: 2
+            missed: 3
+          verification_shortfall: 0.946
+          scoring_method: abm
+          scoring_settings:
+            replications: 20
+            base_seed: 20261127
+          verification_method: abm
+        candidates:
+        - plan_id: pln_01JC9Z1P3Q5R7S9T1V3W5X7Y9Z
+          kind: milestone
+          recommended: false
+          kept_moves: 2
+          score:
+            missed_checks: 2
+            shortfall: 0.26
+            cost_idr: 96665000
+          verification_checks:
+            met: 7
+            at_risk: 1
+            missed: 2
+          verification_shortfall: 0.31
+          scoring_run_id: run_01JC9ZA2B4C6D8E0F2G4H6J8K0
+          verification_run_id: run_01JC9ZB3C5D7E9F1G3H5J7K9M1
+          diff:
+          - path: venue.layout.gates[gate_floor].lanes[female].count
+            old: 4
+            new: 6
+            lever: change_lanes
+            approval_needed: null
+          - path: staff.roles[security_officer].count
+            old: 32
+            new: 36
+            lever: change_staff
+            approval_needed: null
+          scoring_method: abm
+          scoring_settings:
+            replications: 20
+            base_seed: 20261127
+          verification_method: abm
+        - plan_id: pln_01JC9Z2Q4R6S8T0V2W4X6Y8Z0A
+          kind: finalist
+          recommended: true
+          kept_moves: 4
+          score:
+            missed_checks: 1
+            shortfall: 0.05
+            cost_idr: 97415000
+          verification_checks:
+            met: 9
+            at_risk: 0
+            missed: 1
+          verification_shortfall: 0.04
+          scoring_run_id: run_01JC9ZC4D6E8F0G2H4J6K8M0N2
+          verification_run_id: run_01JC9ZD5E7F9G1H3J5K7M9N1P3
+          diff:
+          - path: venue.layout.gates[gate_floor].lanes[female].count
+            old: 4
+            new: 7
+            lever: change_lanes
+            approval_needed: null
+          scoring_method: abm
+          scoring_settings:
+            replications: 20
+            base_seed: 20261127
+          verification_method: abm
+        - plan_id: pln_01JC9Z3R5S7T9V1W3X5Y7Z9A1B
+          kind: final
+          recommended: false
+          kept_moves: 5
+          score:
+            missed_checks: 1
+            shortfall: 0.02
+            cost_idr: 97915000
+          verification_checks:
+            met: 8
+            at_risk: 1
+            missed: 1
+          verification_shortfall: 0.07
+          scoring_run_id: run_01JC9ZE6F8G0H2J4K6M8N0P2Q4
+          verification_run_id: run_01JC9ZF7G9H1J3K5M7N9P1Q3R5
+          diff:
+          - path: venue.layout.gates[gate_floor].lanes[female].count
+            old: 4
+            new: 7
+            lever: change_lanes
+            approval_needed: null
+          scoring_method: abm
+          scoring_settings:
+            replications: 20
+            base_seed: 20261127
+          verification_method: abm
+        history:
+        - round: 1
+          move: add_lane(gate_floor/female)
+          levers:
+          - change_lanes
+          - change_staff
+          reason: null
+          score_after:
+            missed_checks: 3
+            shortfall: 0.71
+            cost_idr: 95430000
+        probes:
+        - run_id: run_01JC9Y7C9D1E3F5G7H9J1K3M5N
+          change: add_lane(gate_floor/female)
+          used_by:
+          - bn_01
+        stop_reason: no_improving_move
+        llm: null
+        created_at: '2026-11-05T08:00:00Z'
+        started_at: '2026-11-05T08:00:01Z'
+        finished_at: '2026-11-05T08:00:42Z'
+        search_duration_ms: 41200
+        verification_duration_ms: 12000
+      description: Illustrative response shape only. Values are not measured results, calibration, or benchmark
+        evidence.
+    OptimizationLlmGuided:
+      summary: A finished llm_guided optimization
+      value:
+        id: opt_01JC9Y5N2B7C4D6F8G0H2J4K6N
+        plan_id: pln_01JC9W3K8Q6Y2M4T5R7V9X1Z3B
+        status: succeeded
+        error: null
+        request:
+          optimization_method: llm_guided
+          levers:
+          - move_staff
+          - change_lanes
+          - open_earlier
+          - change_staff
+          - rent_equipment
+          decision_date: '2026-11-05'
+          max_kept_moves: 200
+          time_limit_seconds: 600
+          verify:
+            replications: 50
+            base_seed: 20261127
+          scoring:
+            replications: 20
+            base_seed: 20261127
+        progress:
+          rounds: 2
+          runs: 14
+          kept_moves: 1
+          elapsed_seconds: 23.6
+          best_score:
+            missed_checks: 2
+            shortfall: 0.26
+            cost_idr: 96665000
+        starting_plan:
+          snapshot_hash: ba21dbc1dd9eefd3683f15d4fc36e8ede76c58af9b044e0738026ef2ac07be6e
+          scoring_run_id: run_01JC9Y6A8B0C2D4E6F8G0H2J4K
+          verification_run_id: run_01JC9Y9Z1A3B5C7D9E1F3G5H7J
+          score:
+            missed_checks: 3
+            shortfall: 0.946
+            cost_idr: 94195000
+          verification_checks:
+            met: 5
+            at_risk: 2
+            missed: 3
+          verification_shortfall: 0.946
+          scoring_method: abm
+          scoring_settings:
+            replications: 20
+            base_seed: 20261127
+          verification_method: abm
+        candidates:
+        - plan_id: pln_01JC9Z4S6T8V0W2X4Y6Z8A0B2C
+          kind: finalist
+          recommended: true
+          kept_moves: 1
+          score:
+            missed_checks: 2
+            shortfall: 0.26
+            cost_idr: 96665000
+          verification_checks:
+            met: 7
+            at_risk: 1
+            missed: 2
+          verification_shortfall: 0.31
+          scoring_run_id: run_01JC9ZG8H0J2K4M6N8P0Q2R4S6
+          verification_run_id: run_01JC9ZH9J1K3M5N7P9Q1R3S5T7
+          diff:
+          - path: venue.layout.gates[gate_floor].lanes[female].count
+            old: 4
+            new: 6
+            lever: change_lanes
+            approval_needed: null
+          scoring_method: abm
+          scoring_settings:
+            replications: 20
+            base_seed: 20261127
+          verification_method: abm
+        history:
+        - round: 1
+          move: add_lane(gate_floor/female) + add_staff(security_officer)
+          levers:
+          - change_lanes
+          - change_staff
+          reason: The female lane at the floor gate has the longest queue, so a lane and an officer remove the main
+            bottleneck.
+          score_after:
+            missed_checks: 2
+            shortfall: 0.26
+            cost_idr: 96665000
+        probes:
+        - run_id: run_01JC9Y7C9D1E3F5G7H9J1K3M5N
+          change: add_lane(gate_floor/female)
+          used_by:
+          - bn_01
+        stop_reason: no_improving_move
+        llm:
+          model: gpt-5.5
+          reasoning_effort: medium
+          fallback_rounds: 0
+          estimated_cost:
+            amount: '0.012345'
+            currency: USD
+          stop_reason: null
+          calls:
+          - round: 1
+            status: ok
+            request_id: req_6f1c2a9d4b7e8031a5c2d9e4f7b10a38
+            input_tokens: 3120
+            cached_input_tokens: 2048
+            output_tokens: 612
+            latency_ms: 8420
+            estimated_cost:
+              amount: '0.008345'
+              currency: USD
+            llm_moves:
+            - moves:
+              - add_lane(gate_floor/female)
+              - add_staff(security_officer)
+              reason: The female lane at the floor gate has the longest queue, so a lane and an officer remove the
+                main bottleneck.
+              score:
+                missed_checks: 2
+                shortfall: 0.26
+                cost_idr: 96665000
+              kept: true
+          - round: 2
+            status: timeout
+            request_id: null
+            input_tokens: 3350
+            cached_input_tokens: 3072
+            output_tokens: 0
+            latency_ms: 30000
+            estimated_cost:
+              amount: '0.004000'
+              currency: USD
+            llm_moves: []
+        created_at: '2026-11-05T08:00:00Z'
+        started_at: '2026-11-05T08:00:01Z'
+        finished_at: '2026-11-05T08:00:25Z'
+        search_duration_ms: 41200
+        verification_duration_ms: 12000
+      description: Illustrative response shape only. Values are not measured results, calibration, or benchmark
+        evidence.
+    AbmRun:
+      summary: Illustrative ABM Run response shape; not a measured result
+      value:
+        id: run_01JC9X0A1B2C3D4E5F6G7H8J9K
+        plan_id: pln_01JC9W3K8Q6Y2M4T5R7V9X1Z3B
+        optimization_id: null
+        purpose: plain
+        simulation_method: abm
+        snapshot_hash: ba21dbc1dd9eefd3683f15d4fc36e8ede76c58af9b044e0738026ef2ac07be6e
+        reuse_key: 4287b21792950bbf19e7068a914ebd19e6245e4e9450cf8323bc918cedd44473
+        reused: false
+        runtime_ms: 5203
+        created_at: '2026-11-05T07:53:10Z'
+        output:
+          schema_version: '0.1'
+          meta:
+            document: opsidio_event_output
+            example: false
+          run_manifest:
+            run_id: run_01JC9X0A1B2C3D4E5F6G7H8J9K
+            plan:
+              plan_id: pln_01JC9W3K8Q6Y2M4T5R7V9X1Z3B
+              parent_plan_id: null
+              plan_hash_sha256: ba21dbc1dd9eefd3683f15d4fc36e8ede76c58af9b044e0738026ef2ac07be6e
+            scenario:
+              id: scn_base
+            model:
+              engine_version: 2.0.0
+            replications:
+              count: 20
+              base_seed: 20261127
+            idempotency_key: 4287b21792950bbf19e7068a914ebd19e6245e4e9450cf8323bc918cedd44473
+            uncomputed_fields:
+            - peak_density.zones[*].with_rain_plan_persons
+            simulation_method: abm
+            extensions:
+              spatial:
+                version: 1
+                sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+              participant_behavior: null
+            geometry_revision: example-geometry-1
+            editor_revision: example-editor-1
+            resolved_movement:
+              version: 1
+              desired_speed_mean_mps: 1.0
+              desired_speed_stddev_mps: 0.1
+              desired_speed_min_mps: 0.2
+              desired_speed_max_mps: 2.0
+              accessible_speed_multiplier: 0.75
+              body_radius_m: 0.25
+              group_cohesion_distance_m: 2.0
+              movement_tick_seconds: 0.25
+              jam_density_persons_per_m2: 4.0
+            effective_routes: []
+            method_limitations: []
+            runtime:
+              total_ms: 5203
+          scorecard:
+            summary: 'The plan misses 1 of 2 checks: P90 gate wait, all gates.'
+            checks:
+            - id: chk_redemption_wait
+              target_ref: constraints.service_targets.redemption_wait
+              metric: P90 redemption wait, all visitors
+              target_minutes_max: 20
+              result_minutes:
+                mean: 0.9
+                p05: 0.3
+                p95: 2.0
+              replications_met: 20
+              status: met
+              shortfall: 0
+            - id: chk_gate_wait
+              target_ref: constraints.service_targets.gate_wait
+              metric: P90 gate wait, all gates
+              target_minutes_max: 20
+              result_minutes:
+                mean: 32.7
+                p05: 30.1
+                p95: 36.2
+              replications_met: 0
+              status: missed
+              shortfall: 0.635
+            rule_checks:
+              rules:
+              - rule: rule_same_gender_search
+                status: pass
+              - rule: rule_breaks
+                status: not_tested
+          known_problem_checks:
+            checks:
+            - id: kp_crowded_entrance
+              risk: high
+              result: The gate imbalance index is 1.94.
+              linked_checks:
+              - chk_gate_wait
+              - chk_density_queue_zones
+          time_to_clear: {}
+          max_queue_length: {}
+          wait_time: {}
+          staff_utilization: {}
+          staffing_cost: {}
+          peak_density: {}
+          bottleneck_report: {}
+          entry_outcomes: {}
+          support_services: {}
+          stock_check: {}
+          arrival_and_access: {}
+          walking_time:
+            total:
+              distance_m:
+                mean: 0
+                p05: 0
+                p95: 0
+              free_flow_time_seconds:
+                mean: 0
+                p05: 0
+                p95: 0
+              observed_movement_time_seconds:
+                mean: 0
+                p05: 0
+                p95: 0
+              movement_delay_seconds:
+                mean: 0
+                p05: 0
+                p95: 0
+            by_route: []
+          movement_diagnostics:
+            collision_violations:
+              mean: 0
+              p05: 0
+              p95: 0
+            blocked_route_unfinished_visitors:
+              mean: 0
+              p05: 0
+              p95: 0
+            route_changes:
+              mean: 0
+              p05: 0
+              p95: 0
+            group_holds:
+              mean: 0
+              p05: 0
+              p95: 0
+            group_hold_seconds:
+              mean: 0
+              p05: 0
+              p95: 0
+      description: Illustrative response shape only. Values are not measured results, calibration, or benchmark
+        evidence.
+  schemas:
+    Health:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          enum:
+          - ok
+    PlanId:
+      type: string
+      pattern: ^pln_[0-9A-HJKMNP-TV-Z]{26}$
+    RunId:
+      type: string
+      pattern: ^run_[0-9A-HJKMNP-TV-Z]{26}$
+    OptimizationId:
+      type: string
+      pattern: ^opt_[0-9A-HJKMNP-TV-Z]{26}$
+    Sha256:
+      type: string
+      pattern: ^[0-9a-f]{64}$
+    Timestamp:
+      type: string
+      format: date-time
+    Idr:
+      type: integer
+      minimum: 0
+      description: Amount in whole IDR.
+    ClockTime:
+      type: string
+      pattern: ^([01]\d|2[0-3]):[0-5]\d$
+      description: Local time in Asia/Jakarta, "HH:MM".
+    Percent:
+      type: number
+      minimum: 0
+      maximum: 100
+    WindowKey:
+      type: string
+      pattern: ^([01]\d|2[0-3]):[0-5]\d-([01]\d|2[0-3]):[0-5]\d$
+      description: Time window "HH:MM-HH:MM".
+    Basis:
+      type: string
+      enum:
+      - confirmed
+      - policy
+      - estimate
+      - public_source
+      - assumed
+    FreeForm:
+      type: object
+      additionalProperties: true
+      description: An object with any content.
+    StringList:
+      type: array
+      items:
+        type: string
+    Gender:
+      type: string
+      enum:
+      - female
+      - male
+    GenderCounts:
+      type: object
+      additionalProperties: true
+      required:
+      - female
+      - male
+      properties:
+        female:
+          type: integer
+          minimum: 0
+        male:
+          type: integer
+          minimum: 0
+    PlanDocument:
+      type: object
+      additionalProperties: true
+      description: Base schema 0.1. Drafts may be partial. Cross-section readiness is checked by validatePlan and
+        before simulation/optimization. ABM and optimization require complete usable geometry; explicit flow/DES
+        may use legacy distances. Do not submit personal visitor, identity, or ticket records.
+      properties:
+        schema_version:
+          type: string
+          enum:
+          - '0.1'
+        meta:
+          $ref: '#/components/schemas/FreeForm'
+        event:
+          $ref: '#/components/schemas/Event'
+        venue:
+          $ref: '#/components/schemas/Venue'
+        process_steps:
+          $ref: '#/components/schemas/ProcessSteps'
+        staff:
+          $ref: '#/components/schemas/Staff'
+        constraints:
+          $ref: '#/components/schemas/Constraints'
+        demand:
+          $ref: '#/components/schemas/Demand'
+        sources:
+          type: object
+          description: Source entries by source ID.
+          additionalProperties:
+            $ref: '#/components/schemas/FreeForm'
+        spatial:
+          $ref: '#/components/schemas/Spatial'
+        participant_behavior:
+          $ref: '#/components/schemas/ParticipantBehavior'
+    Event:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        venue:
+          type: string
+        date:
+          type: string
+          format: date
+        day_of_week:
+          type: string
+          enum:
+          - monday
+          - tuesday
+          - wednesday
+          - thursday
+          - friday
+          - saturday
+          - sunday
+        public_holiday:
+          type: boolean
+        schedule:
+          $ref: '#/components/schemas/EventSchedule'
+        capacity:
+          $ref: '#/components/schemas/EventCapacity'
+        pricing:
+          $ref: '#/components/schemas/FreeForm'
+        ticket_categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/TicketCategory'
+        entry_policy:
+          $ref: '#/components/schemas/FreeForm'
+        audience_profile:
+          $ref: '#/components/schemas/AudienceProfile'
+        nearby_events_same_day:
+          $ref: '#/components/schemas/FreeForm'
+    EventSchedule:
+      type: object
+      additionalProperties: true
+      required:
+      - outer_area_open
+      - doors_open
+      - main_act
+      description: Event moments. A service target can name any moment key.
+      properties:
+        basis:
+          $ref: '#/components/schemas/Basis'
+        supervisor_call:
+          $ref: '#/components/schemas/ClockTime'
+        crew_briefing:
+          $ref: '#/components/schemas/ClockTime'
+        redemption_open:
+          $ref: '#/components/schemas/ClockTime'
+        outer_area_open:
+          $ref: '#/components/schemas/ClockTime'
+        priority_gate_open:
+          $ref: '#/components/schemas/ClockTime'
+        doors_open:
+          $ref: '#/components/schemas/ClockTime'
+        opening_act:
+          $ref: '#/components/schemas/ClockTime'
+        main_act:
+          $ref: '#/components/schemas/ClockTime'
+        show_end_estimate:
+          $ref: '#/components/schemas/ClockTime'
+        redemption_close:
+          $ref: '#/components/schemas/ClockTime'
+        last_entry:
+          $ref: '#/components/schemas/ClockTime'
+    EventCapacity:
+      type: object
+      additionalProperties: true
+      required:
+      - no_show_percent_estimate
+      properties:
+        basis:
+          $ref: '#/components/schemas/Basis'
+        venue_full_capacity:
+          type: integer
+          minimum: 0
+        configured_capacity:
+          type: integer
+          minimum: 0
+        tickets_on_sale:
+          type: integer
+          minimum: 0
+        guest_invitations:
+          type: integer
+          minimum: 0
+        tickets_sold:
+          type: integer
+          minimum: 0
+        tickets_sold_as_of:
+          type: string
+          format: date
+        no_show_percent_estimate:
+          $ref: '#/components/schemas/Percent'
+    TicketCategory:
+      type: object
+      additionalProperties: true
+      required:
+      - id
+      - admission
+      - entry_gate
+      description: A ticket category. It needs `sold`, or `issued` when `complimentary` is true; the plan validation
+        checks it.
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        admission:
+          type: string
+          enum:
+          - standing
+          - seated
+        price_idr:
+          $ref: '#/components/schemas/Idr'
+        quota:
+          type: integer
+          minimum: 0
+        sold:
+          type: integer
+          minimum: 0
+        issued:
+          type: integer
+          minimum: 0
+        complimentary:
+          type: boolean
+        entry_gate:
+          type: string
+        zone:
+          type: string
+          description: 'Destination zone for density. Default: zone_<category_id>, if that zone exists.'
+    AudienceProfile:
+      type: object
+      additionalProperties: true
+      required:
+      - female_percent
+      - typical_group_size
+      - arrive_in_groups_percent
+      - visitors_with_bag_percent
+      - visitors_using_locker_percent
+      - accessible_visitors_percent
+      properties:
+        basis:
+          $ref: '#/components/schemas/Basis'
+        core_age_min:
+          type: integer
+          minimum: 0
+        core_age_max:
+          type: integer
+          minimum: 0
+        female_percent:
+          $ref: '#/components/schemas/Percent'
+        typical_group_size:
+          type: integer
+          minimum: 1
+        arrive_in_groups_percent:
+          $ref: '#/components/schemas/Percent'
+        visitors_with_bag_percent:
+          $ref: '#/components/schemas/Percent'
+        visitors_using_locker_percent:
+          $ref: '#/components/schemas/Percent'
+        accessible_visitors_percent:
+          $ref: '#/components/schemas/Percent'
+        arrival_mode_percent:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Percent'
+        arrival_notes:
+          $ref: '#/components/schemas/StringList'
+    Venue:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        building:
+          $ref: '#/components/schemas/FreeForm'
+        venue_rules:
+          $ref: '#/components/schemas/FreeForm'
+        access:
+          $ref: '#/components/schemas/FreeForm'
+        neighbors:
+          $ref: '#/components/schemas/FreeForm'
+        layout:
+          $ref: '#/components/schemas/VenueLayout'
+        known_problems:
+          type: array
+          items:
+            $ref: '#/components/schemas/KnownProblem'
+    VenueLayout:
+      type: object
+      additionalProperties: true
+      required:
+      - zones
+      - service_points
+      - gates
+      - walking_paths
+      - visitor_flow
+      properties:
+        basis:
+          $ref: '#/components/schemas/Basis'
+        zones:
+          type: array
+          items:
+            $ref: '#/components/schemas/Zone'
+        service_points:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServicePoint'
+        gates:
+          type: array
+          items:
+            $ref: '#/components/schemas/Gate'
+        walking_paths:
+          type: array
+          items:
+            $ref: '#/components/schemas/WalkingPath'
+        visitor_flow:
+          type: array
+          items:
+            $ref: '#/components/schemas/VisitorFlowStep'
+        exceptions_go_to:
+          type: string
+          description: The point that receives the help_desk outcome.
+    Zone:
+      type: object
+      additionalProperties: true
+      required:
+      - id
+      - type
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum:
+          - drop_off
+          - holding
+          - service
+          - queue
+          - standing
+          - seating
+        area_m2:
+          type: number
+          exclusiveMinimum: 0
+        length_m:
+          type: number
+          minimum: 0
+        covered_percent:
+          $ref: '#/components/schemas/Percent'
+        barricade_m:
+          type: number
+          minimum: 0
+        switchback_rows:
+          type: integer
+          minimum: 0
+        seats:
+          type: integer
+          minimum: 0
+        wheelchair_places:
+          type: integer
+          minimum: 0
+    ServicePoint:
+      type: object
+      additionalProperties: true
+      required:
+      - id
+      - zone
+      - queue_zone
+      - opens
+      - closes
+      - max_lanes
+      - lanes
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        zone:
+          type: string
+        queue_zone:
+          type: string
+        opens:
+          $ref: '#/components/schemas/ClockTime'
+        closes:
+          $ref: '#/components/schemas/ClockTime'
+        max_lanes:
+          type: integer
+          minimum: 1
+        lanes:
+          type: array
+          items:
+            $ref: '#/components/schemas/LaneGroup'
+    Gate:
+      type: object
+      additionalProperties: true
+      required:
+      - id
+      - queue_zone
+      - leads_to
+      - opens
+      - closes
+      - max_lanes
+      - serves_categories
+      - lanes
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        queue_zone:
+          type: string
+        leads_to:
+          $ref: '#/components/schemas/StringList'
+        opens:
+          $ref: '#/components/schemas/ClockTime'
+        closes:
+          $ref: '#/components/schemas/ClockTime'
+        frontage_m:
+          type: number
+          minimum: 0
+        max_lanes:
+          type: integer
+          minimum: 1
+        serves_categories:
+          $ref: '#/components/schemas/StringList'
+        also_serves:
+          type: string
+          enum:
+          - accessible_visitors
+        lanes:
+          type: array
+          items:
+            $ref: '#/components/schemas/LaneGroup'
+    LaneGroup:
+      type: object
+      additionalProperties: true
+      required:
+      - group
+      - count
+      - steps
+      properties:
+        group:
+          type: string
+        count:
+          type: integer
+          minimum: 1
+        serves_categories:
+          $ref: '#/components/schemas/StringList'
+        also_serves:
+          type: string
+          enum:
+          - accessible_visitors
+        serves:
+          type: string
+          enum:
+          - visitors_with_exception
+          - visitors_using_locker
+        visitor_gender:
+          $ref: '#/components/schemas/Gender'
+        steps:
+          $ref: '#/components/schemas/StringList'
+        equipment_per_lane:
+          type: object
+          description: Units of each equipment item per lane.
+          default: {}
+          additionalProperties:
+            type: integer
+            minimum: 0
+    WalkingPath:
+      type: object
+      additionalProperties: true
+      required:
+      - from
+      - to
+      - distance_m
+      properties:
+        from:
+          type: string
+        to:
+          type: string
+        distance_m:
+          type: number
+          minimum: 0
+    VisitorFlowStep:
+      type: object
+      additionalProperties: true
+      required:
+      - order
+      - point
+      - required
+      properties:
+        order:
+          type: integer
+          minimum: 1
+        point:
+          type: string
+        required:
+          type: boolean
+        when:
+          type: string
+        exception:
+          type: string
+    KnownProblem:
+      type: object
+      additionalProperties: true
+      required:
+      - id
+      - linked_checks
+      - conditions
+      - result_template
+      properties:
+        id:
+          type: string
+        past_event:
+          type: string
+        problem:
+          type: string
+        metrics:
+          $ref: '#/components/schemas/StringList'
+        linked_checks:
+          $ref: '#/components/schemas/StringList'
+        conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/KnownProblemCondition'
+        result_template:
+          type: string
+        not_covered:
+          type:
+          - string
+          - 'null'
+        sources:
+          $ref: '#/components/schemas/StringList'
+    KnownProblemCondition:
+      type: object
+      additionalProperties: true
+      required:
+      - metric
+      - operator
+      - value
+      properties:
+        metric:
+          type: string
+          description: Dot path into the output document, with `[key=value]` and `[*]` selectors.
+        operator:
+          type: string
+          enum:
+          - gt
+          - gte
+          - lt
+          - lte
+        value:
+          type: number
+        aggregate:
+          type: string
+          enum:
+          - max
+          - min
+          - sum
+          - count
+    ProcessSteps:
+      type: object
+      additionalProperties: true
+      properties:
+        basis:
+          $ref: '#/components/schemas/Basis'
+        applies_to_values:
+          $ref: '#/components/schemas/FreeForm'
+        outcome_values:
+          $ref: '#/components/schemas/FreeForm'
+        field_notes:
+          $ref: '#/components/schemas/FreeForm'
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/Step'
+    Step:
+      type: object
+      additionalProperties: true
+      required:
+      - id
+      - applies_to
+      - time_per_person_seconds
+      properties:
+        id:
+          type: string
+          pattern: ^[a-z0-9_]{1,64}$
+        name:
+          type: string
+        what_happens:
+          type: string
+        done_by:
+          $ref: '#/components/schemas/StringList'
+        equipment:
+          $ref: '#/components/schemas/StringList'
+        applies_to:
+          type: string
+          enum:
+          - all_visitors
+          - visitors_with_bag
+          - visitors_using_locker
+          - accessible_visitors
+          - visitors_with_exception
+        time_per_person_seconds:
+          type: object
+          additionalProperties: true
+          required:
+          - typical
+          - slow
+          description: '`typical` is the median and `slow` the 90th percentile. `typical` ≤ `slow`.'
+          properties:
+            typical:
+              type: number
+              exclusiveMinimum: 0
+            slow:
+              type: number
+              exclusiveMinimum: 0
+        slow_when:
+          $ref: '#/components/schemas/StringList'
+        rules:
+          $ref: '#/components/schemas/StringList'
+        exceptions:
+          type: array
+          default: []
+          items:
+            $ref: '#/components/schemas/StepException'
+        results:
+          type: object
+          additionalProperties: true
+          required:
+          - resolved_percent
+          properties:
+            resolved_percent:
+              $ref: '#/components/schemas/Percent'
+            refused_percent:
+              $ref: '#/components/schemas/Percent'
+        after_resolution:
+          type: string
+    StepException:
+      type: object
+      additionalProperties: true
+      required:
+      - id
+      - share_percent
+      - outcome
+      - extra_minutes
+      properties:
+        id:
+          type: string
+        what:
+          type: string
+        share_percent:
+          $ref: '#/components/schemas/Percent'
+        outcome:
+          type: string
+          enum:
+          - continue
+          - secondary_check
+          - step_aside_and_return
+          - help_desk
+          - locker_point
+          - redirect_to_correct_gate
+          - back_to_redemption
+          - refuse_entry
+        extra_minutes:
+          type: number
+          minimum: 0
+    Staff:
+      type: object
+      additionalProperties: true
+      properties:
+        basis:
+          $ref: '#/components/schemas/Basis'
+        meal_allowance_idr_per_person:
+          allOf:
+          - $ref: '#/components/schemas/Idr'
+          default: 0
+        shifts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Shift'
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Role'
+    Shift:
+      type: object
+      additionalProperties: true
+      required:
+      - id
+      - start
+      - end
+      properties:
+        id:
+          type: string
+        start:
+          $ref: '#/components/schemas/ClockTime'
+        end:
+          $ref: '#/components/schemas/ClockTime'
+        meal_break_minutes:
+          type: integer
+          minimum: 0
+    Role:
+      type: object
+      additionalProperties: true
+      required:
+      - id
+      - count
+      - gender
+      - shift
+      - can_do
+      - assignment
+      description: A staff role. It needs `rate_idr_per_shift` unless `cost_model` is package; the plan validation
+        checks it.
+      properties:
+        id:
+          type: string
+          pattern: ^[a-z0-9_]{1,64}$
+        name:
+          type: string
+        provider:
+          type: string
+        certification:
+          type: string
+        processing_role:
+          type: boolean
+        count:
+          type: integer
+          minimum: 0
+        gender:
+          $ref: '#/components/schemas/GenderCounts'
+        shift:
+          type: string
+        can_do:
+          $ref: '#/components/schemas/StringList'
+        duties:
+          $ref: '#/components/schemas/StringList'
+        rate_idr_per_shift:
+          $ref: '#/components/schemas/Idr'
+        overtime_idr_per_hour:
+          $ref: '#/components/schemas/Idr'
+        cost_model:
+          type: string
+          enum:
+          - package
+        package_idr:
+          $ref: '#/components/schemas/Idr'
+        meals_included_in_package:
+          type: boolean
+        pool_limit_total:
+          type: integer
+          minimum: 0
+        pool_limit_by_gender:
+          $ref: '#/components/schemas/GenderCounts'
+        extra_staff_lead_time_days:
+          type: integer
+          minimum: 0
+        assignment:
+          type: array
+          items:
+            $ref: '#/components/schemas/Assignment'
+    Assignment:
+      type: object
+      additionalProperties: true
+      required:
+      - point
+      - count
+      description: A lane assignment has `lane_group` and `per_lane`. A duty assignment has `duty`.
+      properties:
+        point:
+          type: string
+        lane_group:
+          type: string
+        per_lane:
+          type: integer
+          minimum: 1
+        duty:
+          type: string
+        count:
+          type: integer
+          minimum: 0
+        gender:
+          $ref: '#/components/schemas/Gender'
+    Constraints:
+      type: object
+      additionalProperties: true
+      properties:
+        budget:
+          $ref: '#/components/schemas/Budget'
+        service_targets:
+          $ref: '#/components/schemas/ServiceTargets'
+        safety:
+          $ref: '#/components/schemas/Safety'
+        rules:
+          $ref: '#/components/schemas/Rules'
+        lane_staffing:
+          $ref: '#/components/schemas/LaneStaffing'
+        equipment:
+          $ref: '#/components/schemas/Equipment'
+        timing:
+          $ref: '#/components/schemas/Timing'
+        staffing_changes:
+          $ref: '#/components/schemas/StaffingChanges'
+        levers:
+          $ref: '#/components/schemas/FreeForm'
+        permits:
+          $ref: '#/components/schemas/FreeForm'
+    Budget:
+      type: object
+      additionalProperties: true
+      required:
+      - staff_cap_idr
+      - equipment_cap_idr
+      properties:
+        basis:
+          $ref: '#/components/schemas/Basis'
+        staff_cap_idr:
+          $ref: '#/components/schemas/Idr'
+        equipment_cap_idr:
+          $ref: '#/components/schemas/Idr'
+        on_the_day_contingency_idr:
+          $ref: '#/components/schemas/Idr'
+        contingency_approved_by:
+          type: string
+        staff_cap_includes:
+          $ref: '#/components/schemas/StringList'
+        not_in_budget:
+          $ref: '#/components/schemas/StringList'
+    WaitTarget:
+      type: object
+      additionalProperties: true
+      required:
+      - max_minutes
+      - for_share_of_visitors_percent
+      properties:
+        max_minutes:
+          type: number
+          minimum: 0
+        for_share_of_visitors_percent:
+          $ref: '#/components/schemas/Percent'
+    ServiceTargets:
+      type: object
+      description: Service targets by key. The check catalog knows the typed keys; another key gets an unknown_target
+        warning.
+      properties:
+        basis:
+          $ref: '#/components/schemas/Basis'
+        redemption_wait:
+          $ref: '#/components/schemas/WaitTarget'
+        gate_wait:
+          $ref: '#/components/schemas/WaitTarget'
+        longest_acceptable_wait_minutes:
+          type: number
+          minimum: 0
+      patternProperties:
+        ^([a-z0-9_]+_)?inside_before_[a-z0-9_]+_percent$:
+          $ref: '#/components/schemas/Percent'
+      additionalProperties:
+        type:
+        - number
+        - object
+    Safety:
+      type: object
+      additionalProperties: true
+      required:
+      - max_density_persons_per_m2
+      properties:
+        basis:
+          $ref: '#/components/schemas/Basis'
+        max_density_persons_per_m2:
+          type: object
+          description: Density limit by key, in persons per m2.
+          properties:
+            basis:
+              $ref: '#/components/schemas/Basis'
+          additionalProperties:
+            type: number
+            exclusiveMinimum: 0
+        queues_must_stay_inside_queue_zones:
+          type: boolean
+        emergency_lane_width_m:
+          type: number
+          minimum: 0
+        keep_clear:
+          $ref: '#/components/schemas/StringList'
+        rain_plan:
+          type: string
+        lightning_plan:
+          type: string
+    Rules:
+      type: object
+      additionalProperties: true
+      required:
+      - items
+      properties:
+        basis:
+          $ref: '#/components/schemas/Basis'
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+            required:
+            - id
+            properties:
+              id:
+                type: string
+              rule:
+                type: string
+    LaneStaffing:
+      type: object
+      description: Minimum and maximum staff per lane, by lane_staffing key.
+      properties:
+        basis:
+          $ref: '#/components/schemas/Basis'
+      additionalProperties:
+        type: object
+        additionalProperties: true
+        required:
+        - min_per_lane
+        - max_per_lane
+        properties:
+          min_per_lane:
+            type: integer
+            minimum: 0
+          max_per_lane:
+            type: integer
+            minimum: 0
+    Equipment:
+      type: object
+      additionalProperties: true
+      required:
+      - items
+      properties:
+        basis:
+          $ref: '#/components/schemas/Basis'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EquipmentItem'
+    EquipmentItem:
+      type: object
+      additionalProperties: true
+      required:
+      - id
+      - available
+      - committed_cost_idr
+      - extra_rentable
+      allOf:
+      - if:
+          required:
+          - extra_rentable
+          properties:
+            extra_rentable:
+              exclusiveMinimum: 0
+        then:
+          required:
+          - extra_cost_idr_per_unit
+          - lead_time_days
+          properties:
+            extra_cost_idr_per_unit:
+              $ref: '#/components/schemas/Idr'
+            lead_time_days:
+              type: integer
+              minimum: 0
+      - if:
+          required:
+          - extra_rented
+          properties:
+            extra_rented:
+              exclusiveMinimum: 0
+        then:
+          required:
+          - extra_cost_idr_per_unit
+          properties:
+            extra_cost_idr_per_unit:
+              $ref: '#/components/schemas/Idr'
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        owner:
+          type: string
+        available:
+          type: integer
+          minimum: 0
+        committed_cost_idr:
+          $ref: '#/components/schemas/Idr'
+        extra_rentable:
+          type: integer
+          minimum: 0
+        extra_rented:
+          type: integer
+          minimum: 0
+          default: 0
+        extra_cost_idr_per_unit:
+          $ref: '#/components/schemas/Idr'
+        lead_time_days:
+          type: integer
+          minimum: 0
+    Timing:
+      type: object
+      additionalProperties: true
+      properties:
+        basis:
+          $ref: '#/components/schemas/Basis'
+        redemption_open_earliest:
+          $ref: '#/components/schemas/ClockTime'
+        redemption_close_latest:
+          $ref: '#/components/schemas/ClockTime'
+        outer_area_open_earliest:
+          $ref: '#/components/schemas/ClockTime'
+        doors_open_earliest:
+          $ref: '#/components/schemas/ClockTime'
+        doors_open_earlier_needs_approval_from:
+          type: string
+        last_entry_latest:
+          $ref: '#/components/schemas/ClockTime'
+        venue_slot_end:
+          $ref: '#/components/schemas/ClockTime'
+    StaffingChanges:
+      type: object
+      additionalProperties: true
+      properties:
+        basis:
+          $ref: '#/components/schemas/Basis'
+        confirm_extra_crew_by:
+          type: string
+          pattern: ^D-[0-9]+$
+          description: Days before the event, such as D-3.
+        same_day_extra_max_people:
+          type: integer
+          minimum: 0
+        same_day_rate_multiplier:
+          type: number
+          minimum: 0
+    Demand:
+      type: object
+      additionalProperties: true
+      description: Arrival and gate-join windows per ticket category. A category without an entry uses a default
+        curve.
+      properties:
+        basis:
+          $ref: '#/components/schemas/Basis'
+        arrival_windows_percent:
+          type: object
+          description: Arrival shares by category, then by window key.
+          properties:
+            basis:
+              $ref: '#/components/schemas/Basis'
+          additionalProperties:
+            type: object
+            properties:
+              basis:
+                $ref: '#/components/schemas/Basis'
+            patternProperties:
+              ^([01]\d|2[0-3]):[0-5]\d-([01]\d|2[0-3]):[0-5]\d$:
+                $ref: '#/components/schemas/Percent'
+            additionalProperties: false
+        gate_join_windows:
+          type: object
+          description: Gate-join window by category, or after_redemption.
+          properties:
+            basis:
+              $ref: '#/components/schemas/Basis'
+          additionalProperties:
+            anyOf:
+            - $ref: '#/components/schemas/WindowKey'
+            - type: string
+              enum:
+              - after_redemption
+        group_size_share_percent:
+          type: object
+          description: Share of visitors by group size.
+          properties:
+            basis:
+              $ref: '#/components/schemas/Basis'
+          patternProperties:
+            ^[1-9][0-9]?$:
+              $ref: '#/components/schemas/Percent'
+          additionalProperties: false
+    PlanPatch:
+      type: object
+      additionalProperties: true
+      description: JSON Merge Patch (RFC 7386) on the plan document. The server validates the merged document. Steps
+        and roles have their own operations.
+      properties:
+        schema_version:
+          type:
+          - string
+          - 'null'
+        meta:
+          type:
+          - object
+          - 'null'
+        event:
+          type:
+          - object
+          - 'null'
+        venue:
+          type:
+          - object
+          - 'null'
+        process_steps:
+          type: object
+          properties:
+            steps: false
+        staff:
+          type: object
+          properties:
+            roles: false
+        constraints:
+          type:
+          - object
+          - 'null'
+        demand:
+          type:
+          - object
+          - 'null'
+        sources:
+          type:
+          - object
+          - 'null'
+        spatial:
+          type:
+          - object
+          - 'null'
+          description: RFC 7386 patch of the spatial extension. Null removes it; validate the merged document.
+        participant_behavior:
+          type:
+          - object
+          - 'null'
+          description: RFC 7386 patch of participant segments. Null removes the extension.
+    StepPatch:
+      type: object
+      additionalProperties: true
+      description: JSON Merge Patch (RFC 7386) on one step. The ID cannot change.
+      properties:
+        id: false
+    RolePatch:
+      type: object
+      additionalProperties: true
+      description: JSON Merge Patch (RFC 7386) on one role. The ID cannot change.
+      properties:
+        id: false
+    ApplyPresetRequest:
+      type: object
+      required:
+      - preset_id
+      properties:
+        preset_id:
+          type: string
+          pattern: ^[a-z0-9_]{1,64}$
+    VenuePresetSummary:
+      type: object
+      required:
+      - id
+      - name
+      - summary
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        summary:
+          type: string
+    VenuePreset:
+      type: object
+      required:
+      - id
+      - name
+      - summary
+      - venue
+      - sources
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        summary:
+          type: string
+        venue:
+          $ref: '#/components/schemas/Venue'
+        sources:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/FreeForm'
+    StepPresetSummary:
+      type: object
+      required:
+      - id
+      - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+    VenuePresetPage:
+      type: object
+      required:
+      - data
+      - next_cursor
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/VenuePresetSummary'
+        next_cursor:
+          $ref: '#/components/schemas/NextCursor'
+    StepPresetPage:
+      type: object
+      required:
+      - data
+      - next_cursor
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/StepPresetSummary'
+        next_cursor:
+          $ref: '#/components/schemas/NextCursor'
+    NextCursor:
+      type:
+      - string
+      - 'null'
+      description: Cursor for the next page. It is null on the last page.
+    PlanSummary:
+      type: object
+      required:
+      - id
+      - parent_plan_id
+      - optimization_id
+      - candidate_kind
+      - created_at
+      - updated_at
+      properties:
+        id:
+          $ref: '#/components/schemas/PlanId'
+        parent_plan_id:
+          oneOf:
+          - $ref: '#/components/schemas/PlanId'
+          - type: 'null'
+        optimization_id:
+          oneOf:
+          - $ref: '#/components/schemas/OptimizationId'
+          - type: 'null'
+        candidate_kind:
+          type:
+          - string
+          - 'null'
+          enum:
+          - milestone
+          - final
+          - finalist
+          - null
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        updated_at:
+          $ref: '#/components/schemas/Timestamp'
+    Plan:
+      allOf:
+      - $ref: '#/components/schemas/PlanSummary'
+      - type: object
+        required:
+        - document
+        properties:
+          document:
+            $ref: '#/components/schemas/PlanDocument'
+    PlanPage:
+      type: object
+      required:
+      - data
+      - next_cursor
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanSummary'
+        next_cursor:
+          $ref: '#/components/schemas/NextCursor'
+    ValidationResult:
+      type: object
+      properties:
+        valid:
+          type: boolean
+          description: True when there are no base-scope errors. Does not imply ABM readiness.
+        abm_ready:
+          type: boolean
+          description: True when base and ABM requirements pass. Optimization also requires hard limits.
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationIssue'
+      required:
+      - valid
+      - abm_ready
+      - issues
+    SimulateRequest:
+      type: object
+      properties:
+        simulation_method:
+          $ref: '#/components/schemas/SimulationMethod'
+        replications:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+          description: ABM or DES replications, default 20. Flow resolves to one replication and ignores the requested
+            seed.
+        base_seed:
+          type: integer
+          description: Seed of replication 0. Default is the event date as YYYYMMDD. Flow ignores it.
+    SimulationMethod:
+      type: string
+      enum:
+      - abm
+      - flow
+      - des
+      default: abm
+      description: ABM is the default. Explicit flow/DES accept valid legacy distance-only plans. All supplied extensions
+        must be valid.
+    RunPurpose:
+      type: string
+      enum:
+      - plain
+      - start
+      - probe
+      - candidate
+      - verification
+    RunSummary:
+      type: object
+      required:
+      - id
+      - plan_id
+      - optimization_id
+      - purpose
+      - simulation_method
+      - snapshot_hash
+      - reuse_key
+      - reused
+      - runtime_ms
+      - created_at
+      properties:
+        id:
+          $ref: '#/components/schemas/RunId'
+        plan_id:
+          $ref: '#/components/schemas/PlanId'
+        optimization_id:
+          oneOf:
+          - $ref: '#/components/schemas/OptimizationId'
+          - type: 'null'
+        purpose:
+          $ref: '#/components/schemas/RunPurpose'
+        simulation_method:
+          type: string
+          enum:
+          - abm
+          - flow
+          - des
+        snapshot_hash:
+          $ref: '#/components/schemas/Sha256'
+          description: Hash of the full submitted immutable plan, including extensions.
+        reuse_key:
+          $ref: '#/components/schemas/Sha256'
+        reused:
+          type: boolean
+          description: True when the call returned a stored run.
+        runtime_ms:
+          type: integer
+          minimum: 0
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+    Run:
+      allOf:
+      - $ref: '#/components/schemas/RunSummary'
+      - type: object
+        required:
+        - output
+        properties:
+          output:
+            $ref: '#/components/schemas/OutputDocument'
+    RunPage:
+      type: object
+      required:
+      - data
+      - next_cursor
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/RunSummary'
+        next_cursor:
+          $ref: '#/components/schemas/NextCursor'
+    Spread:
+      type: object
+      required:
+      - mean
+      - p05
+      - p95
+      description: Mean, fifth percentile, and 95th percentile across replications. These are distinct from population
+        P90 wait metrics.
+      properties:
+        mean:
+          type: number
+        p05:
+          type: number
+        p95:
+          type: number
+    OutputDocument:
+      type: object
+      additionalProperties: true
+      description: Computed report; illustrative examples are not engine output. Every visitor journey reconciles
+        walking, queue wait, pre-opening hold, planned gate-join hold, group hold, service, and exception delay.
+        Uncomputed values remain null and are listed in uncomputed_fields. Population P90 and replication percentiles
+        have distinct meanings.
+      required:
+      - schema_version
+      - meta
+      - run_manifest
+      - scorecard
+      - known_problem_checks
+      - time_to_clear
+      - max_queue_length
+      - wait_time
+      - staff_utilization
+      - staffing_cost
+      - peak_density
+      - bottleneck_report
+      - entry_outcomes
+      - support_services
+      - stock_check
+      - arrival_and_access
+      - walking_time
+      - movement_diagnostics
+      properties:
+        schema_version:
+          type: string
+          enum:
+          - '0.1'
+        meta:
+          $ref: '#/components/schemas/FreeForm'
+        run_manifest:
+          $ref: '#/components/schemas/RunManifest'
+        scorecard:
+          $ref: '#/components/schemas/Scorecard'
+        known_problem_checks:
+          $ref: '#/components/schemas/KnownProblemChecks'
+        time_to_clear:
+          $ref: '#/components/schemas/FreeForm'
+        max_queue_length:
+          $ref: '#/components/schemas/FreeForm'
+        wait_time:
+          $ref: '#/components/schemas/FreeForm'
+        staff_utilization:
+          $ref: '#/components/schemas/FreeForm'
+        staffing_cost:
+          $ref: '#/components/schemas/FreeForm'
+        peak_density:
+          $ref: '#/components/schemas/FreeForm'
+        bottleneck_report:
+          $ref: '#/components/schemas/FreeForm'
+        entry_outcomes:
+          $ref: '#/components/schemas/FreeForm'
+        support_services:
+          $ref: '#/components/schemas/FreeForm'
+        stock_check:
+          $ref: '#/components/schemas/FreeForm'
+        arrival_and_access:
+          $ref: '#/components/schemas/FreeForm'
+        walking_time:
+          $ref: '#/components/schemas/WalkingTime'
+        movement_diagnostics:
+          oneOf:
+          - $ref: '#/components/schemas/MovementDiagnostics'
+          - type: 'null'
+    RunManifest:
+      type: object
+      additionalProperties: true
+      required:
+      - run_id
+      - plan
+      - scenario
+      - model
+      - replications
+      - idempotency_key
+      - uncomputed_fields
+      - simulation_method
+      - extensions
+      - geometry_revision
+      - editor_revision
+      - resolved_movement
+      - effective_routes
+      - method_limitations
+      - runtime
+      properties:
+        run_id:
+          $ref: '#/components/schemas/RunId'
+        plan:
+          type: object
+          additionalProperties: true
+          required:
+          - plan_id
+          - parent_plan_id
+          - plan_hash_sha256
+          properties:
+            plan_id:
+              $ref: '#/components/schemas/PlanId'
+            parent_plan_id:
+              oneOf:
+              - $ref: '#/components/schemas/PlanId'
+              - type: 'null'
+            plan_hash_sha256:
+              $ref: '#/components/schemas/Sha256'
+        scenario:
+          type: object
+          additionalProperties: true
+          required:
+          - id
+          properties:
+            id:
+              type: string
+        model:
+          type: object
+          additionalProperties: true
+          required:
+          - engine_version
+          properties:
+            engine_version:
+              type: string
+        replications:
+          type: object
+          additionalProperties: true
+          required:
+          - count
+          - base_seed
+          properties:
+            count:
+              type: integer
+              minimum: 1
+            base_seed:
+              type:
+              - integer
+              - 'null'
+              description: Null for flow.
+            input_fingerprints:
+              type: array
+              description: Aggregate hashes of generated synthetic attributes, keyed by replication. Excludes snapshot
+                hash, engine scheduling, route choices, and operational outcomes. No visitor records are returned.
+              items:
+                type: object
+                required:
+                - replication
+                - visitor_attributes_sha256
+                additionalProperties: false
+                properties:
+                  replication:
+                    type: integer
+                    minimum: 0
+                  visitor_attributes_sha256:
+                    $ref: '#/components/schemas/Sha256'
+        idempotency_key:
+          $ref: '#/components/schemas/Sha256'
+        uncomputed_fields:
+          $ref: '#/components/schemas/StringList'
+        simulation_method:
+          type: string
+          enum:
+          - abm
+          - flow
+          - des
+        extensions:
+          type: object
+          properties:
+            spatial:
+              oneOf:
+              - $ref: '#/components/schemas/ExtensionIdentity'
+              - type: 'null'
+            participant_behavior:
+              oneOf:
+              - $ref: '#/components/schemas/ExtensionIdentity'
+              - type: 'null'
+          required:
+          - spatial
+          - participant_behavior
+        geometry_revision:
+          type:
+          - string
+          - 'null'
+          description: Null for legacy geometry-free methods.
+        editor_revision:
+          type:
+          - string
+          - 'null'
+          description: Revision supplied through plan metadata; null when unavailable.
+        resolved_movement:
+          oneOf:
+          - $ref: '#/components/schemas/ResolvedMovementBehavior'
+          - type: 'null'
+        effective_routes:
+          type: array
+          items:
+            $ref: '#/components/schemas/EffectiveRoute'
+        method_limitations:
+          type: array
+          items:
+            type: string
+          description: Flow/DES use static routes at 1 m/s without collision, congestion, adaptive routing, or ABM
+            group cohesion.
+        runtime:
+          type: object
+          properties:
+            total_ms:
+              type: integer
+              minimum: 0
+          required:
+          - total_ms
+        assumptions:
+          type: object
+          additionalProperties: true
+          description: Source model assumptions plus movement/behavior values and provenance. Label assumed and
+            estimated parameters explicitly.
+        diagnostics:
+          $ref: '#/components/schemas/RunDiagnostics'
+      description: Complete submitted snapshot hash includes spatial/behavior extensions. Reuse identity includes
+        plan, scenario, method, seeds, replications, engine version, and all resolved movement/scoring settings.
+        Plain reuse is restricted to the same plan and purpose. ABM random draws exclude snapshot hash and worker
+        scheduling. Record consumed extension versions/hashes separately.
+    Scorecard:
+      type: object
+      additionalProperties: true
+      required:
+      - summary
+      - checks
+      - rule_checks
+      properties:
+        summary:
+          type: string
+        checks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Check'
+        rule_checks:
+          type: object
+          additionalProperties: true
+          required:
+          - rules
+          properties:
+            rules:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+                required:
+                - rule
+                - status
+                properties:
+                  rule:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                    - pass
+                    - fail
+                    - not_tested
+    Check:
+      type: object
+      additionalProperties: true
+      required:
+      - id
+      - target_ref
+      - metric
+      - status
+      - shortfall
+      description: One service-target check. Results are numbers or distributions across ABM/DES replications. Queue-wait
+        checks exclude walking and all separately reported holds.
+      properties:
+        id:
+          type: string
+        target_ref:
+          type: string
+        metric:
+          type: string
+        status:
+          type: string
+          enum:
+          - met
+          - at_risk
+          - missed
+        replications_met:
+          type: integer
+          minimum: 0
+        shortfall:
+          type: number
+          minimum: 0
+        target_idr_max:
+          $ref: '#/components/schemas/Idr'
+        result_idr:
+          $ref: '#/components/schemas/Idr'
+      patternProperties:
+        ^target_.+_(max|min)$:
+          type: number
+        ^result_:
+          oneOf:
+          - type: number
+          - $ref: '#/components/schemas/Spread'
+    KnownProblemChecks:
+      type: object
+      additionalProperties: true
+      required:
+      - checks
+      properties:
+        checks:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+            required:
+            - id
+            - risk
+            - result
+            - linked_checks
+            properties:
+              id:
+                type: string
+              risk:
+                type: string
+                enum:
+                - high
+                - medium
+                - low
+              result:
+                type: string
+              linked_checks:
+                $ref: '#/components/schemas/StringList'
+    Lever:
+      type: string
+      enum:
+      - move_staff
+      - change_lanes
+      - open_earlier
+      - change_staff
+      - rent_equipment
+    OptimizationMethod:
+      type: string
+      enum:
+      - greedy
+      - llm_guided
+      default: greedy
+      description: Search strategy; greedy remains default. llm_guided uses OpenAI in the worker and requires server
+        credentials. No measured holdout result exists. greedy_pairs and tabu_elite are lab-only until empirical
+        promotion; add their API enum values only after promotion.
+    Money:
+      type: object
+      required:
+      - amount
+      - currency
+      properties:
+        amount:
+          type: string
+          pattern: ^\d+\.\d{6}$
+          description: Decimal amount with six fraction digits.
+        currency:
+          type: string
+          enum:
+          - USD
+      example:
+        amount: '0.012345'
+        currency: USD
+    VerificationChecks:
+      type:
+      - object
+      - 'null'
+      required:
+      - met
+      - at_risk
+      - missed
+      properties:
+        met:
+          type: integer
+          minimum: 0
+        at_risk:
+          type: integer
+          minimum: 0
+        missed:
+          type: integer
+          minimum: 0
+    OptimizeRequest:
+      type: object
+      properties:
+        optimization_method:
+          $ref: '#/components/schemas/OptimizationMethod'
+        levers:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Lever'
+          description: The levers that moves can use. Default is all five.
+        decision_date:
+          type: string
+          format: date
+          description: The day when the planner commits changes. Default is today in Asia/Jakarta.
+        max_kept_moves:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 200
+        time_limit_seconds:
+          type: integer
+          minimum: 10
+          maximum: 1800
+          default: 600
+        verify:
+          oneOf:
+          - $ref: '#/components/schemas/VerificationSettings'
+          - type: 'null'
+          description: Omission enables ABM verification with 50 replications and the event-date seed. Explicit
+            null skips verification; no recommendation is produced.
+        scoring:
+          $ref: '#/components/schemas/ScoringSettings'
+      description: All search, probes, candidates, and selection use ABM. Geometry and behavior stay fixed. Requires
+        complete ABM readiness and all hard limits, including free compatible physical lane slots. No flow/DES fallback.
+        Baseline timeout fails with scoring_timeout; later limits return the best completed state.
+    Score:
+      type: object
+      required:
+      - missed_checks
+      - shortfall
+      - cost_idr
+      description: Plan score. The lower tuple (missed_checks, shortfall, cost_idr) wins.
+      properties:
+        missed_checks:
+          type: integer
+          minimum: 0
+        shortfall:
+          type: number
+          minimum: 0
+        cost_idr:
+          type: integer
+          minimum: 0
+    NullableScore:
+      oneOf:
+      - $ref: '#/components/schemas/Score'
+      - type: 'null'
+    NullableRunId:
+      oneOf:
+      - $ref: '#/components/schemas/RunId'
+      - type: 'null'
+    Optimization:
+      type: object
+      required:
+      - id
+      - plan_id
+      - status
+      - error
+      - request
+      - progress
+      - starting_plan
+      - candidates
+      - history
+      - probes
+      - stop_reason
+      - llm
+      - created_at
+      - started_at
+      - finished_at
+      - search_duration_ms
+      - verification_duration_ms
+      properties:
+        id:
+          $ref: '#/components/schemas/OptimizationId'
+        plan_id:
+          $ref: '#/components/schemas/PlanId'
+        status:
+          type: string
+          enum:
+          - queued
+          - running
+          - succeeded
+          - failed
+          - cancelled
+        error:
+          type:
+          - object
+          - 'null'
+          required:
+          - code
+          - message
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+        request:
+          $ref: '#/components/schemas/OptimizeRequest'
+          description: Resolved request including frozen scoring seeds and replication settings.
+        progress:
+          type:
+          - object
+          - 'null'
+          required:
+          - rounds
+          - runs
+          - kept_moves
+          - elapsed_seconds
+          - best_score
+          properties:
+            rounds:
+              type: integer
+              minimum: 0
+            runs:
+              type: integer
+              minimum: 0
+            kept_moves:
+              type: integer
+              minimum: 0
+            elapsed_seconds:
+              type: number
+              minimum: 0
+            best_score:
+              $ref: '#/components/schemas/NullableScore'
+            phase:
+              type: string
+              enum:
+              - baseline
+              - search
+              - candidates
+              - verification
+              - complete
+              description: Durable execution phase. Terminal results retain complete; cancelled/failed jobs retain
+                their last phase.
+            active_evaluation:
+              type:
+              - object
+              - 'null'
+              required:
+              - id
+              - method
+              - snapshot_hash
+              - replication_count
+              additionalProperties: false
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                method:
+                  type: string
+                  const: abm
+                snapshot_hash:
+                  $ref: '#/components/schemas/Sha256'
+                replication_count:
+                  type: integer
+                  minimum: 1
+                  maximum: 100
+              description: Receipt persisted before real evaluation begins, cleared only after completion is durably
+                accepted or cancellation/failure is recorded. Used for operational progress and external cancellation
+                synchronization.
+        starting_plan:
+          type:
+          - object
+          - 'null'
+          required:
+          - snapshot_hash
+          - scoring_run_id
+          - verification_run_id
+          - score
+          - verification_checks
+          - verification_shortfall
+          - scoring_method
+          - scoring_settings
+          - verification_method
+          properties:
+            snapshot_hash:
+              $ref: '#/components/schemas/Sha256'
+            scoring_run_id:
+              $ref: '#/components/schemas/NullableRunId'
+            verification_run_id:
+              $ref: '#/components/schemas/NullableRunId'
+              description: Null unless verification completed. Never identifies an incomplete or cancelled verification.
+            score:
+              $ref: '#/components/schemas/NullableScore'
+            verification_checks:
+              $ref: '#/components/schemas/VerificationChecks'
+            verification_shortfall:
+              type:
+              - number
+              - 'null'
+              minimum: 0
+              description: Null without `verify`.
+            scoring_method:
+              type: string
+              const: abm
+            scoring_settings:
+              $ref: '#/components/schemas/ResolvedScoringSettings'
+            verification_method:
+              type: string
+              const: abm
+              description: The configured verification method, even when verification_run_id is null.
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/Candidate'
+        history:
+          type: array
+          items:
+            type: object
+            required:
+            - round
+            - move
+            - levers
+            - reason
+            - score_after
+            properties:
+              round:
+                type: integer
+                minimum: 1
+              move:
+                type: string
+                description: The move. A compound move joins its moves with ` + `.
+              levers:
+                type: array
+                description: The levers of the move. A jump has an empty list.
+                items:
+                  $ref: '#/components/schemas/Lever'
+              reason:
+                type:
+                - string
+                - 'null'
+                description: The reason of a kept LLM move, cut to 200 characters.
+              score_after:
+                $ref: '#/components/schemas/Score'
+        probes:
+          type: array
+          items:
+            type: object
+            required:
+            - run_id
+            - change
+            - used_by
+            properties:
+              run_id:
+                $ref: '#/components/schemas/RunId'
+              change:
+                type: string
+              used_by:
+                $ref: '#/components/schemas/StringList'
+        stop_reason:
+          type:
+          - string
+          - 'null'
+          description: 'Why the search ended: `no_improving_move`, `time_limit`, `max_kept_moves`, `scoring_budget`,
+            or `cancelled`. The value `scoring_budget` means the method used its scoring budget. The field is null
+            until the optimization ends.'
+        llm:
+          oneOf:
+          - $ref: '#/components/schemas/LlmRecord'
+          - type: 'null'
+          description: The LLM record. It is null for every other method.
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        started_at:
+          oneOf:
+          - $ref: '#/components/schemas/Timestamp'
+          - type: 'null'
+        finished_at:
+          oneOf:
+          - $ref: '#/components/schemas/Timestamp'
+          - type: 'null'
+        search_duration_ms:
+          type: integer
+          minimum: 0
+          description: Search duration, excluding verification; zero before search starts.
+        verification_duration_ms:
+          type: integer
+          minimum: 0
+          description: Verification duration, measured separately; zero when not started or skipped.
+    Candidate:
+      type: object
+      required:
+      - plan_id
+      - kind
+      - recommended
+      - kept_moves
+      - score
+      - verification_checks
+      - verification_shortfall
+      - scoring_run_id
+      - verification_run_id
+      - diff
+      - scoring_method
+      - scoring_settings
+      - verification_method
+      properties:
+        plan_id:
+          $ref: '#/components/schemas/PlanId'
+        kind:
+          type: string
+          enum:
+          - milestone
+          - final
+          - finalist
+        recommended:
+          type: boolean
+          description: True for at most one finalist and only after completed matched ABM verification strictly
+            beats baseline by (missed checks, at-risk checks, shortfall, measured cost). Finalist ties prefer fewer
+            kept moves. False without verification or after cancellation.
+        kept_moves:
+          type: integer
+          minimum: 0
+        score:
+          $ref: '#/components/schemas/Score'
+        verification_checks:
+          $ref: '#/components/schemas/VerificationChecks'
+        verification_shortfall:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          description: Null without `verify`.
+        scoring_run_id:
+          $ref: '#/components/schemas/RunId'
+          description: Full ABM candidate run. Verification uses a separate run.
+        verification_run_id:
+          $ref: '#/components/schemas/NullableRunId'
+          description: Null unless verification completed. Never identifies an incomplete or cancelled verification.
+        diff:
+          type: array
+          items:
+            type: object
+            required:
+            - path
+            - old
+            - new
+            - lever
+            - approval_needed
+            properties:
+              path:
+                type: string
+              old: {}
+              new: {}
+              lever:
+                $ref: '#/components/schemas/Lever'
+              approval_needed:
+                type:
+                - string
+                - 'null'
+        scoring_method:
+          type: string
+          const: abm
+        scoring_settings:
+          $ref: '#/components/schemas/ResolvedScoringSettings'
+        verification_method:
+          type: string
+          const: abm
+          description: The configured verification method, even when verification_run_id is null.
+    LlmRecord:
+      type: object
+      required:
+      - model
+      - reasoning_effort
+      - fallback_rounds
+      - estimated_cost
+      - stop_reason
+      - calls
+      properties:
+        model:
+          type: string
+        reasoning_effort:
+          type: string
+        fallback_rounds:
+          type: integer
+          minimum: 0
+        estimated_cost:
+          $ref: '#/components/schemas/Money'
+        stop_reason:
+          type:
+          - string
+          - 'null'
+          enum:
+          - call_limit
+          - cost_cap
+          - consecutive_failures
+          - spend_limit
+          - auth_error
+          - no_key
+          - null
+        calls:
+          type: array
+          items:
+            $ref: '#/components/schemas/LlmCall'
+    LlmCall:
+      type: object
+      required:
+      - round
+      - status
+      - request_id
+      - input_tokens
+      - cached_input_tokens
+      - output_tokens
+      - latency_ms
+      - estimated_cost
+      - llm_moves
+      properties:
+        round:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum:
+          - ok
+          - timeout
+          - refused
+          - incomplete
+          - invalid
+          - api_error
+          - spend_limit
+          - auth_error
+          description: 'The outcome of the call.
+
+            - `ok`: the model returned moves that parse.
+
+            - `timeout`: the call ran out of time.
+
+            - `refused`: the model refused the request.
+
+            - `incomplete`: the model stopped before it finished the answer.
+
+            - `invalid`: the answer does not parse or holds no valid move.
+
+            - `api_error`: OpenAI returned an error.
+
+            - `spend_limit`: the spend limit of the OpenAI project stopped the call.
+
+            - `auth_error`: OpenAI rejected the key.'
+        request_id:
+          type:
+          - string
+          - 'null'
+        input_tokens:
+          type: integer
+          minimum: 0
+        cached_input_tokens:
+          type: integer
+          minimum: 0
+        output_tokens:
+          type: integer
+          minimum: 0
+        latency_ms:
+          type: integer
+          minimum: 0
+        estimated_cost:
+          $ref: '#/components/schemas/Money'
+        llm_moves:
+          type: array
+          items:
+            type: object
+            required:
+            - moves
+            - reason
+            - score
+            - kept
+            properties:
+              moves:
+                type: array
+                minItems: 1
+                maxItems: 3
+                items:
+                  type: string
+              reason:
+                type: string
+              score:
+                $ref: '#/components/schemas/NullableScore'
+              kept:
+                type: boolean
+    OptimizationPage:
+      type: object
+      required:
+      - data
+      - next_cursor
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Optimization'
+        next_cursor:
+          $ref: '#/components/schemas/NextCursor'
+    Error:
+      type: object
+      required:
+      - error
+      properties:
+        error:
+          type: object
+          required:
+          - code
+          - message
+          properties:
+            code:
+              type: string
+              description: Stable snake_case code that clients match on.
+            message:
+              type: string
+              description: Explanation for people.
+            details:
+              type: array
+              description: Field errors. Only 422 responses include it. For plan_invalid, `code` is the issue code;
+                for hard_limits_broken, it is the limit name.
+              items:
+                type: object
+                required:
+                - field
+                - message
+                properties:
+                  field:
+                    type: string
+                  message:
+                    type: string
+                  code:
+                    type: string
+                  scope:
+                    type: string
+                    enum:
+                    - base
+                    - abm
+                    - flow
+                    - des
+                    - optimization
+    Position:
+      type: object
+      properties:
+        x:
+          type: number
+          description: Finite coordinate in metres.
+        y:
+          type: number
+          description: Finite coordinate in metres.
+        z:
+          type: number
+          description: Finite coordinate in metres.
+      required:
+      - x
+      - y
+      - z
+      additionalProperties: false
+    CoordinateFrame:
+      type: object
+      properties:
+        units:
+          type: string
+          const: metres
+        x_axis:
+          type: string
+          const: east
+        y_axis:
+          type: string
+          const: up
+        z_axis:
+          type: string
+          const: south
+        geographic_origin:
+          type: object
+          properties:
+            longitude:
+              type: number
+              minimum: -180
+              maximum: 180
+            latitude:
+              type: number
+              minimum: -90
+              maximum: 90
+            basis:
+              $ref: '#/components/schemas/Basis'
+            source:
+              type: string
+          required:
+          - longitude
+          - latitude
+      required:
+      - units
+      - x_axis
+      - y_axis
+      - z_axis
+      additionalProperties: false
+    NavigationNode:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+        position:
+          $ref: '#/components/schemas/Position'
+      required:
+      - id
+      - position
+      additionalProperties: false
+    LocalWindow:
+      type: object
+      properties:
+        start:
+          $ref: '#/components/schemas/ClockTime'
+        end:
+          $ref: '#/components/schemas/ClockTime'
+      required:
+      - start
+      - end
+      additionalProperties: false
+      description: Ordered local clock interval on the event date, in its timezone. Start precedes end; intervals
+        must not overlap.
+    SpatialEdge:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+        from_node_id:
+          type: string
+          minLength: 1
+        to_node_id:
+          type: string
+          minLength: 1
+        width_m:
+          type: number
+          exclusiveMinimum: 0
+        physical_corridor_id:
+          type: string
+          minLength: 1
+        accessible:
+          type: boolean
+        zone_id:
+          type: string
+          minLength: 1
+        allowed_category_ids:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          uniqueItems: true
+        polyline:
+          type: array
+          items:
+            $ref: '#/components/schemas/Position'
+          minItems: 2
+        closure_windows:
+          type: array
+          items:
+            $ref: '#/components/schemas/LocalWindow'
+      required:
+      - id
+      - from_node_id
+      - to_node_id
+      - width_m
+      - physical_corridor_id
+      - accessible
+      - zone_id
+      additionalProperties: false
+      description: Directed horizontal walkable corridor. Polyline endpoints must match nodes. Length follows the
+        polyline or endpoints. Opposite edges share physical_corridor_id and occupancy. Projected crossings require
+        shared junctions unless explicitly separated. Empty allowed_category_ids permits no category; omission permits
+        all eligible categories.
+    SpatialBinding:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+        kind:
+          type: string
+          enum:
+          - zone
+          - gate
+          - service_point
+        node_id:
+          type: string
+          minLength: 1
+      required:
+      - id
+      - kind
+      - node_id
+      additionalProperties: false
+      description: The id identifies the existing logical zone, gate, or service point, not a new resource.
+    LaneSlot:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+        point_id:
+          type: string
+          minLength: 1
+        permitted_lane_groups:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+          uniqueItems: true
+        entry_node_id:
+          type: string
+          minLength: 1
+        exit_node_id:
+          type: string
+          minLength: 1
+      required:
+      - id
+      - point_id
+      - permitted_lane_groups
+      - entry_node_id
+      - exit_node_id
+      additionalProperties: false
+      description: Stable physical lane location, including inactive capacity. Active lane matching is deterministic
+        and one-to-one. Optimization cannot invent slots or change their coordinates.
+    StepPlacement:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+        lane_slot_id:
+          type: string
+          minLength: 1
+        point_id:
+          type: string
+          minLength: 1
+        lane_group:
+          type: string
+          minLength: 1
+        step_id:
+          type: string
+          minLength: 1
+        node_id:
+          type: string
+          minLength: 1
+      required:
+      - id
+      - lane_slot_id
+      - point_id
+      - lane_group
+      - step_id
+      - node_id
+      additionalProperties: false
+      description: A physical step occurrence in a lane slot. Each required occurrence must be placed. Distinct
+        occurrences may share a node, producing zero walking distance.
+    MovementBehavior:
+      type: object
+      properties:
+        version:
+          type: integer
+          const: 1
+          description: Extension version; unsupported versions return a field-level 422.
+        desired_speed_mean_mps:
+          type: number
+          exclusiveMinimum: 0
+          default: 1.0
+        desired_speed_stddev_mps:
+          type: number
+          minimum: 0
+          default: 0.1
+        desired_speed_min_mps:
+          type: number
+          exclusiveMinimum: 0
+          default: 0.2
+        desired_speed_max_mps:
+          type: number
+          exclusiveMinimum: 0
+          default: 2.0
+        accessible_speed_multiplier:
+          type: number
+          exclusiveMinimum: 0
+          default: 0.75
+        body_radius_m:
+          type: number
+          exclusiveMinimum: 0
+          default: 0.25
+        group_cohesion_distance_m:
+          type: number
+          exclusiveMinimum: 0
+          default: 2.0
+        movement_tick_seconds:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 0.25
+          default: 0.25
+        jam_density_persons_per_m2:
+          type: number
+          exclusiveMinimum: 0
+          default: 4.0
+        provenance:
+          $ref: '#/components/schemas/BehaviorProvenance'
+      required:
+      - version
+      additionalProperties: false
+      description: Editable modeling assumptions, not venue calibration or safety thresholds. Speed uses a truncated
+        normal; zero SD gives fixed speed. Require min <= mean <= max. Congestion multiplies desired speed by max(0,
+        1-density/jam_density), excluding the current visitor. Resolved defaults are recorded in run identity.
+      example:
+        version: 1
+        desired_speed_mean_mps: 1.0
+        desired_speed_stddev_mps: 0.1
+        desired_speed_min_mps: 0.2
+        desired_speed_max_mps: 2.0
+        accessible_speed_multiplier: 0.75
+        body_radius_m: 0.25
+        group_cohesion_distance_m: 2.0
+        movement_tick_seconds: 0.25
+        jam_density_persons_per_m2: 4.0
+        provenance:
+          basis: assumed
+    BehaviorProvenance:
+      type: object
+      properties:
+        basis:
+          $ref: '#/components/schemas/Basis'
+        source:
+          type: string
+        revision:
+          type: string
+      required:
+      - basis
+      additionalProperties: false
+    ResolvedMovementBehavior:
+      type: object
+      properties:
+        version:
+          type: integer
+          const: 1
+          description: Extension version; unsupported versions return a field-level 422.
+        desired_speed_mean_mps:
+          type: number
+          exclusiveMinimum: 0
+        desired_speed_stddev_mps:
+          type: number
+          minimum: 0
+        desired_speed_min_mps:
+          type: number
+          exclusiveMinimum: 0
+        desired_speed_max_mps:
+          type: number
+          exclusiveMinimum: 0
+        accessible_speed_multiplier:
+          type: number
+          exclusiveMinimum: 0
+        body_radius_m:
+          type: number
+          exclusiveMinimum: 0
+        group_cohesion_distance_m:
+          type: number
+          exclusiveMinimum: 0
+        movement_tick_seconds:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 0.25
+        jam_density_persons_per_m2:
+          type: number
+          exclusiveMinimum: 0
+      required:
+      - version
+      - desired_speed_mean_mps
+      - desired_speed_stddev_mps
+      - desired_speed_min_mps
+      - desired_speed_max_mps
+      - accessible_speed_multiplier
+      - body_radius_m
+      - group_cohesion_distance_m
+      - movement_tick_seconds
+      - jam_density_persons_per_m2
+      additionalProperties: false
+    SegmentBehavior:
+      type: object
+      properties:
+        desired_speed_mean_mps:
+          type: number
+          exclusiveMinimum: 0
+          default: 1.0
+        desired_speed_stddev_mps:
+          type: number
+          minimum: 0
+          default: 0.1
+        desired_speed_min_mps:
+          type: number
+          exclusiveMinimum: 0
+          default: 0.2
+        desired_speed_max_mps:
+          type: number
+          exclusiveMinimum: 0
+          default: 2.0
+        accessible_speed_multiplier:
+          type: number
+          exclusiveMinimum: 0
+          default: 0.75
+        body_radius_m:
+          type: number
+          exclusiveMinimum: 0
+          default: 0.25
+        group_cohesion_distance_m:
+          type: number
+          exclusiveMinimum: 0
+          default: 2.0
+      required: []
+      additionalProperties: false
+      description: Optional segment overrides of global behavior. Segment values take precedence. All settings remain
+        fixed during optimization.
+    Spatial:
+      type: object
+      properties:
+        version:
+          type: integer
+          const: 1
+          description: Extension version; unsupported versions return a field-level 422.
+        geometry_revision:
+          type: string
+          minLength: 1
+        coordinate_frame:
+          $ref: '#/components/schemas/CoordinateFrame'
+        arrival_point:
+          type: object
+          properties:
+            node_id:
+              type: string
+              minLength: 1
+          required:
+          - node_id
+          additionalProperties: false
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/NavigationNode'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/SpatialEdge'
+        bindings:
+          type: array
+          items:
+            $ref: '#/components/schemas/SpatialBinding'
+        lane_slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/LaneSlot'
+        step_placements:
+          type: array
+          items:
+            $ref: '#/components/schemas/StepPlacement'
+        behavior:
+          $ref: '#/components/schemas/MovementBehavior'
+      required:
+      - version
+      additionalProperties: false
+      description: Optional versioned geometry in the submitted snapshot. Drafts may omit geometry parts. ABM readiness
+        requires coordinate frame, revision, default arrival, unique nodes/edges/bindings/slots/placements, and
+        every required directed route, including exception returns and destinations. Reject nonfinite coordinates,
+        elevation-changing edges, invalid references, impossible clearance, and disconnected required movements.
+        Validate scheduled closures. Never invent geometry for legacy plans.
+      example:
+        version: 1
+        geometry_revision: illustrative-corridor-1
+        coordinate_frame:
+          units: metres
+          x_axis: east
+          y_axis: up
+          z_axis: south
+        arrival_point:
+          node_id: arrival
+        nodes:
+        - id: arrival
+          position:
+            x: 0
+            y: 0
+            z: 0
+        - id: scan
+          position:
+            x: 3
+            y: 0
+            z: 4
+        edges:
+        - id: arrival_to_scan
+          from_node_id: arrival
+          to_node_id: scan
+          width_m: 1.2
+          physical_corridor_id: approach
+          accessible: true
+          zone_id: zone_forecourt
+        bindings:
+        - id: redemption_tent
+          kind: service_point
+          node_id: scan
+        lane_slots:
+        - id: scan_slot_1
+          point_id: redemption_tent
+          permitted_lane_groups:
+          - general
+          entry_node_id: scan
+          exit_node_id: scan
+        step_placements:
+        - id: scan_occurrence_1
+          lane_slot_id: scan_slot_1
+          point_id: redemption_tent
+          lane_group: general
+          step_id: eticket_scan
+          node_id: scan
+        behavior:
+          version: 1
+          desired_speed_stddev_mps: 0
+          provenance:
+            basis: assumed
+            source: Illustrative shape; not frozen GBK geometry
+    ParticipantSegment:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+        category_id:
+          type: string
+          minLength: 1
+        share_within_category_percent:
+          $ref: '#/components/schemas/Percent'
+        arrival_shares_percent:
+          type: array
+          items:
+            $ref: '#/components/schemas/Percent'
+          minItems: 1
+        arrival_node_id:
+          type: string
+          minLength: 1
+        behavior:
+          $ref: '#/components/schemas/SegmentBehavior'
+        provenance:
+          $ref: '#/components/schemas/BehaviorProvenance'
+      required:
+      - id
+      - category_id
+      - share_within_category_percent
+      - arrival_shares_percent
+      - arrival_node_id
+      - provenance
+      additionalProperties: false
+      description: Synthetic population segment. Arrival shares correspond by index to time_bins and sum to 100%.
+        Configured segment shares within each category sum to 100%. Groups arrive together. No personal records
+        are accepted.
+    ParticipantBehavior:
+      type: object
+      properties:
+        version:
+          type: integer
+          const: 1
+          description: Extension version; unsupported versions return a field-level 422.
+        time_bins:
+          type: array
+          items:
+            $ref: '#/components/schemas/LocalWindow'
+          minItems: 1
+        segments:
+          type: array
+          items:
+            $ref: '#/components/schemas/ParticipantSegment'
+          minItems: 1
+      required:
+      - version
+      - time_bins
+      - segments
+      additionalProperties: false
+      description: Shared ordered non-overlapping local event bins. Each segment must provide exactly one share
+        per bin. ABM consumes segment identity and arrival node directly; flow/DES use weighted category curves.
+        Unconfigured categories retain demand/defaults and the default arrival point.
+      example:
+        version: 1
+        time_bins:
+        - start: '14:30'
+          end: '15:30'
+        - start: '15:30'
+          end: '16:30'
+        segments:
+        - id: early_arrivals
+          category_id: festival_a
+          share_within_category_percent: 100
+          arrival_shares_percent:
+          - 60
+          - 40
+          arrival_node_id: arrival
+          provenance:
+            basis: estimate
+            source: Illustrative segment assumptions
+    ValidationIssue:
+      type: object
+      properties:
+        severity:
+          type: string
+          enum:
+          - error
+          - warning
+        code:
+          type: string
+          description: Stable snake_case issue code. Spatial/behavior issues include unsupported_extension_version,
+            missing_geometry, unknown_reference, unreachable_route, invalid_coordinate, invalid_width, invalid_arrival_shares,
+            invalid_crossing, and insufficient_lane_slots.
+        field:
+          type: string
+          description: Dot path; keyed array items use [id or group], otherwise [index].
+        message:
+          type: string
+        scope:
+          type: string
+          enum:
+          - base
+          - abm
+          - flow
+          - des
+          - optimization
+      required:
+      - severity
+      - code
+      - field
+      - message
+      - scope
+    ScoringSettings:
+      type: object
+      properties:
+        replications:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        base_seed:
+          type: integer
+          description: Defaults to event date YYYYMMDD. Fixed matched seed schedule for all states; replication
+            i uses base_seed+i.
+      required: []
+      additionalProperties: false
+      description: ABM scoring settings. Omitted settings resolve to 20 replications and event-date seed. Evaluation
+        budgets count states, not replications. Frozen settings are stored in the optimization request.
+      example:
+        replications: 20
+        base_seed: 20261127
+    ResolvedScoringSettings:
+      type: object
+      properties:
+        replications:
+          type: integer
+          minimum: 1
+          maximum: 100
+        base_seed:
+          type: integer
+      required:
+      - replications
+      - base_seed
+      additionalProperties: false
+    VerificationSettings:
+      type: object
+      properties:
+        replications:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+        base_seed:
+          type: integer
+          description: Defaults to the event date YYYYMMDD; shared across baseline and finalists.
+      required: []
+      additionalProperties: false
+      description: ABM finalist verification after search, outside the search timer. Default 50 replications. Null
+        verify skips verification and recommendations.
+      example:
+        replications: 50
+        base_seed: 20261127
+    EffectiveRoute:
+      type: object
+      properties:
+        from_id:
+          type: string
+          minLength: 1
+        to_id:
+          type: string
+          minLength: 1
+        edge_ids:
+          type: array
+          items:
+            type: string
+            minLength: 1
+        distance_m:
+          type: number
+          minimum: 0
+      required:
+      - from_id
+      - to_id
+      - edge_ids
+      - distance_m
+      additionalProperties: false
+      description: Compiled directed route. Geometry replaces the bound legacy distance; distances are never added
+        twice.
+    ExtensionIdentity:
+      type: object
+      properties:
+        version:
+          type: integer
+          minimum: 1
+        sha256:
+          $ref: '#/components/schemas/Sha256'
+      required:
+      - version
+      - sha256
+      additionalProperties: false
+    WalkingSummary:
+      type: object
+      properties:
+        distance_m:
+          $ref: '#/components/schemas/Spread'
+        free_flow_time_seconds:
+          $ref: '#/components/schemas/Spread'
+        observed_movement_time_seconds:
+          $ref: '#/components/schemas/Spread'
+        movement_delay_seconds:
+          $ref: '#/components/schemas/Spread'
+      required:
+      - distance_m
+      - free_flow_time_seconds
+      - observed_movement_time_seconds
+      - movement_delay_seconds
+      additionalProperties: false
+      description: Population totals per replication summarized across replications. Observed movement includes
+        congestion pauses, excludes queues/service/holds, and equals free-flow time plus movement delay.
+    WalkingRoute:
+      type: object
+      properties:
+        from_node_id:
+          type: string
+          minLength: 1
+        to_node_id:
+          type: string
+          minLength: 1
+        edge_ids:
+          type: array
+          items:
+            type: string
+            minLength: 1
+        summary:
+          $ref: '#/components/schemas/WalkingSummary'
+      required:
+      - from_node_id
+      - to_node_id
+      - edge_ids
+      - summary
+      additionalProperties: false
+    WalkingTime:
+      type: object
+      properties:
+        total:
+          $ref: '#/components/schemas/WalkingSummary'
+        by_route:
+          type: array
+          items:
+            $ref: '#/components/schemas/WalkingRoute'
+      required:
+      - total
+      - by_route
+      additionalProperties: false
+    MovementDiagnostics:
+      type: object
+      properties:
+        collision_violations:
+          $ref: '#/components/schemas/Spread'
+        blocked_route_unfinished_visitors:
+          $ref: '#/components/schemas/Spread'
+        route_changes:
+          $ref: '#/components/schemas/Spread'
+        group_holds:
+          $ref: '#/components/schemas/Spread'
+        group_hold_seconds:
+          $ref: '#/components/schemas/Spread'
+      required:
+      - collision_violations
+      - blocked_route_unfinished_visitors
+      - route_changes
+      - group_holds
+      - group_hold_seconds
+      additionalProperties: false
+      description: Computed ABM diagnostics across replications; valid collision fixtures report zero violations.
+        Group hold is separate from queue wait.
+    RunDiagnostics:
+      type: object
+      required:
+      - version
+      - measurements
+      additionalProperties: false
+      properties:
+        version:
+          type: integer
+          const: 1
+        measurements:
+          type: object
+          description: Aggregate audit measurements keyed by the frozen semantic metric catalog. Numeric summaries
+            use Spread; scalar strings are used only for single-valued outcomes. No individual trace or personal
+            data.
+          additionalProperties:
+            oneOf:
+            - $ref: '#/components/schemas/Spread'
+            - type:
+              - number
+              - string
+              - 'null'
+      description: Computed movement/service eligibility and accounting diagnostics. Bindings and reduction rules
+        are frozen in the acceptance data. Unavailable values are null and listed in uncomputed_fields.
+  responses:
+    Unauthorized:
+      description: The X-API-Key header is missing or wrong.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: invalid_api_key
+              message: Invalid or missing API key
+    NotFound:
+      description: The item does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: plan_not_found
+              message: Plan pln_01JC9W3K8Q6Y2M4T5R7V9X1Z3B does not exist
+    Conflict:
+      description: The request conflicts with the current state, or reuses an Idempotency-Key with a different body.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: idempotency_key_reused
+              message: This Idempotency-Key was used with a different request body
+    PayloadTooLarge:
+      description: The request body is larger than 1 MB (1,048,576 bytes).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: body_too_large
+              message: The request body is larger than 1 MB
+    ValidationError:
+      description: The request failed validation.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: validation_failed
+              message: The request has invalid fields
+              details:
+              - field: event.schedule.doors_open
+                message: Must be a time in HH:MM format
+    TooManyRequests:
+      description: Five optimizations are queued or running.
+      headers:
+        Retry-After:
+          description: Seconds to wait before the next request.
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: optimization_queue_full
+              message: Five optimizations are queued or running
