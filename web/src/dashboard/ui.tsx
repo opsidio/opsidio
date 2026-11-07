@@ -44,14 +44,16 @@ export function Card({
   tag,
   children,
   action,
+  fieldPath,
 }: {
-  title?: string;
+  fieldPath?: string;
+  title?: ReactNode;
   tag?: ReactNode;
   children: ReactNode;
   action?: ReactNode;
 }) {
   return (
-    <section className="op-card">
+    <section className="op-card" data-field-path={fieldPath}>
       {title && (
         <header>
           <h2>{title}</h2>

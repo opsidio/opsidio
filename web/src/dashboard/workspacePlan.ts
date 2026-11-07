@@ -124,17 +124,12 @@ export function projectDashboardPlan(draft: Draft): Plan {
   if (draft.venueType !== 'public' || draft.plan.venue.id !== 'gbk-osm-local') {
     throw new Error('The full 3D workspace needs a mapped public GBK venue. You can still export your event plan.')
   }
-  const validationPlan = structuredClone(draft.plan)
-  for (const item of validationPlan.constraints.equipment.items as Plan[]) {
-    if (Number.isSafeInteger(item.available) && Number.isSafeInteger(item.extra_rented) && item.extra_rented > 0) item.available += item.extra_rented
-  }
-  const issues = validate(validationPlan)
+  const issues = validate(draft.plan)
   if (issues.length) throw new Error(`Complete the plan before opening 3D. ${issues[0].message}`)
 
   const plan = structuredClone(draft.plan)
   const spatial = mappedLayout(plan)
-  const start = plan.event.schedule.arrival_generation_start || plan.event.schedule.outer_area_open
-  const end = plan.event.schedule.model_end || plan.event.schedule.show_end_estimate || plan.event.schedule.last_entry
+  const { arrival_generation_start: start, model_end: end } = plan.event.schedule
   const horizon = clockSeconds(end) - clockSeconds(start)
   if (!Number.isFinite(horizon) || horizon <= 0) throw new Error('Set a same-day simulation start and end.')
   for (const category of plan.event.ticket_categories as Plan[]) {
