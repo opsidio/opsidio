@@ -1,0 +1,62 @@
+.gli-inspector { width: 320px; max-width: 100%; flex: 0 0 320px; box-sizing: border-box; background: #fff; color: #253147; font: 13px/1.45 Inter, ui-sans-serif, system-ui, sans-serif; border: 1px solid #e2e7ee; border-radius: 14px; overflow: auto; scrollbar-width: thin; }
+.gli-inspector *, .gli-inspector *::before, .gli-inspector *::after { box-sizing: border-box; }
+.gli-inspector button, .gli-inspector input, .gli-inspector select { font: inherit; }
+.gli-inspector button { cursor: pointer; }
+.gli-inspector button:focus-visible, .gli-inspector a:focus-visible, .gli-inspector input:focus-visible, .gli-inspector select:focus-visible { outline: 2px solid #3158db; outline-offset: 2px; }
+.gli-header { padding: 19px 18px 16px; }
+.gli-eyebrow { color: #6d7b90; font-size: 9px; font-weight: 750; letter-spacing: .14em; }
+.gli-header h2 { margin: 5px 0 9px; font-size: 17px; font-weight: 650; letter-spacing: -.03em; line-height: 1.25; }
+.gli-assumption { display: inline-block; padding: 3px 7px; border: 1px solid #dce4fb; border-radius: 4px; color: #3158db; background: #f3f6ff; font-size: 10px; font-weight: 600; }
+.gli-header p { margin: 8px 0 0; color: #758093; font-size: 11px; line-height: 1.55; }
+.gli-section { border-top: 1px solid #e9edf3; padding: 15px 18px; }
+.gli-section-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 11px; }
+.gli-section-title h3 { margin: 0; color: #253147; font-size: 12px; font-weight: 650; }
+.gli-section-title > span { color: #8a94a5; font-size: 10px; }
+.gli-palette { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.gli-kit { display: flex; align-items: center; gap: 7px; min-width: 0; min-height: 51px; padding: 8px 7px; text-align: left; border: 1px solid #e5eaf1; border-radius: 7px; background: #fff; color: #53647e; transition: background .12s, border-color .12s; }
+.gli-kit:hover { border-color: #b4c3f5; background: #f7f9ff; }
+.gli-kit-icon { display: flex; flex: 0 0 23px; color: #60759a; }
+.gli-kit-copy { min-width: 0; flex: 1; }
+.gli-kit-copy strong { display: block; color: #33415a; font-size: 10px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+.gli-kit-copy small { display: block; margin-top: 3px; color: #8b95a6; font-size: 9px; }
+.gli-plus { color: #9aa6bc; font-size: 15px; font-weight: 400; }
+.gli-field { display: flex; flex-direction: column; min-width: 0; gap: 5px; color: #758094; font-size: 10px; }
+.gli-field > select, .gli-input-wrap { width: 100%; border: 1px solid #dfe5ee; border-radius: 6px; background: #fff; color: #33415a; }
+.gli-field > select { min-height: 33px; padding: 6px 25px 6px 9px; font-size: 11px; }
+.gli-input-wrap { position: relative; display: flex; align-items: center; }
+.gli-input-wrap input { width: 100%; min-width: 0; height: 32px; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: #33415a; font-size: 12px; font-variant-numeric: tabular-nums; appearance: textfield; -moz-appearance: textfield; }
+.gli-input-wrap input::-webkit-inner-spin-button, .gli-input-wrap input::-webkit-outer-spin-button { margin: 0; -webkit-appearance: none; }
+.gli-input-wrap:has(.gli-unit) input { padding-right: 24px; }
+.gli-unit { position: absolute; right: 8px; pointer-events: none; color: #9ba4b3; font-size: 10px; }
+.gli-placement { display: grid; gap: 10px; margin-top: 11px; }
+.gli-fields { display: grid; gap: 7px; }
+.gli-fields-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.gli-source { display: flex; align-items: flex-start; flex-wrap: wrap; justify-content: space-between; gap: 5px 8px; padding: 10px; border-radius: 6px; background: #f6f8fb; }
+.gli-source strong { display: block; font-size: 11px; font-weight: 600; }
+.gli-source div > span { display: block; margin-top: 2px; color: #8b95a6; font-size: 9px; }
+.gli-source a { color: #3158db; font-size: 10px; text-decoration: none; }
+.gli-source a:hover { text-decoration: underline; }
+.gli-source p { flex-basis: 100%; margin: 2px 0 0; color: #758094; font-size: 10px; }
+.gli-edit-footer { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
+.gli-edit-footer > span { color: #98a1af; font-size: 8px; }
+.gli-remove { padding: 3px 5px; border: 0; background: transparent; color: #a84646; font-size: 10px !important; }
+.gli-remove:hover { border-radius: 4px; background: #fff1f1; }
+.gli-empty { padding: 15px 5px 4px; color: #8b95a6; font-size: 11px; line-height: 1.6; }
+.gli-section-title > .gli-status { padding: 3px 6px; border-radius: 4px; font-size: 9px; font-weight: 600; }
+.gli-section-title > .gli-status-ok { background: #edf6f3; color: #28775f; }
+.gli-section-title > .gli-status-blocked { background: #fff2e7; color: #a35d20; }
+.gli-capacity { display: grid; grid-template-columns: repeat(2, 1fr); margin: 12px 0; border: 1px solid #e8edf4; border-radius: 7px; }
+.gli-capacity > div { padding: 9px 11px; }
+.gli-capacity > div + div { border-left: 1px solid #e8edf4; }
+.gli-capacity dt { color: #8791a2; font-size: 10px; }
+.gli-capacity dd { margin: 2px 0 0; font-size: 20px; font-weight: 600; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.gli-capacity dd small { color: #8b95a6; font-size: 10px; font-weight: 400; letter-spacing: 0; }
+.gli-lane-result { padding: 10px; border-radius: 6px; background: #f2f7f5; color: #3a705f; font-size: 10px; line-height: 1.5; }
+.gli-lane-result strong { font-weight: 600; }
+.gli-lane-result-blocked { background: #fff7ee; color: #9b602c; }
+.gli-lane-result ul { padding-left: 14px; margin: 4px 0 0; }
+.gli-lane-result li + li { margin-top: 3px; }
+.gli-demo { display: flex; justify-content: space-between; width: 100%; margin-top: 10px; padding: 8px 9px; border: 1px solid #e1e7f5; border-radius: 6px; background: #fff; color: #3158db; font-size: 10px !important; text-align: left; }
+.gli-demo:hover { background: #f3f6ff; border-color: #bac8ef; }
+.gli-message { margin: 0 18px 16px; padding: 10px; border: 1px solid #e2e7f3; border-radius: 6px; color: #5c6c86; background: #f7f9fe; font-size: 11px; }
+.gli-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
