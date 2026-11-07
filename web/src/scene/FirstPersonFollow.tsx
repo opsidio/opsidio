@@ -75,11 +75,12 @@ type FirstPersonFollowProps = {
   journeyIndex: number
   journey: AgentJourney
   clockRef: { current: number }
+  followCamera: boolean
   onStatus: (status: FirstPersonStatus) => void
 }
 
-/** Takes temporary camera ownership. Only modeled positions move the view. */
-export default function FirstPersonFollow({ sampler, journeyIndex, journey, clockRef, onStatus }: FirstPersonFollowProps) {
+/** Samples the selected attendee and takes camera ownership only in first-person view. */
+export default function FirstPersonFollow({ sampler, journeyIndex, journey, clockRef, followCamera, onStatus }: FirstPersonFollowProps) {
   const get = useThree(state => state.get)
   const set = useThree(state => state.set)
   const { width, height } = useThree(state => state.size)
@@ -89,15 +90,16 @@ export default function FirstPersonFollow({ sampler, journeyIndex, journey, cloc
     seconds: NaN, phase: 'not-arrived' as FirstPersonStatus['phase'], stationId: null as string | null,
     nextNodeId: null as string | null, pending: false, notifiedPhase: null as FirstPersonStatus['phase'] | null,
     notifiedStation: null as string | null, lastNotification: -Infinity,
-  }), [sampler, journeyIndex, journey])
+  }), [sampler, journeyIndex, journey, followCamera])
 
   useLayoutEffect(() => {
+    if (!followCamera) return
     const previous = get().camera
     camera.position.copy(previous.position)
     camera.quaternion.copy(previous.quaternion)
     set({ camera })
     return () => { if (get().camera === camera) set({ camera: previous }) }
-  }, [camera, get, set])
+  }, [camera, followCamera, get, set])
 
   useLayoutEffect(() => {
     camera.aspect = Math.max(1, width) / Math.max(1, height)
@@ -114,9 +116,11 @@ export default function FirstPersonFollow({ sampler, journeyIndex, journey, cloc
       sample.stationId = stop?.stationId ?? null
       if (sample.phase !== 'waiting-off-scene' && sample.phase !== 'not-arrived') {
         sample.nextNodeId = faceRoute(journey, sample.position, sample.direction)
-        camera.position.set(sample.position[0], sample.position[1] + EYE_HEIGHT_M, sample.position[2])
-        sample.lookAt.copy(camera.position).addScaledVector(sample.direction, 3)
-        camera.lookAt(sample.lookAt)
+        if (followCamera) {
+          camera.position.set(sample.position[0], sample.position[1] + EYE_HEIGHT_M, sample.position[2])
+          sample.lookAt.copy(camera.position).addScaledVector(sample.direction, 3)
+          camera.lookAt(sample.lookAt)
+        }
       } else {
         sample.nextNodeId = phase === 'not-arrived' ? journey.routeNodeIds[0] ?? null : null
       }

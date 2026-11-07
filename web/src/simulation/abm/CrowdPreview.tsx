@@ -1,7 +1,8 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Color, DynamicDrawUsage, Matrix4 } from 'three'
-import type { InstancedMesh } from 'three'
+import type { ThreeEvent } from '@react-three/fiber'
+import { Color, DoubleSide, DynamicDrawUsage, Matrix4 } from 'three'
+import type { InstancedMesh, Mesh } from 'three'
 import type { AbmResult } from '../runtime-types'
 import { prepareJourneySampler, sampleJourneyPosition, sampleJourneyWaitSeconds, sampleWalkingCrowd } from './sampling'
 import type { CrowdSampleStats, JourneySampler } from './sampling'
@@ -17,6 +18,8 @@ export type CrowdPreviewProps = {
   maxVisible?: number
   /** Hide the followed avatar and co-located people who would intersect its view. */
   hiddenJourneyIndex?: number | null
+  selectedJourneyIndex?: number | null
+  onSelectJourney?: (journeyIndex: number) => void
   color?: string
   /** Small decorative separation of overlapping group members; not a density model. */
   visualSpreadM?: number
@@ -26,12 +29,13 @@ export type CrowdPreviewProps = {
 
 /** Illustrative walking, waiting and processing from the authored journey timeline. */
 export function CrowdPreview({
-  result, sampler: suppliedSampler, timeSeconds = 0, clockRef, maxVisible = 5000, hiddenJourneyIndex, color = '#f4c66b', visualSpreadM = 0.65, onSampleStats,
+  result, sampler: suppliedSampler, timeSeconds = 0, clockRef, maxVisible = 5000, hiddenJourneyIndex, selectedJourneyIndex, onSelectJourney,
+  color = '#f4c66b', visualSpreadM = 0.65, onSampleStats,
 }: CrowdPreviewProps) {
   const sampler = useMemo(() => suppliedSampler ?? prepareJourneySampler(result.journeys), [result, suppliedSampler])
   const capacity = Math.max(0, Math.min(sampler.count, Number.isFinite(maxVisible) ? Math.floor(maxVisible) : 5000))
   const buffers = useMemo(() => ({
-    positions: new Float32Array(capacity * 3), indices: new Uint32Array(capacity),
+    positions: new Float32Array(capacity * 3), indices: new Uint32Array(capacity), instanceJourneys: new Uint32Array(capacity),
     stats: { visibleCount: 0, walkingCount: 0 } as CrowdSampleStats, matrix: new Matrix4(), color: new Color(),
     lastTime: NaN, lastNotifyTime: -Infinity, lastVisible: -1, lastWalking: -1, lastWaiting: -1,
     lastVisibleWaiting: -1, lastProcessing: -1, lastCompleted: -1,
@@ -49,13 +53,22 @@ export function CrowdPreview({
   }, [sampler, result])
   const bodies = useRef<InstancedMesh>(null)
   const heads = useRef<InstancedMesh>(null)
+  const marker = useRef<Mesh>(null)
   useLayoutEffect(() => {
     for (const mesh of [bodies.current, heads.current]) if (mesh) {
       mesh.count = 0
       mesh.instanceMatrix.setUsage(DynamicDrawUsage)
     }
+    if (marker.current) marker.current.visible = false
     buffers.lastTime = NaN
-  }, [buffers, hiddenJourneyIndex, visualSpreadM])
+  }, [buffers, hiddenJourneyIndex, selectedJourneyIndex, visualSpreadM])
+
+  function selectJourney(event: ThreeEvent<MouseEvent>) {
+    const instance = event.instanceId
+    if (event.delta > 4 || instance === undefined || instance >= (bodies.current?.count ?? 0)) return
+    event.stopPropagation()
+    onSelectJourney?.(buffers.instanceJourneys[instance])
+  }
 
   useFrame(({ clock }) => {
     const seconds = clockRef?.current ?? timeSeconds
@@ -68,6 +81,7 @@ export function CrowdPreview({
       const eyeX = followedSlot < 0 ? 0 : buffers.positions[followedSlot * 3]
       const eyeZ = followedSlot < 0 ? 0 : buffers.positions[followedSlot * 3 + 2]
       const eyeClearanceM = followedPhase === 'walking' ? 1.2 : 0.4
+      if (marker.current) marker.current.visible = false
       let instance = 0
       for (let slot = 0; slot < buffers.stats.visibleCount; slot++) {
         const index = buffers.indices[slot]
@@ -81,6 +95,11 @@ export function CrowdPreview({
         const z = buffers.positions[slot * 3 + 2] + offsets[index * 2 + 1] * walkingSpread
         // Walkers share paths without collision avoidance. In queues, preserve the authored 0.8 m spacing.
         if (followedSlot >= 0 && (x - eyeX) ** 2 + (z - eyeZ) ** 2 < eyeClearanceM ** 2) continue
+        if (marker.current && index === selectedJourneyIndex) {
+          marker.current.position.set(x, y + 0.08, z)
+          marker.current.visible = true
+        }
+        buffers.instanceJourneys[instance] = index
         bodies.current.setColorAt(instance, buffers.color)
         buffers.matrix.makeTranslation(x, y + 0.8, z)
         bodies.current.setMatrixAt(instance, buffers.matrix)
@@ -90,6 +109,9 @@ export function CrowdPreview({
       }
       bodies.current.count = instance
       heads.current.count = instance
+      // Three caches instance bounds for raycasts. Recompute lazily on the next hit test.
+      bodies.current.boundingSphere = null
+      heads.current.boundingSphere = null
       if (bodies.current.instanceColor) bodies.current.instanceColor.needsUpdate = true
       bodies.current.instanceMatrix.needsUpdate = true
       heads.current.instanceMatrix.needsUpdate = true
@@ -111,7 +133,7 @@ export function CrowdPreview({
     }
   })
 
-  return <group name="Illustrative ABM walking preview">
+  return <group name="Illustrative ABM walking preview" onClick={onSelectJourney ? selectJourney : undefined}>
     <instancedMesh ref={bodies} args={[undefined, undefined, Math.max(1, capacity)]} frustumCulled={false}>
       <cylinderGeometry args={[0.22, 0.27, 1.15, 5]} />
       <meshStandardMaterial color="#ffffff" roughness={0.9} />
@@ -120,5 +142,9 @@ export function CrowdPreview({
       <sphereGeometry args={[0.2, 5, 3]} />
       <meshStandardMaterial color="#e7b890" roughness={0.9} />
     </instancedMesh>
+    {selectedJourneyIndex != null && <mesh ref={marker} visible={false} rotation={[-Math.PI / 2, 0, 0]}>
+      <ringGeometry args={[0.36, 0.52, 24]} />
+      <meshBasicMaterial color="#ff5a5f" side={DoubleSide} />
+    </mesh>}
   </group>
 }

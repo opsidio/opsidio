@@ -24,14 +24,17 @@ export type FirstPersonPanelProps = {
   locationLabel: string
   status: FirstPersonStatus | null
   notice?: string | null
+  following: boolean
+  onFollow: () => void
   onNext: () => void
   onExit: () => void
 }
 
-export default function FirstPersonPanel({ attendeeLabel, originLabel, locationLabel, status, notice, onNext, onExit }: FirstPersonPanelProps) {
-  return <section className="sim-first-person" aria-label="First-person view">
+export default function FirstPersonPanel({ attendeeLabel, originLabel, locationLabel, status, notice, following, onFollow, onNext, onExit }: FirstPersonPanelProps) {
+  const title = following ? 'First-person view' : 'Attendee details'
+  return <section className="sim-first-person" aria-label={title}>
     <header className="sim-first-person-heading">
-      <div><h3>First-person view</h3><p>{attendeeLabel}</p></div>
+      <div><h3>{title}</h3><p>{attendeeLabel}</p></div>
       <span className="sim-first-person-phase">{status ? phaseLabels[status.phase] : 'Locating attendee…'}</span>
     </header>
     <dl>
@@ -39,13 +42,15 @@ export default function FirstPersonPanel({ attendeeLabel, originLabel, locationL
       <div><dt>Current location</dt><dd>{locationLabel}</dd></div>
       <div><dt>Current wait</dt><dd>{status ? waitLabel(status.waitSeconds) : '—'}</dd></div>
     </dl>
-    {status?.phase === 'waiting-off-scene' && <p className="sim-first-person-note">This queue has no modeled position for this attendee right now. The camera holds its last view.</p>}
-    {status?.phase === 'not-arrived' && <p className="sim-first-person-note">The attendee has not reached the site at this playback time. The camera holds its last view.</p>}
+    {status?.phase === 'waiting-off-scene' && <p className="sim-first-person-note">This queue has no modeled position for this attendee right now.{following && ' The camera holds its last view.'}</p>}
+    {status?.phase === 'not-arrived' && <p className="sim-first-person-note">The attendee has not reached the site at this playback time.{following && ' The camera holds its last view.'}</p>}
     {status?.phase === 'arrived' && <p className="sim-first-person-note">This attendee has reached the end of their modeled route.</p>}
     {notice && <p role="status" className="sim-first-person-note">{notice}</p>}
     <div className="sim-first-person-actions">
-      <button type="button" onClick={onExit}>Exit first person</button>
-      <button type="button" className="sim-first-person-next" onClick={onNext}>Next person</button>
+      <button type="button" onClick={onExit}>{following ? 'Exit first person' : 'Close details'}</button>
+      {following
+        ? <button type="button" className="sim-first-person-next" onClick={onNext}>Next person</button>
+        : <button type="button" className="sim-first-person-next" disabled={status?.position == null} onClick={onFollow}>View first person</button>}
     </div>
   </section>
 }
