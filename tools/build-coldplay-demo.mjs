@@ -7,10 +7,36 @@ const draft = JSON.parse(readFileSync(new URL('contracts/examples/coldplay-gbk-p
 const source = draft.meta.source_scenario.snapshot
 const plan = structuredClone(draft)
 const baseline = createLayoutRevision(initialDraft().placements)
+const laneOffsets = [-2.49, -0.83, 0.83, 2.49]
+const laneScanIds = ['lane_1_scan_checkpoint', 'scan_checkpoint', 'lane_3_scan_checkpoint', 'lane_4_scan_checkpoint']
+baseline.placements = baseline.placements.filter(item => !item.id.startsWith('row_5_'))
+for (const placement of baseline.placements) {
+  if (placement.id.startsWith('row_')) placement.position[0] = 8.68 + Number(placement.id.split('_')[1]) * 1.66
+  if (placement.id === 'scan_table') placement.position = [15.75, 0, -273]
+}
+for (const node of baseline.nodes) {
+  if (['queue', 'queue-exit', 'north-walkway'].includes(node.id)) node.position[0] = 11.17
+  if (['scan_checkpoint', 'security_checkpoint'].includes(node.id)) node.attachment.offset = [-0.83, 0, 0]
+}
+for (const [index, offset] of laneOffsets.entries()) {
+  if (index === 1) continue
+  const prefix = `lane_${index + 1}`
+  const nodes = [
+    { id: `${prefix}_queue`, role: 'waypoint', position: [12 + offset, 0, -303] },
+    { id: `${prefix}_queue_exit`, role: 'waypoint', position: [12 + offset, 0, -293.5] },
+    { id: `${prefix}_scan_checkpoint`, role: 'checkpoint', position: [0, 0, 0], attachment: { placementId: 'scan_tent', offset: [offset, 0, 0] } },
+    { id: `${prefix}_walkway`, role: 'waypoint', position: [12 + offset, 0, -249] },
+    { id: `${prefix}_security_checkpoint`, role: 'checkpoint', position: [0, 0, 0], attachment: { placementId: 'security_tent', offset: [offset, 0, 0] } },
+  ]
+  baseline.nodes.push(...nodes)
+  const chain = ['arrival', ...nodes.map(node => node.id), 'entry-approach']
+  chain.slice(0, -1).forEach((from, leg) => baseline.edges.push({ id: `${prefix}_leg_${leg}`, from, to: chain[leg + 1] }))
+}
 const northAnchor = [12, 0, -275]
 const windows = { '09:00-13:00': 10, '13:00-15:30': 30, '15:30-17:30': 45, '17:30-19:30': 15 }
 plan.meta.description = 'V1 local Coldplay-inspired GBK demo. Fictional operational assumptions are editable. Send this snapshot to the API when Optimize is selected.'
 plan.meta.version = 1
+plan.meta.revision = 4
 plan.meta.readiness = { status: 'local_preview_ready', remote_semantic_validation: 'not_run' }
 plan.meta.unresolved = []
 plan.meta.demo_assumptions = [
@@ -18,7 +44,7 @@ plan.meta.demo_assumptions = [
   'Each proposed entry area uses an illustrative four-lane admission template with four scan operators, four security officers and one help agent.',
   'Gate processing combines scan, wristband and security steps. Physical checkpoint positions remain separately visible in the spatial context.',
   'Other entry-area layouts are rotated copies of the authored North template. They need a site review and do not describe the 2023 operation.',
-  'Group size is two, walking speed is 1.2 m/s, and the four arrival windows are fictional.',
+  'Behavior profiles define fictional arrival windows, group sizes of two or four, and walking speeds from 1.0 to 1.25 m/s.',
   'Rates, queue dimensions, costs, capacity, staff genders, targets and opening policies are fictional demo inputs.',
   'The browser displays walking trajectories. Queue and processing results require a separate engine run or optimization response.'
 ]
@@ -36,9 +62,9 @@ for (const category of plan.event.ticket_categories) {
 }
 const spatial = {
   schema_version: 'opsidio-layout/0.1', venue_id: 'gbk-osm-local', catalogue_version: 'research-v1',
-  layout_id: 'gbk-five-entry-v1', revision: 1,
+  layout_id: 'gbk-five-entry-v1', revision: 4,
   coordinate_frame: { units: 'm', origin_wgs84: { longitude_deg: 106.80255, latitude_deg: -6.21858 }, axes: { x: 'east', y: 'up', z: 'south' }, vertical_reference: 'local_ground' },
-  placements: [], navigation: { nodes: [], edges: [] }, operational_bindings: [], entry_areas: [], cohort_routes: [], operators: [],
+  placements: [], navigation: { nodes: [], edges: [] }, operational_bindings: [], entry_areas: [], cohort_routes: [], operators: [], service_stations: [],
   playback: { seed: 20261114, time_origin: '2026-11-14T09:00:00+07:00', horizon_seconds: 52200, walk_speed_mps: 1.2, group_size: 2 }
 }
 const layout = { basis: 'estimate', zones: [], service_points: [], gates: [], walking_paths: [], visitor_flow: [{ order: 1, point: 'entry_gate_of_category', required: true }] }
@@ -53,27 +79,34 @@ for (const area of source.entry_areas) {
   spatial.entry_areas.push({ id: area.id, label: area.label, gate_id: gateId, position_m: area.position, color: area.color, basis: 'fictional_scenario' })
   for (const item of baseline.placements) spatial.placements.push({ id: key(item.id), label: item.label, preset_id: item.presetId, position_m: transform(item.position), yaw_deg: item.yawDeg + yaw, ...(item.bays ? { parameters: { bays: item.bays } } : {}), entry_area_id: area.id, basis: 'fictional_scenario' })
   // Visible detectors stand beside the central walking route, preserving its clearance.
-  spatial.placements.push({ id: key('security_detector'), label: 'Security detector', preset_id: 'detector-90', position_m: transform([14, 0, -228]), yaw_deg: yaw, entry_area_id: area.id, basis: 'fictional_scenario' })
+  spatial.placements.push({ id: key('security_detector'), label: 'Security detector', preset_id: 'detector-90', position_m: transform([14.49, 0, -228]), yaw_deg: yaw, entry_area_id: area.id, basis: 'fictional_scenario' })
   for (const node of baseline.nodes) spatial.navigation.nodes.push({ id: key(node.id), role: node.role, entry_area_id: area.id, ...(node.attachment ? { attachment: { placement_id: key(node.attachment.placementId), offset_m: node.attachment.offset } } : { position_m: transform(node.position) }) })
   for (const edge of baseline.edges) spatial.navigation.edges.push({ id: key(edge.id), from_node_id: key(edge.from), to_node_id: key(edge.to), directed: true })
   const categories = plan.event.ticket_categories.filter(category => category.entry_area_id === area.id)
   const queueId = `queue_${area.id}`
   const insideId = `inside_${area.id}`
   const helpId = `help_${area.id}`
-  layout.zones.push({ id: queueId, name: `${area.label} queue`, type: 'queue', area_m2: 120, barricade_m: 18 * 2.3, switchback_rows: 5 }, { id: insideId, name: `${area.label} admitted area`, type: 'holding', area_m2: 1200 })
-  layout.gates.push({ id: gateId, name: area.label, queue_zone: queueId, leads_to: [insideId], opens: '17:30', closes: '21:00', frontage_m: 10, max_lanes: 5, serves_categories: categories.map(category => category.id), lanes: [{ group: 'general', count: 4, steps: ['eticket_scan', 'wristband_fit', 'security_inspection'], equipment_per_lane: { handheld_scanner: 1, metal_detector_wand: 1 } }] })
+  layout.zones.push({ id: queueId, name: `${area.label} queue`, type: 'queue', area_m2: 120, barricade_m: 15 * 2.3, switchback_rows: 4 }, { id: insideId, name: `${area.label} admitted area`, type: 'holding', area_m2: 1200 })
+  layout.gates.push({ id: gateId, name: area.label, queue_zone: queueId, leads_to: [insideId], opens: '17:30', closes: '21:00', frontage_m: 10, max_lanes: 4, serves_categories: categories.map(category => category.id), lanes: [{ group: 'general', count: 4, steps: ['eticket_scan', 'wristband_fit', 'security_inspection'], equipment_per_lane: { handheld_scanner: 1, metal_detector_wand: 1 } }] })
   layout.service_points.push({ id: helpId, name: `${area.label} ticket help`, zone: insideId, queue_zone: queueId, opens: '13:00', closes: '21:00', max_lanes: 1, lanes: [{ group: 'desk', count: 1, serves: 'visitors_with_exception', steps: ['help_desk_resolution'], equipment_per_lane: {} }] })
   layout.walking_paths.push({ from: queueId, to: gateId, distance_m: 141 })
-  for (const category of categories) spatial.cohort_routes.push({ category_id: category.id, arrival_node_id: key('arrival'), destination_node_id: key('destination') })
+  for (const category of categories) spatial.cohort_routes.push({ category_id: category.id, arrival_node_id: key('arrival'), destination_node_id: key('destination'), lane_checkpoint_ids: laneScanIds.map(key) })
   for (const [kind, count, placement, steps, point, offsetZ] of [
-    ['scan', 4, 'scan_tent', ['eticket_scan', 'wristband_fit'], gateId, -3.5],
-    ['security', 4, 'security_tent', ['security_inspection'], gateId, -3.5],
+    ['scan', 4, 'scan_tent', ['eticket_scan', 'wristband_fit'], gateId, 0],
+    ['security', 4, 'security_tent', ['security_inspection'], gateId, 0],
     ['help', 1, 'help_tent', ['help_desk_resolution'], helpId, -0.5]
   ]) {
     const roleId = `${area.id}_${kind}`
     roles.push({ id: roleId, name: `${area.label} ${kind}`, basis: 'estimate', processing_role: true, count, gender: { female: Math.floor(count / 2), male: count - Math.floor(count / 2) }, shift: 'admission_shift', can_do: steps, rate_idr_per_shift: kind === 'security' ? 400000 : 350000, pool_limit_total: count * 2, assignment: [{ point, lane_group: kind === 'help' ? 'desk' : 'general', per_lane: 1, count }] })
-    for (let index = 0; index < count; index++) spatial.operators.push({ id: `${roleId}_${index + 1}`, label: `${kind === 'security' ? 'Security' : kind === 'help' ? 'Help agent' : 'Scan operator'} ${index + 1}`, role_id: roleId, point_id: point, entry_area_id: area.id, attachment: { placement_id: key(placement), offset_m: [count === 1 ? 0.7 : -2.49 + index * 1.66, 0, offsetZ] } })
+    for (let index = 0; index < count; index++) spatial.operators.push({ id: `${roleId}_${index + 1}`, label: `${kind === 'security' ? 'Security' : kind === 'help' ? 'Help agent' : 'Scan operator'} ${index + 1}`, role_id: roleId, point_id: point, entry_area_id: area.id, attachment: { placement_id: key(placement), offset_m: [count === 1 ? 0.7 : -2.49 + index * 1.66 + (kind === 'security' ? 0.8 : 0.65), 0, offsetZ] } })
     spatial.operational_bindings.push({ placement_id: key(placement), node_id: key(`${kind === 'scan' ? 'scan' : kind === 'security' ? 'security' : 'help'}_checkpoint`), point_id: point, lane_group: kind === 'help' ? 'desk' : 'general', queue_zone_id: queueId })
+  }
+}
+for (const area of spatial.entry_areas) {
+  const key = id => area.id === 'plaza_utara' ? id : `${area.id}_${id}`
+  for (let lane = 0; lane < 4; lane++) {
+    const prefix = lane === 1 ? '' : `lane_${lane + 1}_`
+    for (const kind of ['scan', 'security']) spatial.service_stations.push({ id: `${area.id}_${kind}_${lane + 1}_service`, node_id: key(`${prefix}${kind}_checkpoint`), operator_id: `${area.id}_${kind}_${lane + 1}`, point_id: area.gate_id, step_ids: kind === 'scan' ? ['eticket_scan', 'wristband_fit'] : ['security_inspection'] })
   }
 }
 plan.venue = { ...plan.venue, id: 'gbk-osm-local', name: 'Stadion Utama Gelora Bung Karno', layout }
@@ -87,5 +120,62 @@ plan.staff = { basis: 'estimate', meal_allowance_idr_per_person: 45000, shifts: 
 plan.constraints = { budget: { basis: 'estimate', staff_cap_idr: 30000000, equipment_cap_idr: 30000000 }, service_targets: { basis: 'policy', gate_wait: { max_minutes: 20, for_share_of_visitors_percent: 90 }, longest_acceptable_wait_minutes: 45, inside_before_main_act_percent: 95 }, safety: { basis: 'policy', max_density_persons_per_m2: { queue_zones: 2, inner_concourse: 1.5 }, queues_must_stay_inside_queue_zones: true, emergency_lane_width_m: 3 }, equipment: { basis: 'estimate', items: [{ id: 'handheld_scanner', name: 'Ticket scanner', available: 20, extra_rentable: 10, extra_cost_idr_per_unit: 150000, lead_time_days: 3, committed_cost_idr: 3000000 }, { id: 'metal_detector_wand', name: 'Metal detector wand', available: 20, extra_rentable: 10, extra_cost_idr_per_unit: 100000, lead_time_days: 3, committed_cost_idr: 2000000 }] }, timing: { basis: 'policy', doors_open_earliest: '17:00', last_entry_latest: '21:00', venue_slot_end: '23:30' } }
 plan.demand = { basis: 'estimate', arrival_windows_percent: Object.fromEntries(plan.event.ticket_categories.map(category => [category.id, windows])), group_size_share_percent: { '2': 100 } }
 plan.spatial_context = spatial
+const profiles = [
+  { id: 'early_fan', label: 'Early fan', group_size: 2, walk_speed_mps: 1.2, shares: [40, 40, 18, 2], spawn: 'arrival', offset_m: 0, behavior: 'Arrives early and keeps the assigned category queue.' },
+  { id: 'regular_attendee', label: 'Regular attendee', group_size: 2, walk_speed_mps: 1.2, shares: [5, 25, 50, 20], spawn: 'arrival_walk', offset_m: 6, behavior: 'Walks from the onsite approach to the assigned entrance.' },
+  { id: 'late_arrival', label: 'Late arrival', group_size: 2, walk_speed_mps: 1.25, shares: [0, 5, 45, 50], spawn: 'arrival_dropoff', offset_m: -6, behavior: 'Joins the assigned entrance later in the admission period.' },
+  { id: 'premium_package', label: 'Package holder', group_size: 2, walk_speed_mps: 1.1, shares: [5, 65, 28, 2], spawn: 'arrival_package', offset_m: 3, behavior: 'Uses the package category entry area and an earlier arrival profile.' },
+  { id: 'social_group', label: 'Social group', group_size: 4, walk_speed_mps: 1.0, shares: [10, 35, 45, 10], spawn: 'arrival_group', offset_m: -3, behavior: 'Arrives together and shares a slower group walking speed.' },
+].map(profile => ({ ...profile, arrival_windows_percent: Object.fromEntries(Object.keys(windows).map((key, index) => [key, profile.shares[index]])) }))
+const behavior = { schema_version: 'opsidio-behavior/0.1', basis: 'fictional_demo_assumptions', unit: 'category_x_behavior_cohort', profiles, cohorts: [], destination_scope: 'Post-security category handover at the assigned entrance. Internal routes to seats and standing sectors require venue review.', spawn_scope: 'Onsite approach points. Transport mode is descriptive and does not assert station or road coordinates.' }
+for (const area of spatial.entry_areas) {
+  const north = area.id === 'plaza_utara'
+  const key = id => north ? id : `${area.id}_${id}`
+  const arrival = spatial.navigation.nodes.find(node => node.id === key('arrival'))
+  const scan = spatial.placements.find(item => item.id === key('scan_tent'))
+  for (const profile of profiles.filter(item => item.spawn !== 'arrival')) {
+    const radians = scan.yaw_deg * Math.PI / 180
+    const position = [...arrival.position_m]
+    position[0] += Math.cos(radians) * profile.offset_m
+    position[2] -= Math.sin(radians) * profile.offset_m
+    spatial.navigation.nodes.push({ id: key(profile.spawn), role: 'arrival', entry_area_id: area.id, position_m: position, label: `${area.label} · ${profile.label} arrival` })
+    spatial.navigation.edges.push({ id: key(`${profile.spawn}_to_lanes`), from_node_id: key(profile.spawn), to_node_id: key('arrival'), directed: true })
+  }
+}
+for (const category of plan.event.ticket_categories) {
+  const area = spatial.entry_areas.find(item => item.id === category.entry_area_id)
+  const north = area.id === 'plaza_utara'
+  const key = id => north ? id : `${area.id}_${id}`
+  const destinationId = `destination_${category.id}`
+  const parent = spatial.navigation.nodes.find(node => node.id === key('destination'))
+  const sector = category.viewing_tier === 'festival' ? 0 : Number(category.viewing_tier.replace('cat', ''))
+  const lateralOffset = (sector - 4.5) * 0.65
+  const yaw = spatial.placements.find(item => item.id === key('scan_tent')).yaw_deg * Math.PI / 180
+  const handover = [parent.position_m[0] + Math.cos(yaw) * lateralOffset, 0, parent.position_m[2] - Math.sin(yaw) * lateralOffset]
+  spatial.navigation.nodes.push({ id: destinationId, role: 'destination', entry_area_id: area.id, position_m: handover, label: `${category.name} handover`, viewing_tier: category.viewing_tier, final_zone_route_status: 'pending_venue_review' })
+  spatial.navigation.edges.push({ id: `handover_${category.id}`, from_node_id: key('destination'), to_node_id: destinationId, directed: true })
+  spatial.cohort_routes.find(route => route.category_id === category.id).destination_node_id = destinationId
+  let mix
+  if (['ultimate_experience', 'my_universe'].includes(category.id)) mix = { premium_package: 95, social_group: 5 }
+  else if (category.viewing_tier === 'festival') mix = { early_fan: 55, regular_attendee: 30, late_arrival: 10, social_group: 5 }
+  else if (['cat1', 'cat2'].includes(category.viewing_tier)) mix = { early_fan: 10, regular_attendee: 65, late_arrival: 20, social_group: 5 }
+  else if (['cat3', 'cat4'].includes(category.viewing_tier)) mix = { early_fan: 20, regular_attendee: 55, late_arrival: 20, social_group: 5 }
+  else mix = { early_fan: 35, regular_attendee: 45, late_arrival: 15, social_group: 5 }
+  const allocation = Object.entries(mix).map(([segment, share]) => ({ segment, share, count: Math.floor(category.sold * share / 100), remainder: category.sold * share / 100 % 1 }))
+  const remaining = category.sold - allocation.reduce((sum, item) => sum + item.count, 0)
+  allocation.sort((a, b) => b.remainder - a.remainder || a.segment.localeCompare(b.segment)).slice(0, remaining).forEach(item => item.count++)
+  for (const item of allocation) {
+    const profile = profiles.find(profile => profile.id === item.segment)
+    behavior.cohorts.push({ id: `${category.id}__${item.segment}`, category_id: category.id, segment_id: item.segment, share_percent: item.share, expected_attendees_estimate: item.count, arrival_node_id: key(profile.spawn), destination_node_id: destinationId })
+  }
+  plan.demand.arrival_windows_percent[category.id] = Object.fromEntries(Object.keys(windows).map(window => [window, allocation.reduce((sum, item) => sum + item.share * profiles.find(profile => profile.id === item.segment).arrival_windows_percent[window] / 100, 0)]))
+}
+const groupVisitors = behavior.cohorts.filter(cohort => cohort.segment_id === 'social_group').reduce((sum, cohort) => sum + cohort.expected_attendees_estimate, 0)
+const groupShare = Math.round(groupVisitors / 70000 * 10000) / 100
+plan.demand.group_size_share_percent = { '2': 100 - groupShare, '4': groupShare }
+plan.behavior_context = behavior
+plan.meta.demo_assumptions.push('Local admission uses one FIFO server per bound operator, fixed typical step times, and the native gate opening/closing clock. Unprocessed people remain queued when processing closes. Only the queue front is rendered.')
+plan.meta.demo_assumptions.push('Arriving groups are assigned round-robin across the four open authored lanes. Queue waiting and shortest-queue selection require service-state simulation.')
+plan.meta.demo_assumptions.push('Behavior profiles, category mixes and onsite spawn offsets are cohort-level fictional inputs. Category handovers are spaced around the admitted entry-area endpoint until internal sector routes are reviewed.')
 writeFileSync(new URL('contracts/examples/coldplay-gbk-demo-plan.json', root), JSON.stringify(plan, null, 2) + '\n')
 console.log(`Wrote V1 with ${plan.event.ticket_categories.length} categories, ${spatial.entry_areas.length} entry areas, ${spatial.operators.length} operators and ${spatial.placements.length} equipment placements. Catalogue has ${catalogue.length} presets.`)

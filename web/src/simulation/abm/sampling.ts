@@ -1,5 +1,10 @@
-import type { AgentJourney } from '../runtime-types'
+import type { AgentJourney, ServiceStop } from '../runtime-types'
 
+type PreparedQueue = {
+  arrivals: Float64Array; starts: Float64Array; ends: Float64Array; indices: Uint32Array
+  sampledAt: number; started: number
+}
+type PreparedMotions = { starts: Float64Array; ends: Float64Array; indices: Uint32Array; maxDuration: number }
 type PreparedRoute = { coordinates: Float64Array; cumulativeM: Float64Array; totalM: number }
 export type JourneySampler = {
   routes: PreparedRoute[]
@@ -10,10 +15,14 @@ export type JourneySampler = {
   orderedArrivals: Float64Array
   maxWalkSeconds: number
   count: number
+  stops?: readonly ServiceStop[][]
+  queues?: Map<string, PreparedQueue>
+  motions?: PreparedMotions
+  completed?: Float64Array
 }
 export type PositionTarget = { [index: number]: number; length: number }
-export type JourneyPhase = 'not-arrived' | 'walking' | 'arrived'
-export type CrowdSampleStats = { visibleCount: number; walkingCount: number }
+export type JourneyPhase = 'not-arrived' | 'walking' | 'waiting' | 'processing' | 'arrived'
+export type CrowdSampleStats = { visibleCount: number; walkingCount: number; waitingCount?: number; processingCount?: number; completedCount?: number }
 
 /** Compile once per result. Shared route geometry is stored only once. */
 export function prepareJourneySampler(journeys: readonly AgentJourney[]): JourneySampler {
@@ -66,7 +75,44 @@ export function prepareJourneySampler(journeys: readonly AgentJourney[]): Journe
   }
   sampler.arrivalOrder.sort((a, b) => sampler.arrivalSeconds[a] - sampler.arrivalSeconds[b] || a - b)
   for (let index = 0; index < count; index++) sampler.orderedArrivals[index] = sampler.arrivalSeconds[sampler.arrivalOrder[index]]
+  if (journeys.some(journey => journey.serviceStops?.length)) prepareAdmission(sampler, journeys)
   return sampler
+}
+
+function prepareAdmission(sampler: JourneySampler, journeys: readonly AgentJourney[]) {
+  const grouped = new Map<string, { stop: ServiceStop; index: number }[]>()
+  const motionStarts: number[] = [], motionEnds: number[] = [], motionIndices: number[] = [], completed: number[] = []
+  sampler.stops = journeys.map(journey => journey.serviceStops ?? [])
+  let maxDuration = 0
+  for (const [index, journey] of journeys.entries()) {
+    const route = sampler.routes[sampler.routeIndices[index]]
+    const speed = journey.walkSeconds > 0 ? route.totalM / journey.walkSeconds : 1
+    let time = journey.onsiteArrivalSeconds, distance = 0
+    function movement(end: number) {
+      if (end > time) {
+        motionStarts.push(time); motionEnds.push(end); motionIndices.push(index)
+        maxDuration = Math.max(maxDuration, end - time)
+      }
+    }
+    for (const stop of journey.serviceStops ?? []) {
+      movement(stop.arrivalSeconds)
+      const entries = grouped.get(stop.stationId) ?? []
+      entries.push({ stop, index }); grouped.set(stop.stationId, entries)
+      time = stop.endSeconds ?? Infinity
+      distance = stop.distanceM
+    }
+    if (Number.isFinite(time)) movement(time + Math.max(0, route.totalM - distance) / speed)
+    const completion = journey.completionSeconds ?? (journey.serviceStops?.length ? Infinity : journey.onsiteArrivalSeconds + journey.walkSeconds)
+    if (Number.isFinite(completion)) completed.push(completion)
+  }
+  sampler.queues = new Map([...grouped].map(([id, entries]) => {
+    entries.sort((a, b) => a.stop.queueIndex - b.stop.queueIndex)
+    return [id, { arrivals: Float64Array.from(entries, item => item.stop.arrivalSeconds), starts: Float64Array.from(entries, item => item.stop.startSeconds ?? Infinity), ends: Float64Array.from(entries, item => item.stop.endSeconds ?? Infinity), indices: Uint32Array.from(entries, item => item.index), sampledAt: NaN, started: 0 }]
+  }))
+  const order = Uint32Array.from(motionStarts, (_, index) => index)
+  order.sort((a, b) => motionStarts[a] - motionStarts[b] || motionIndices[a] - motionIndices[b])
+  sampler.motions = { starts: Float64Array.from(order, index => motionStarts[index]), ends: Float64Array.from(order, index => motionEnds[index]), indices: Uint32Array.from(order, index => motionIndices[index]), maxDuration }
+  sampler.completed = Float64Array.from(completed.sort((a, b) => a - b))
 }
 
 function upperBound(values: Float64Array, value: number): number {
@@ -89,6 +135,28 @@ function writePosition(sampler: JourneySampler, index: number, seconds: number, 
   if (elapsed < 0) { phase = 'not-arrived'; distance = 0 }
   else if (elapsed >= duration) { phase = 'arrived'; distance = route.totalM }
   else { phase = 'walking'; distance = route.totalM * elapsed / duration }
+  if (elapsed >= 0 && sampler.queues && sampler.stops) {
+    let delay = 0
+    phase = 'walking'
+    distance = route.totalM * elapsed / duration
+    for (const stop of sampler.stops[index]) {
+      if (seconds < stop.arrivalSeconds) break
+      if (stop.startSeconds === null || seconds < stop.startSeconds) {
+        const queue = sampler.queues.get(stop.stationId)!
+        if (queue.sampledAt !== seconds) { queue.started = upperBound(queue.starts, seconds); queue.sampledAt = seconds }
+        const rank = Math.max(0, stop.queueIndex - queue.started)
+        phase = 'waiting'; distance = Math.max(0, stop.distanceM - (rank + 1) * 0.8)
+        break
+      }
+      if (stop.endSeconds !== null && seconds < stop.endSeconds) {
+        phase = 'processing'; distance = stop.distanceM
+        break
+      }
+      delay += stop.endSeconds! - stop.arrivalSeconds
+      distance = route.totalM * Math.max(0, elapsed - delay) / duration
+    }
+    if (phase === 'walking' && distance >= route.totalM) phase = 'arrived'
+  }
   const last = route.cumulativeM.length - 1
   if (distance >= route.totalM || last === 0) {
     output[offset] = route.coordinates[last * 3]
@@ -118,6 +186,45 @@ export function sampleJourneyPosition(
   return writePosition(sampler, journeyIndex, seconds, output, offset)
 }
 
+function sampleAdmissionCrowd(sampler: JourneySampler, seconds: number, positions: Float32Array, indices: Uint32Array, stats: CrowdSampleStats): CrowdSampleStats {
+  const capacity = Math.min(Math.floor(positions.length / 3), indices.length)
+  let written = 0, waiting = 0, processing = 0, walking = 0
+  for (const queue of sampler.queues!.values()) {
+    const arrived = upperBound(queue.arrivals, seconds)
+    const started = upperBound(queue.starts, seconds)
+    queue.started = started; queue.sampledAt = seconds
+    waiting += Math.max(0, arrived - started)
+    for (let rank = started; rank < Math.min(arrived, started + 32) && written < capacity; rank++) {
+      indices[written] = queue.indices[rank]
+      writePosition(sampler, queue.indices[rank], seconds, positions, written * 3)
+      written++
+    }
+    if (started > 0 && queue.ends[started - 1] > seconds) {
+      processing++
+      if (written < capacity) {
+        indices[written] = queue.indices[started - 1]
+        writePosition(sampler, queue.indices[started - 1], seconds, positions, written * 3)
+        written++
+      }
+    }
+  }
+  const motions = sampler.motions!
+  const first = upperBound(motions.starts, seconds - motions.maxDuration), last = upperBound(motions.starts, seconds)
+  for (let order = first; order < last; order++) {
+    if (motions.ends[order] <= seconds) continue
+    walking++
+    if (written < capacity) {
+      indices[written] = motions.indices[order]
+      writePosition(sampler, motions.indices[order], seconds, positions, written * 3)
+      written++
+    }
+  }
+  stats.visibleCount = written; stats.walkingCount = walking
+  stats.waitingCount = waiting; stats.processingCount = processing
+  stats.completedCount = upperBound(sampler.completed!, seconds)
+  return stats
+}
+
 /**
  * Writes packed XYZ positions and original journey indices for walking people.
  * Uses a bounded, binary-searched arrival interval, not a full population scan.
@@ -129,6 +236,7 @@ export function sampleWalkingCrowd(
   stats: CrowdSampleStats = { visibleCount: 0, walkingCount: 0 },
 ): CrowdSampleStats {
   if (!Number.isFinite(seconds)) throw new RangeError('Sample time must be finite.')
+  if (sampler.queues) return sampleAdmissionCrowd(sampler, seconds, positions, journeyIndices, stats)
   const capacity = Math.min(Math.floor(positions.length / 3), journeyIndices.length)
   const first = upperBound(sampler.orderedArrivals, seconds - sampler.maxWalkSeconds)
   const last = upperBound(sampler.orderedArrivals, seconds)

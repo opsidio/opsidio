@@ -32,6 +32,26 @@ export type CohortDemand = {
   destinationNodeId: string
   windows: ArrivalWindow[]
   groupSize?: number
+  walkSpeedMps?: number
+  laneCheckpointIds?: string[]
+}
+
+export type ServiceStation = {
+  id: string
+  nodeId: string
+  operatorId: string
+  serviceSeconds: number
+  opensSeconds: number
+  closesSeconds: number
+}
+export type ServiceStop = {
+  stationId: string
+  operatorId: string
+  distanceM: number
+  arrivalSeconds: number
+  startSeconds: number | null
+  endSeconds: number | null
+  queueIndex: number
 }
 
 export type AbmConfig = {
@@ -42,6 +62,7 @@ export type AbmConfig = {
   nodes: NavigationNode[]
   edges: NavigationEdge[]
   cohorts: CohortDemand[]
+  serviceStations?: ServiceStation[]
 }
 
 export type AgentJourney = {
@@ -53,6 +74,8 @@ export type AgentJourney = {
   routeNodeIds: string[]
   points: Point[]
   walkSeconds: number
+  serviceStops?: ServiceStop[]
+  completionSeconds?: number | null
 }
 
 export type ArrivalBucket = {

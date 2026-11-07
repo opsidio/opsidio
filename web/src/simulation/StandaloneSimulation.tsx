@@ -7,6 +7,7 @@ import { useAbmWorker } from './abm/useAbmWorker'
 import { compileSimulationPlan, projectNorthLayout } from './plan/compile'
 import { createConfigHash } from './abm/worker-protocol'
 import OptimizationPanel from './des/OptimizationPanel'
+import type { CrowdSampleStats } from './abm/sampling'
 import type { Point, SceneView, VenuePack } from './types'
 
 const GbkCanvas = lazy(() => import('../scene/GbkCanvas'))
@@ -60,7 +61,7 @@ function SimulationWorkspace({ source, onLoad }: { source: unknown; onLoad: (pla
   const [importError, setImportError] = useState<string | null>(null)
   const clockRef = useRef(7 * 3600)
   const [clockSeconds, setClockSeconds] = useState(clockRef.current)
-  const [crowdStats, setCrowdStats] = useState({ visibleCount: 0, walkingCount: 0 })
+  const [crowdStats, setCrowdStats] = useState<CrowdSampleStats>({ visibleCount: 0, walkingCount: 0 })
   const config = useMemo(() => editor.runnableGraph && !resolved.error ? { ...compiled.config, seed } : null, [compiled, seed, editor.runnableGraph, resolved.error])
   const abm = useAbmWorker(config, editor.layout.revision)
   const total = compiled.config.cohorts.reduce((sum, cohort) => sum + cohort.count, 0)
@@ -76,7 +77,7 @@ function SimulationWorkspace({ source, onLoad }: { source: unknown; onLoad: (pla
     if (area) { setFocusPosition(area.position); setView('entry'); setAutoRotate(false) }
   }
   function runLocal() {
-    clockRef.current = 7 * 3600
+    clockRef.current = 8 * 3600 + 40 * 60
     setClockSeconds(clockRef.current)
     setPreviewOpen(true)
     setOptimizeOpen(false)
@@ -106,7 +107,7 @@ function SimulationWorkspace({ source, onLoad }: { source: unknown; onLoad: (pla
         onCameraInteraction={() => setAutoRotate(false)} debug={debug} showGuides={guides}
         selectedId={guides ? editor.selectedId : null} onSelect={guides ? editor.onSelect : () => {}} onMove={guides ? editor.onMove : () => {}}>
         <PlaybackClock clockRef={clockRef} playing={playing && abm.result !== null} rate={180} duration={compiled.config.horizonSeconds} onTick={setClockSeconds} onEnd={() => setPlaying(false)} />
-        {abm.result && <CrowdPreview result={abm.result} clockRef={clockRef} maxVisible={5000} onSampleStats={setCrowdStats} />}
+        {abm.result && <CrowdPreview result={abm.result} clockRef={clockRef} maxVisible={5000} visualSpreadM={0.1} onSampleStats={setCrowdStats} />}
         {showOperations && <OperationsLayer operators={compiled.operators} placements={compiled.placements} catalogue={catalogue} entryAreas={compiled.entryAreas} showLabels={showLabels} />}
       </GbkCanvas>
     </Suspense>
@@ -130,6 +131,7 @@ function SimulationWorkspace({ source, onLoad }: { source: unknown; onLoad: (pla
     {previewOpen && <section className="simulation-overlay" aria-label="Local V1 simulation">
       <header><strong>V1 · local simulation</strong><button onClick={() => setPreviewOpen(false)} aria-label="Close simulation">×</button></header>
       <p>{total.toLocaleString()} planned arrivals · {compiled.entryAreas.length} entry areas · {compiled.operators.length} staff</p>
+      <details><summary>{compiled.config.cohorts.length} category × behavior cohorts</summary>{compiled.segments.map(segment => <p key={segment.id}>{segment.label} · {segment.attendees.toLocaleString()}</p>)}</details>
       <label>Seed <input type="number" value={seed} onChange={event => { const value = Number(event.target.value); if (Number.isSafeInteger(value)) setSeed(value) }} /></label>
       {abm.error && <p role="alert">{abm.error}</p>}
       {resolved.error && <p role="alert">{resolved.error}</p>}
@@ -138,16 +140,16 @@ function SimulationWorkspace({ source, onLoad }: { source: unknown; onLoad: (pla
         <p><strong>{abm.result.generatedCount.toLocaleString()} generated from JSON</strong> · revision {editor.layout.revision}</p>
         <div className="simulation-actions"><button onClick={() => setPlaying(!playing)}>{playing ? 'Pause walking' : 'Play walking'}</button><strong>{clockLabel} WIB</strong></div>
         <input aria-label="Simulation time" type="range" min="0" max={compiled.config.horizonSeconds} step="30" value={clockSeconds} onChange={event => { const value = Number(event.target.value); clockRef.current = value; setClockSeconds(value); setPlaying(false) }} />
-        <p>{crowdStats.walkingCount} walking now · {crowdStats.visibleCount} rendered</p>
+        <p>{crowdStats.walkingCount} walking · {crowdStats.waitingCount ?? 0} queued · {crowdStats.processingCount ?? 0} processing</p><p>{crowdStats.completedCount ?? 0} admitted · {crowdStats.visibleCount} rendered</p>
         {abm.result.issues.map(issue => <p role="alert" key={issue}>{issue}</p>)}
       </>}
       <div className="simulation-actions"><button onClick={exportPlan} disabled={!!resolved.error}>Export V1 JSON</button><button onClick={() => { setPlaying(false); abm.cancel() }}>Clear preview</button></div>
       <label>Load plan JSON<input aria-label="Load simulation plan JSON" type="file" accept=".json,application/json" onChange={importPlan} /></label>
       {importError && <p role="alert">{importError}</p>}
-      <small>Fictional operations and arrival assumptions. Walking playback runs locally. Optimize sends the current plan to Doni’s API.</small>
+      <small>Fictional operations and arrival assumptions. Local queues use fixed typical process times. The front 32 people per queue are rendered. Optimize sends the current plan to Doni’s API.</small>
     </section>}
     <div className="simulation-overlay" hidden={!optimizeOpen}><header><strong>Optimize V1</strong><button aria-label="Close optimization" onClick={() => setOptimizeOpen(false)}>×</button></header><OptimizationPanel plan={resolved.plan} baseSeed={seed} disabled={!config} onLoad={onLoad} /></div>
-    <div className="operations-legend"><span style={{ color: '#2867d5' }}>● Scan operators</span><span style={{ color: '#cd493d' }}>● Security</span><span style={{ color: '#188565' }}>● Help</span><span>━ Queue barriers</span><small>Fictional V1 layout</small></div>
+    <div className="operations-legend"><span style={{ color: '#2867d5' }}>● Scan operators</span><span style={{ color: '#cd493d' }}>● Security</span><span style={{ color: '#188565' }}>● Help</span><span>● Orange · queued</span><span>● Teal · processing</span><span>━ Queue barriers</span><small>Fictional V1 layout</small></div>
     <span className="scene-navigation">Drag to {panMode || ['map', 'isometric', 'layout'].includes(view) ? 'pan' : 'orbit'} · scroll to zoom</span>
     <a className="scene-credit" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors · Illustrative structures and event layout</a>
   </main>

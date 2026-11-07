@@ -1,6 +1,6 @@
 # Deterministic ABM journey preview
 
-This lane generates fictional demand and illustrative walking on an **authored directed graph**. It does not validate real walkability or model queues, service, collisions, physical crowd pressure, capacity, admission, or safety. Doni's DES remains authoritative for operational results.
+This worker generates fictional demand and movement on an authored directed graph. Optional bound operators add fixed-time FIFO scan/security processing. Local V1 reports waiting, processing and admitted counts from that model. Doni's API supplies optimization and its own DES verification. Real walkability, collision avoidance and physical crowd pressure still require a different level of venue validation and modeling.
 
 ## Inputs and semantics
 
@@ -70,7 +70,7 @@ import { CrowdPreview } from './abm/CrowdPreview'
 
 `clockRef` is an optional `{ current: number }` of simulation seconds. The parent can advance it in `useFrame` using `delta * playbackRate`, and update a timeline label less frequently. Pass `timeSeconds={seconds}` instead for paused/manual scrubbing. When both are supplied, the ref wins. Keep the clock in the parent's timeline layer; the preview does not advance time itself.
 
-`CrowdPreview` renders instanced low-poly bodies and heads for **walking journeys only**, excluding people before arrival or after reaching their destination. `onSampleStats` receives `{visibleCount, walkingCount}` at most four times per second when counts change, so the UI can label a capped display accurately (for example, “5,000 displayed / 8,200 walking”). These are walking counts, not queue counts or venue occupancy. No per-frame React state or geometry allocations are used. Optional `color` sets clothing color; `visualSpreadM` defaults to 0.65 metres of decorative group separation and can be set to zero for exact route centre-lines. This offset is illustrative and must not be interpreted as measured spacing or crowd density.
+`CrowdPreview` renders instanced bodies and heads for walking, waiting and processing states. `onSampleStats` reports visible, walking, waiting, processing and completed counts at most four times per second. Queue rendering shows the first 32 people per operator while counts include the full queue. Orange identifies waiting and teal identifies processing. The standalone scene uses 0.1 m of decorative spread to keep bodies inside the authored lanes. Display spacing is illustrative. The clock stays in the parent timeline layer.
 
 ## Verification
 
@@ -79,3 +79,7 @@ node --experimental-strip-types --test web/src/simulation/abm/abm.test.mjs
 ```
 
 Tests cover repeat seeds, group residuals, 70,000 exact cohort counts, shortest paths and ties, invalid windows, duplicate/malformed graphs, unreachable routes, bucket conservation, worker identity, position interpolation, and capped crowd sampling.
+
+## Optional operator processing
+
+`AbmConfig.serviceStations` binds checkpoint nodes to single operators with a fixed typical process duration and opening/closing seconds. `CohortDemand.laneCheckpointIds` lists the authored open lane choices. Whole arriving groups are assigned round-robin, preserving seeded onsite arrival times when lane options change. Each person then queues FIFO and is processed individually. Journey service stops and completion times drive waiting, processing and continuing movement states. The renderer reports full counts and draws up to the first 32 people per queue. Help-desk exception demand remains pending.
