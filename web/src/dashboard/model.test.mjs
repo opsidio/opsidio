@@ -34,6 +34,12 @@ const {
   arrivalMessage,
   evenArrivalProfile,
   replaceArrivalProfiles,
+  normalizeTime,
+  displayTime,
+  changeStaffAssignment,
+  moveStaffAssignment,
+  addStaffAssignment,
+  removeStaffAssignment,
 } = await import(
   `data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`
 );
@@ -237,4 +243,93 @@ test("arrival updates affect only explicitly selected categories and retain unex
       (c) => arrivalSummary(all.demand.arrival_windows_percent[c.id]).complete,
     ),
   );
+});
+
+test("friendly time input normalizes 12-hour, 24-hour and compact entries without accepting invalid times", () => {
+  for (const [input, expected] of [
+    ["5:30 pm", "17:30"],
+    ["9am", "09:00"],
+    ["12am", "00:00"],
+    ["12 pm", "12:00"],
+    ["1730", "17:30"],
+    ["930", "09:30"],
+    ["17.30", "17:30"],
+    ["9", "09:00"],
+    ["  5:30 PM  ", "17:30"],
+    ["", ""],
+  ])
+    assert.equal(normalizeTime(input), expected, input);
+  for (const input of [
+    "24:00",
+    "12:60",
+    "13 pm",
+    "0am",
+    "9:3",
+    "later",
+    "-1",
+    null,
+  ])
+    assert.equal(normalizeTime(input), null, String(input));
+  assert.equal(displayTime("17:30"), "5:30 PM");
+  assert.equal(displayTime("00:00"), "12:00 AM");
+});
+test("assignment editing preserves plan extensions and switches to an actual lane at the chosen point", () => {
+  const plan = copyDemo(),
+    original = structuredClone(plan),
+    role = plan.staff.roles[0];
+  role.assignment[0].custom_note = "Preserve this";
+  const help = plan.venue.layout.service_points[0];
+  const next = changeStaffAssignment(plan, role.id, 0, {
+    point: help.id,
+    count: 2,
+  });
+  assert.equal(next.staff.roles[0].assignment[0].point, help.id);
+  assert.equal(next.staff.roles[0].assignment[0].lane_group, "desk");
+  assert.equal(next.staff.roles[0].assignment[0].count, 2);
+  assert.equal(next.staff.roles[0].assignment[0].custom_note, "Preserve this");
+  assert.deepEqual(next.spatial_context, original.spatial_context);
+  assert.equal(
+    plan.staff.roles[0].assignment[0].point,
+    original.staff.roles[0].assignment[0].point,
+  );
+  assert.ok(validate(next).some((i) => i.message.includes("not qualified")));
+});
+test("adding, moving and removing assignments changes allocation without duplicating staff or costs", () => {
+  const plan = copyDemo(),
+    first = plan.staff.roles[0],
+    target = plan.staff.roles[3],
+    original = structuredClone(plan),
+    cost = totals(plan).total;
+  const added = addStaffAssignment(plan, first.id);
+  assert.equal(added.staff.roles[0].assignment.length, 2);
+  assert.equal(added.staff.roles[0].assignment[1].count, null);
+  const moved = moveStaffAssignment(added, first.id, 1, target.id);
+  assert.equal(moved.staff.roles[0].assignment.length, 1);
+  assert.equal(moved.staff.roles[3].assignment.length, 2);
+  const removed = removeStaffAssignment(moved, target.id, 1);
+  assert.deepEqual(removed, original);
+  assert.equal(totals(moved).total, cost);
+  assert.deepEqual(plan, original);
+});
+test("assignment validation rejects fractional people, missing lane groups, over-allocation and uncovered shifts", () => {
+  let plan = copyDemo(),
+    id = plan.staff.roles[0].id;
+  plan = changeStaffAssignment(plan, id, 0, {
+    count: 1.5,
+    lane_group: "missing",
+  });
+  assert.ok(
+    validate(plan).some((i) => i.path === "staff.roles.0.assignment.0.count"),
+  );
+  assert.ok(
+    validate(plan).some(
+      (i) => i.path === "staff.roles.0.assignment.0.lane_group",
+    ),
+  );
+  plan = changeStaffAssignment(copyDemo(), id, 0, { count: 9 });
+  assert.ok(
+    validate(plan).some((i) => i.message.includes("assignments exceed count")),
+  );
+  plan.staff.shifts[0].start = "18:00";
+  assert.ok(validate(plan).some((i) => i.path === "staff.roles.0.shift"));
 });
