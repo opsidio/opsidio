@@ -1,0 +1,748 @@
+{
+  "id": "tennis_indoor_senayan",
+  "venue": {
+    "id": "tennis_indoor_senayan",
+    "name": "Tennis Indoor Senayan",
+    "official_name": "Tennis Indoor Stadium Gelora Bung Karno",
+    "operator": "Pusat Pengelolaan Komplek Gelora Bung Karno (PPKGBK)",
+    "address": "Jl. Pintu Satu Senayan No.B, RT.1/RW.3, Gelora, Kec. Tanah Abang, Kota Jakarta Pusat 10270",
+    "building": {
+      "basis": "public_source",
+      "sources": [
+        "gbk_venue",
+        "wikipedia_gbk",
+        "setkab_2018",
+        "detik_travel_2023"
+      ],
+      "type": "Indoor multi-use arena with air conditioning",
+      "opened_year": 1993,
+      "roof": "Retractable roof that no longer operates",
+      "renovation": "September 2016 to December 2017, for the 2018 Asian Games",
+      "past_uses": [
+        "2018 Asian Games volleyball",
+        "2018 Asian Para Games sitting volleyball",
+        "Concerts, exhibitions, and corporate events"
+      ],
+      "facilities": [
+        "Air conditioning",
+        "Toilets",
+        "Prayer room (musala)",
+        "Changing rooms",
+        "Digital ticketing system",
+        "CCTV with crowd-management features",
+        "68,000 W lighting"
+      ],
+      "capacity_reports": [
+        {
+          "figure": "3300 tribune seats",
+          "source": "gbk_venue"
+        },
+        {
+          "figure": "3954 seats after the 2016–2017 renovation",
+          "source": "setkab_2018"
+        },
+        {
+          "figure": "3750 capacity",
+          "source": "wikipedia_gbk"
+        },
+        {
+          "figure": "5200 tribune seats",
+          "source": "detik_travel_2023"
+        }
+      ],
+      "capacity_note": "The sources disagree. Use the venue's current seat map for each layout."
+    },
+    "venue_rules": {
+      "basis": "public_source",
+      "sources": [
+        "gbk_terms"
+      ],
+      "rules": [
+        "The renter brings a medical team to the event.",
+        "No smoking in any venue area.",
+        "No outside food in the arena.",
+        "Fireworks need approval from the venue and the police.",
+        "Drones need a NOTAM and a certified operator.",
+        "Use beyond the booked time slot costs an extra 10% of the rate."
+      ]
+    },
+    "access": {
+      "basis": "public_source",
+      "sources": [
+        "aia_guide_2025"
+      ],
+      "drop_off": "In front of the Tennis Indoor building",
+      "complex_gates_recommended": [
+        "Gate 10 (TVRI)",
+        "Gate 2 (Fairmont)",
+        "Gate 5 (FX Sudirman)",
+        "Gate 7 (Istora)"
+      ],
+      "transit": [
+        {
+          "mode": "MRT",
+          "stop": "Istora Mandiri",
+          "walk_minutes_min": 10,
+          "walk_minutes_max": 15,
+          "route": "Enter the complex through Gate 7."
+        },
+        {
+          "mode": "TransJakarta corridor 1 (Blok M – Kota)",
+          "stop": "Senayan Bank DKI",
+          "walk_minutes_min": 10,
+          "walk_minutes_max": 10
+        },
+        {
+          "mode": "TransJakarta corridor 9 (Pinang Ranti – Pluit)",
+          "stop": "Gerbang Pemuda",
+          "walk_minutes_min": 10,
+          "walk_minutes_max": 15
+        },
+        {
+          "mode": "KRL",
+          "stop": "Palmerah",
+          "last_mile": "Ride-hailing or taxi"
+        },
+        {
+          "mode": "KRL",
+          "stop": "Sudirman",
+          "last_mile": "MRT or TransJakarta"
+        }
+      ],
+      "parking": [
+        {
+          "name": "Tennis Indoor parking",
+          "use": "VIP and guests"
+        },
+        {
+          "name": "Pintu Kuning",
+          "use": "General"
+        },
+        {
+          "name": "Masjid Al-Bina",
+          "use": "General"
+        },
+        {
+          "name": "Basket Hall",
+          "use": "General"
+        },
+        {
+          "name": "Lapangan ABC",
+          "use": "General"
+        },
+        {
+          "name": "Lapangan Baseball",
+          "use": "General"
+        }
+      ]
+    },
+    "neighbors": {
+      "basis": "public_source",
+      "sources": [
+        "wikipedia_gbk",
+        "aia_guide_2025"
+      ],
+      "venues_in_complex": [
+        "Indonesia Arena",
+        "Istora Senayan",
+        "Basket Hall",
+        "Gelora Bung Karno Main Stadium",
+        "Madya Stadium",
+        "Tennis Outdoor (Center Court)"
+      ],
+      "malls_nearby": [
+        "Plaza Senayan",
+        "Senayan City",
+        "FX Sudirman"
+      ]
+    },
+    "layout": {
+      "basis": "estimate",
+      "verify_with": "The venue's technical drawing and a site walk on D-7",
+      "pattern": "Each entrance has its own security line. The floor entrance and the tribune access are separate, as on a past event map at this venue.",
+      "pattern_source": "aia_guide_2025",
+      "stage": "At one short end of the hall. The tribune behind the stage is closed.",
+      "seating": "Side tribunes on both long sides and an end tribune facing the stage.",
+      "zones": [
+        {
+          "id": "zone_drop_off",
+          "name": "Drop-off lane in front of the building",
+          "type": "drop_off",
+          "length_m": 60,
+          "covered_percent": 0
+        },
+        {
+          "id": "zone_forecourt",
+          "name": "Front forecourt",
+          "type": "holding",
+          "area_m2": 2600,
+          "covered_percent": 0
+        },
+        {
+          "id": "zone_redemption_tent",
+          "name": "Redemption tent (20 x 10 m)",
+          "type": "service",
+          "area_m2": 200,
+          "covered_percent": 100
+        },
+        {
+          "id": "zone_redemption_queue",
+          "name": "Queue lines in front of the redemption tent",
+          "type": "queue",
+          "area_m2": 400,
+          "covered_percent": 0,
+          "barricade_m": 80,
+          "switchback_rows": 4
+        },
+        {
+          "id": "zone_locker",
+          "name": "Locker tent",
+          "type": "service",
+          "area_m2": 80,
+          "covered_percent": 100
+        },
+        {
+          "id": "zone_merch",
+          "name": "Merchandise booth and its queue",
+          "type": "service",
+          "area_m2": 150,
+          "covered_percent": 30,
+          "risk": "The merchandise queue can block the redemption queue. Keep at least 5 m between them."
+        },
+        {
+          "id": "zone_floor_queue",
+          "name": "Queue pen for the floor entrance",
+          "type": "queue",
+          "area_m2": 540,
+          "covered_percent": 0,
+          "barricade_m": 240,
+          "switchback_rows": 8
+        },
+        {
+          "id": "zone_tribune_queue",
+          "name": "Queue pen for the tribune entrance",
+          "type": "queue",
+          "area_m2": 300,
+          "covered_percent": 50,
+          "barricade_m": 120,
+          "switchback_rows": 6
+        },
+        {
+          "id": "zone_priority_queue",
+          "name": "Queue for the priority entrance under the lobby canopy",
+          "type": "queue",
+          "area_m2": 64,
+          "covered_percent": 100,
+          "barricade_m": 20,
+          "switchback_rows": 2
+        },
+        {
+          "id": "zone_inner_concourse",
+          "name": "Concourse inside the building, after the gates",
+          "type": "holding",
+          "area_m2": 900,
+          "covered_percent": 100
+        },
+        {
+          "id": "zone_festival_a",
+          "name": "Front standing floor",
+          "type": "standing",
+          "area_m2": 380
+        },
+        {
+          "id": "zone_festival_b",
+          "name": "Rear standing floor",
+          "type": "standing",
+          "area_m2": 470
+        },
+        {
+          "id": "zone_vip_floor_block",
+          "name": "VIP chairs on the floor",
+          "type": "seating",
+          "seats": 330
+        },
+        {
+          "id": "zone_accessible_platform",
+          "name": "Wheelchair platform behind Festival B",
+          "type": "seating",
+          "area_m2": 30,
+          "wheelchair_places": 10
+        }
+      ],
+      "service_points": [
+        {
+          "id": "redemption_tent",
+          "name": "Wristband redemption tent",
+          "zone": "zone_redemption_tent",
+          "queue_zone": "zone_redemption_queue",
+          "opens": "13:30",
+          "closes": "20:30",
+          "max_lanes": 14,
+          "lanes": [
+            {
+              "group": "general",
+              "count": 10,
+              "serves_categories": [
+                "cat1",
+                "cat2",
+                "cat3",
+                "festival_a",
+                "festival_b"
+              ],
+              "steps": [
+                "eticket_scan",
+                "ktp_name_match",
+                "wristband_fit"
+              ],
+              "equipment_per_lane": {
+                "handheld_scanner": 1
+              }
+            },
+            {
+              "group": "priority",
+              "count": 1,
+              "serves_categories": [
+                "vip_seated",
+                "guest"
+              ],
+              "also_serves": "accessible_visitors",
+              "steps": [
+                "eticket_scan",
+                "ktp_name_match",
+                "wristband_fit"
+              ],
+              "equipment_per_lane": {
+                "handheld_scanner": 1
+              }
+            }
+          ]
+        },
+        {
+          "id": "help_desk",
+          "name": "Help desk inside the redemption tent",
+          "zone": "zone_redemption_tent",
+          "queue_zone": "zone_redemption_tent",
+          "opens": "13:30",
+          "closes": "21:00",
+          "max_lanes": 3,
+          "lanes": [
+            {
+              "group": "desk",
+              "count": 2,
+              "serves": "visitors_with_exception",
+              "steps": [
+                "help_desk_resolution"
+              ],
+              "equipment_per_lane": {
+                "handheld_scanner": 1
+              }
+            }
+          ]
+        },
+        {
+          "id": "locker_point",
+          "name": "Locker tent",
+          "zone": "zone_locker",
+          "queue_zone": "zone_forecourt",
+          "opens": "13:30",
+          "closes": "23:00",
+          "max_lanes": 4,
+          "lanes": [
+            {
+              "group": "counter",
+              "count": 3,
+              "serves": "visitors_using_locker",
+              "steps": [
+                "locker_dropoff"
+              ],
+              "equipment_per_lane": {}
+            }
+          ]
+        }
+      ],
+      "gates": [
+        {
+          "id": "gate_floor",
+          "name": "Floor entrance",
+          "queue_zone": "zone_floor_queue",
+          "leads_to": [
+            "zone_festival_a",
+            "zone_festival_b"
+          ],
+          "opens": "17:30",
+          "closes": "21:00",
+          "frontage_m": 12,
+          "max_lanes": 10,
+          "serves_categories": [
+            "festival_a",
+            "festival_b"
+          ],
+          "lanes": [
+            {
+              "group": "female",
+              "count": 4,
+              "visitor_gender": "female",
+              "steps": [
+                "bag_check",
+                "body_search",
+                "wristband_check"
+              ],
+              "equipment_per_lane": {
+                "bag_check_table": 1,
+                "metal_detector_wand": 1,
+                "handheld_scanner": 1
+              }
+            },
+            {
+              "group": "male",
+              "count": 4,
+              "visitor_gender": "male",
+              "steps": [
+                "bag_check",
+                "body_search",
+                "wristband_check"
+              ],
+              "equipment_per_lane": {
+                "bag_check_table": 1,
+                "metal_detector_wand": 1,
+                "handheld_scanner": 1
+              }
+            }
+          ]
+        },
+        {
+          "id": "gate_tribune",
+          "name": "Tribune entrance",
+          "queue_zone": "zone_tribune_queue",
+          "leads_to": [
+            "zone_inner_concourse"
+          ],
+          "opens": "17:30",
+          "closes": "21:00",
+          "frontage_m": 9,
+          "max_lanes": 7,
+          "serves_categories": [
+            "cat1",
+            "cat2",
+            "cat3"
+          ],
+          "lanes": [
+            {
+              "group": "female",
+              "count": 3,
+              "visitor_gender": "female",
+              "steps": [
+                "bag_check",
+                "body_search",
+                "wristband_check"
+              ],
+              "equipment_per_lane": {
+                "bag_check_table": 1,
+                "metal_detector_wand": 1,
+                "handheld_scanner": 1
+              }
+            },
+            {
+              "group": "male",
+              "count": 3,
+              "visitor_gender": "male",
+              "steps": [
+                "bag_check",
+                "body_search",
+                "wristband_check"
+              ],
+              "equipment_per_lane": {
+                "bag_check_table": 1,
+                "metal_detector_wand": 1,
+                "handheld_scanner": 1
+              }
+            }
+          ]
+        },
+        {
+          "id": "gate_priority",
+          "name": "Priority entrance for VIP, guests, and accessible visitors",
+          "queue_zone": "zone_priority_queue",
+          "leads_to": [
+            "zone_vip_floor_block",
+            "zone_accessible_platform",
+            "zone_inner_concourse"
+          ],
+          "opens": "17:15",
+          "closes": "21:00",
+          "frontage_m": 4,
+          "max_lanes": 3,
+          "serves_categories": [
+            "vip_seated",
+            "guest"
+          ],
+          "also_serves": "accessible_visitors",
+          "lanes": [
+            {
+              "group": "female",
+              "count": 1,
+              "visitor_gender": "female",
+              "steps": [
+                "assisted_entry",
+                "bag_check",
+                "body_search",
+                "wristband_check"
+              ],
+              "equipment_per_lane": {
+                "bag_check_table": 1,
+                "metal_detector_wand": 1,
+                "handheld_scanner": 1
+              }
+            },
+            {
+              "group": "male",
+              "count": 1,
+              "visitor_gender": "male",
+              "steps": [
+                "assisted_entry",
+                "bag_check",
+                "body_search",
+                "wristband_check"
+              ],
+              "equipment_per_lane": {
+                "bag_check_table": 1,
+                "metal_detector_wand": 1,
+                "handheld_scanner": 1
+              }
+            }
+          ]
+        }
+      ],
+      "walking_paths": [
+        {
+          "from": "zone_drop_off",
+          "to": "redemption_tent",
+          "distance_m": 60
+        },
+        {
+          "from": "redemption_tent",
+          "to": "locker_point",
+          "distance_m": 30
+        },
+        {
+          "from": "redemption_tent",
+          "to": "gate_floor",
+          "distance_m": 90
+        },
+        {
+          "from": "redemption_tent",
+          "to": "gate_tribune",
+          "distance_m": 130
+        },
+        {
+          "from": "redemption_tent",
+          "to": "gate_priority",
+          "distance_m": 70
+        },
+        {
+          "from": "locker_point",
+          "to": "gate_floor",
+          "distance_m": 70
+        },
+        {
+          "from": "locker_point",
+          "to": "gate_tribune",
+          "distance_m": 110
+        },
+        {
+          "from": "locker_point",
+          "to": "gate_priority",
+          "distance_m": 60
+        },
+        {
+          "from": "gate_floor",
+          "to": "gate_tribune",
+          "distance_m": 80
+        },
+        {
+          "from": "gate_floor",
+          "to": "gate_priority",
+          "distance_m": 60
+        },
+        {
+          "from": "gate_tribune",
+          "to": "gate_priority",
+          "distance_m": 70
+        }
+      ],
+      "visitor_flow": [
+        {
+          "order": 1,
+          "point": "redemption_tent",
+          "required": true
+        },
+        {
+          "order": 2,
+          "point": "locker_point",
+          "required": false,
+          "when": "The visitor has a bag larger than A4 or an item to store."
+        },
+        {
+          "order": 3,
+          "point": "entry_gate_of_category",
+          "required": true,
+          "exception": "Accessible visitors use gate_priority for every category."
+        }
+      ],
+      "exceptions_go_to": "help_desk"
+    },
+    "known_problems": [
+      {
+        "id": "kp_outside_after_start",
+        "past_event": "Past GBK events",
+        "problem": "Visitors remain outside after the show starts.",
+        "metrics": [],
+        "linked_checks": [
+          "chk_inside_before_main_act",
+          "chk_density_queue_zones"
+        ],
+        "conditions": [],
+        "result_template": "Visitors remain outside after the show starts.",
+        "not_covered": null,
+        "sources": [
+          "gbk_problems"
+        ]
+      },
+      {
+        "id": "kp_crowded_entrance",
+        "past_event": "Indonesia vs China, June 2025",
+        "problem": "Severe crowding at one entrance.",
+        "metrics": [
+          "time_to_clear.gate_balance.imbalance_index"
+        ],
+        "linked_checks": [
+          "chk_gate_wait",
+          "chk_density_queue_zones"
+        ],
+        "conditions": [
+          {
+            "metric": "time_to_clear.gate_balance.imbalance_index",
+            "operator": "gt",
+            "value": 1.5
+          }
+        ],
+        "result_template": "Severe crowding at one entrance.",
+        "not_covered": null,
+        "sources": [
+          "gbk_problems",
+          "kompas_2025_pintu5"
+        ]
+      },
+      {
+        "id": "kp_new_check_step",
+        "past_event": "Indonesia vs Japan, November 2024",
+        "problem": "An added check causes long queues.",
+        "metrics": [
+          "arrival_and_access.scanner_outage_exposure.points[*].visitors_per_minute"
+        ],
+        "linked_checks": [],
+        "conditions": [
+          {
+            "metric": "arrival_and_access.scanner_outage_exposure.points[*].visitors_per_minute",
+            "aggregate": "max",
+            "operator": "gt",
+            "value": 20
+          }
+        ],
+        "result_template": "An added check causes long queues.",
+        "not_covered": null,
+        "sources": [
+          "gbk_problems",
+          "cnn_2024_garuda_id"
+        ]
+      },
+      {
+        "id": "kp_traffic_parking",
+        "past_event": "Past GBK events",
+        "problem": "Traffic and parking delay visitors.",
+        "metrics": [
+          "arrival_and_access.drop_off.peak_vehicles_per_15min"
+        ],
+        "linked_checks": [],
+        "conditions": [
+          {
+            "metric": "arrival_and_access.drop_off.peak_vehicles_per_15min",
+            "operator": "gt",
+            "value": 30
+          }
+        ],
+        "result_template": "Traffic and parking delay visitors.",
+        "not_covered": null,
+        "sources": [
+          "gbk_problems"
+        ]
+      },
+      {
+        "id": "kp_wristband_exchange",
+        "past_event": "Blackpink, March 2023",
+        "problem": "Wristband exchange creates long queues.",
+        "metrics": [
+          "wait_time.by_point[point=redemption_tent].max_minutes"
+        ],
+        "linked_checks": [
+          "chk_redemption_wait"
+        ],
+        "conditions": [
+          {
+            "metric": "wait_time.by_point[point=redemption_tent].max_minutes",
+            "operator": "gt",
+            "value": 20
+          }
+        ],
+        "result_template": "Wristband exchange creates long queues.",
+        "not_covered": null,
+        "sources": [
+          "gbk_problems",
+          "idx_2023_blackpink"
+        ]
+      }
+    ]
+  },
+  "sources": {
+    "gbk_venue": {
+      "title": "GBK — Tennis Indoor venue page",
+      "url": "https://gbk.id/venue/tennis-indoor-31"
+    },
+    "gbk_terms": {
+      "title": "GBK online reservation — booking terms and conditions",
+      "url": "https://reservation.gbk.id/venue/tennis-indoor"
+    },
+    "setkab_2018": {
+      "title": "Sekretariat Kabinet — Renovasi Lapangan Tenis GBK (3 February 2018)",
+      "url": "https://setkab.go.id/renovasi-lapangan-tenis-gbk-menteri-pupr-outdoor-tampung-3-832-kursi-dan-indoor-3-954-kursi"
+    },
+    "wikipedia_gbk": {
+      "title": "Wikipedia — Gelora Bung Karno Sports Complex (venue table)",
+      "url": "https://en.wikipedia.org/wiki/Gelora_Bung_Karno_Sports_Complex"
+    },
+    "detik_travel_2023": {
+      "title": "detikTravel — Tennis Indoor Senayan, Kegiatan, Fasilitas, hingga Cara Booking (27 November 2023)",
+      "url": "https://travel.detik.com/travel-news/d-7057998/tennis-indoor-senayan-kegiatan-fasilitas-hingga-cara-booking"
+    },
+    "aia_guide_2025": {
+      "title": "AIA Vitality Live 2025 — attendee guide for Tennis Indoor Senayan (PDF)",
+      "url": "https://www.aia-financial.co.id/content/dam/id-wise/id/pdf/promotions-and-events/GA%20KBYG.pdf"
+    },
+    "gbk_problems": {
+      "title": "Opsidio research note — other GBK events with documented problems (5 November 2026)",
+      "path": "opsidio-gbk-event-problems.md"
+    },
+    "kompas_2025_pintu5": {
+      "title": "Kompas — Pintu 5 GBK dipadati suporter menjelang laga Timnas Indonesia vs China (5 June 2025)",
+      "url": "https://megapolitan.kompas.com/read/2025/06/05/16162811/pintu-5-gbk-dipadati-suporter-menjelang-laga-timnas-indonesia-vs-china"
+    },
+    "cnn_2024_garuda_id": {
+      "title": "CNN Indonesia — Antrean scan Garuda ID, penonton Indonesia vs Jepang mengular di GBK (15 November 2024)",
+      "url": "https://www.cnnindonesia.com/olahraga/20241115161345-142-1167074/antrean-scan-garuda-id-penonton-indonesia-vs-jepang-mengular-di-gbk"
+    },
+    "idx_2023_blackpink": {
+      "title": "IDX Channel — Begini suasana penukaran tiket konser Blackpink di Stadion GBK (9 March 2023)",
+      "url": "https://www.idxchannel.com/foto-1/foto/begini-suasana-penukaran-tiket-konser-blackpink-di-stadion-gbk"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "id": "help_desk_resolution",
+  "step": {
+    "id": "help_desk_resolution",
+    "name": "Help desk case",
+    "what_happens": "An agent checks proxy documents, used or invalid QR codes, and ID problems. A supervisor makes the final decision when needed.",
+    "done_by": [
+      "help_desk_agent",
+      "ticketing_supervisor"
+    ],
+    "equipment": [
+      "handheld_scanner"
+    ],
+    "applies_to": "visitors_with_exception",
+    "time_per_person_seconds": {
+      "typical": 180,
+      "slow": 600
+    },
+    "slow_when": [
+      "The agent must call the ticket buyer.",
+      "Several tickets in one order have problems."
+    ],
+    "results": {
+      "resolved_percent": 75,
+      "refused_percent": 25
+    },
+    "after_resolution": "The agent fits the wristband. The visitor then goes to the locker point or the gate."
+  }
+}

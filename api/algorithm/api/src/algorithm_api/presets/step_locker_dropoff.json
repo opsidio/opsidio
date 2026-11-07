@@ -1,0 +1,35 @@
+{
+  "id": "locker_dropoff",
+  "step": {
+    "id": "locker_dropoff",
+    "name": "Locker drop-off",
+    "what_happens": "The attendant takes the item, takes payment, and gives a claim tag.",
+    "done_by": [
+      "locker_attendant"
+    ],
+    "equipment": [
+      "locker_unit"
+    ],
+    "applies_to": "visitors_using_locker",
+    "time_per_person_seconds": {
+      "typical": 60,
+      "slow": 180
+    },
+    "slow_when": [
+      "The visitor pays in cash and needs change.",
+      "A group stores several items."
+    ],
+    "rules": [
+      "When every locker unit is full, visitors must take prohibited items away from the venue."
+    ],
+    "exceptions": [
+      {
+        "id": "locker_payment_problem",
+        "what": "The QRIS payment fails and the visitor has no cash.",
+        "share_percent": 3,
+        "outcome": "step_aside_and_return",
+        "extra_minutes": 5
+      }
+    ]
+  }
+}
