@@ -7,12 +7,14 @@ import re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
+from .corridor import CorridorBridge
 from .optimization import OptimizationBridge
 from .bridge import MAX_BODY_BYTES, BridgeConfig, BridgeError, SimulationBridge, failure, json_bytes
 
 
-def handler_for(bridge: SimulationBridge) -> type[BaseHTTPRequestHandler]:
+def handler_for(bridge: SimulationBridge, corridor: CorridorBridge | None = None) -> type[BaseHTTPRequestHandler]:
     workspace = OptimizationBridge(bridge)
+    corridor = corridor if corridor is not None else CorridorBridge.from_env()
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "OpsidioBridge/0.1"
@@ -36,6 +38,9 @@ def handler_for(bridge: SimulationBridge) -> type[BaseHTTPRequestHandler]:
 
         def do_GET(self) -> None:
             try:
+                if self.path == "/api/simulation/corridor/health":
+                    self.send_json(200, corridor.health())
+                    return
                 if self.path == "/api/simulation/health":
                     self.send_json(200, bridge.config.health())
                     return
@@ -57,7 +62,7 @@ def handler_for(bridge: SimulationBridge) -> type[BaseHTTPRequestHandler]:
         def do_POST(self) -> None:
             try:
                 cancel = re.fullmatch(r"/api/simulation/optimizations/(opt_[A-Z0-9]+)/cancel", self.path)
-                if self.path not in {"/api/simulation/run", "/api/simulation/optimize"} and not cancel:
+                if self.path not in {"/api/simulation/run", "/api/simulation/optimize", "/api/simulation/corridor/optimize"} and not cancel:
                     raise failure(404, "not_found", "Unknown bridge route.")
                 # JSON plus no CORS support prevents an unrelated web page from making
                 # a simple cross-origin form POST that spends this local server's key.
@@ -81,7 +86,9 @@ def handler_for(bridge: SimulationBridge) -> type[BaseHTTPRequestHandler]:
                     json_bytes(request)
                 except (ValueError, UnicodeError, RecursionError):
                     raise failure(400, "invalid_json", "The request body must contain valid JSON.") from None
-                if cancel:
+                if self.path == "/api/simulation/corridor/optimize":
+                    self.send_json(200, corridor.optimize(request))
+                elif cancel:
                     self.send_json(200, bridge.cancel_optimization(cancel.group(1)))
                 elif self.path == "/api/simulation/optimize":
                     self.send_json(202, bridge.optimize(request))
@@ -108,4 +115,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

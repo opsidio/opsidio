@@ -27,7 +27,7 @@ After running the simulation, choose **First person** to follow a visible attend
 
 Playback starts at **1× real time**. Choose **10×**, **60×** or **180×** under **Playback speed** to review arrivals faster. Drag the time slider to pause and jump to a specific time. The WIB clock displays hours, minutes and seconds.
 
-V1 is authored and played locally. **Optimize → Optimize plan** submits the current plan snapshot for server validation and optimization. Start the local bridge with `python3.11 -m api.simulation` and configure `OPSIDIO_API_URL` and `OPSIDIO_API_KEY` in its server environment. The panel reports configuration, polls the remote job and lets you save a returned candidate as a new version. See [API setup and limitations](docs/des-bridge.md).
+V1 is authored and played locally. In the standalone workspace, **Optimize → Compare lanes with Doni** runs a V3 corridor pilot for one entrance. An improving candidate can be applied to the authored layout and saved as another local plan version. See [V3 setup and iteration](docs/corridor-optimization.md).
 
 ```sh
 npm run build --prefix web
@@ -42,6 +42,7 @@ python3.11 -m unittest discover -s api/tests -p 'test_*.py' -v
 ## Handoffs
 
 - [Dashboard integration](docs/dashboard-handoff.md)
+- [Doni V3 corridor comparison](docs/corridor-optimization.md)
 - [Coldplay-inspired admission scenario](docs/coldplay-admission-scenario.md)
 - [Doni-format planning draft](contracts/examples/coldplay-gbk-plan-draft.json)
 - [Complete local V1 demo plan](contracts/examples/coldplay-gbk-demo-plan.json)
