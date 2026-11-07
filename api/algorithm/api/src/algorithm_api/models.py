@@ -21,7 +21,7 @@ Number = Annotated[Union[StrictInt, StrictFloat], AfterValidator(_finite)]
 Nonnegative = Annotated[Number, Field(ge=0)]
 Positive = Annotated[Number, Field(gt=0)]
 Count = Annotated[StrictInt, Field(ge=0)]
-Capacity = Annotated[StrictInt, Field(ge=0, le=8)]
+Capacity = Annotated[StrictInt, Field(ge=0)]
 
 
 class Model(BaseModel):
@@ -67,7 +67,7 @@ class Route(Model):
 
 
 class Arrivals(Model):
-    count: Annotated[StrictInt, Field(ge=1, le=500)]
+    count: Annotated[StrictInt, Field(ge=1)]
     start_seconds: Nonnegative
     end_seconds: Nonnegative
 
@@ -80,7 +80,7 @@ class Arrivals(Model):
 
 
 class Scan(Model):
-    lanes: Annotated[StrictInt, Field(ge=1, le=8)]
+    lanes: Annotated[StrictInt, Field(ge=1)]
     physical_slots: Capacity
     available_staff: Capacity
     available_scanners: Capacity
@@ -152,7 +152,7 @@ class WalkingOutput(Model):
 
 
 class ScanOutput(Model):
-    lanes: Annotated[StrictInt, Field(ge=1, le=8)]
+    lanes: Annotated[StrictInt, Field(ge=1)]
     peak_queue: Count
     wait_p90_seconds: Nonnegative | None
     wait_sample_count: Count
@@ -198,7 +198,7 @@ class RunResource(Model):
 
 
 class Evaluation(Model):
-    lanes: Annotated[StrictInt, Field(ge=1, le=8)]
+    lanes: Annotated[StrictInt, Field(ge=1)]
     status: Literal['completed', 'excluded_budget']
     score: tuple[Count, Count, Count] | None
 

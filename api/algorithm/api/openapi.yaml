@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Event Entry Simulation API
-  version: 4.0.0
+  version: 4.1.0
   description: Corridor v3 and event-entry v4 simulation APIs.
 servers:
 - url: http://127.0.0.1:8000
@@ -1827,7 +1827,6 @@ components:
       additionalProperties: false
       properties:
         count:
-          maximum: 500
           minimum: 1
           title: Count
           type: integer
@@ -1853,22 +1852,18 @@ components:
       additionalProperties: false
       properties:
         lanes:
-          maximum: 8
           minimum: 1
           title: Lanes
           type: integer
         physical_slots:
-          maximum: 8
           minimum: 0
           title: Physical Slots
           type: integer
         available_staff:
-          maximum: 8
           minimum: 0
           title: Available Staff
           type: integer
         available_scanners:
-          maximum: 8
           minimum: 0
           title: Available Scanners
           type: integer
@@ -1984,7 +1979,6 @@ components:
       additionalProperties: false
       properties:
         lanes:
-          maximum: 8
           minimum: 1
           title: Lanes
           type: integer
@@ -2137,7 +2131,6 @@ components:
       additionalProperties: false
       properties:
         lanes:
-          maximum: 8
           minimum: 1
           title: Lanes
           type: integer

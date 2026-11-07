@@ -2,7 +2,10 @@
 
 This service saves immutable `corridor-1` plans, deterministic Runs, and measured lane comparisons. It uses one FastAPI process and SQLite WAL.
 
-The model accepts 3–32 route nodes, 1–500 synthetic visitors, 1–8 scan lanes, and a horizon up to 86,400 seconds. It assumes a fixed declared route, constant walking speed and scan service, and physical slot capacity supplied by the caller. It does not model crowd interactions, rerouting, stochastic behavior, or admission service. Results are not calibrated venue readiness or a complete ABM.
+The model accepts 3–32 route nodes, positive integer visitor and scan lane counts, and a horizon up to 86,400 seconds.
+Visitor and lane counts have no fixed upper limit. Active lanes must fit the declared slots, staff, scanners, and budget.
+Simulation and optimization retain their computation deadlines.
+It assumes a fixed declared route, constant walking speed and scan service, and physical slot capacity supplied by the caller. It does not model crowd interactions, rerouting, stochastic behavior, or admission service. Results are not calibrated venue readiness or a complete ABM.
 
 ## Start locally
 

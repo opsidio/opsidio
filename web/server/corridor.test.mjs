@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { afterEach, beforeEach, test } from 'node:test'
 import health from '../api/simulation/corridor/health.js'
@@ -72,7 +73,9 @@ test('hosted health and request guards avoid upstream calls', async ({ mock }) =
   assert.equal((await optimize.fetch(request(undefined, { 'content-type': 'text/plain' }))).status, 415)
   assert.equal((await optimize.fetch(request('x'.repeat(32 * 1024 + 1)))).status, 413)
   assert.equal((await optimize.fetch(request('{"plan":1e1000}'))).status, 400)
-  assert.equal((await optimize.fetch(request(JSON.stringify({ plan: { ...document, arrivals: { count: 501 } } })))).status, 422)
+  for (const value of [0, -1, true, 1.5, '501']) {
+    assert.equal((await optimize.fetch(request(JSON.stringify({ plan: { ...document, arrivals: { count: value } } })))).status, 422)
+  }
 
   delete process.env[variable]
   assert.equal((await health.fetch(healthRequest).json()).configured, false)
@@ -103,6 +106,30 @@ test('hosted route compares only linked Doni resources and retries with stable k
   assert.equal(requests[0][1].headers['Idempotency-Key'], requests[5][1].headers['Idempotency-Key'])
   assert.equal(requests[1][1].headers['Idempotency-Key'], requests[6][1].headers['Idempotency-Key'])
   assert.ok(requests.every(([, options]) => options.redirect === 'manual'))
+})
+
+test('hosted route accepts full entrance populations and more than eight lane evaluations', async ({ mock }) => {
+  const full = structuredClone(document)
+  full.route.nodes[0].position.x = 0
+  full.arrivals.count = 16500
+  full.scan = { ...full.scan, physical_slots: 12, available_staff: 12, available_scanners: 12 }
+  const digest = value => createHash('sha256').update(JSON.stringify(value, function (_key, item) {
+    return item && typeof item === 'object' && !Array.isArray(item)
+      ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a.localeCompare(b))) : item
+  })).digest('hex')
+  const plan = { ...baselinePlan, document: full, snapshot_hash: digest(full) }
+  const nextDocument = { ...full, scan: { ...full.scan, lanes: 12 } }
+  const next = { ...candidate, document: nextDocument, snapshot_hash: digest(nextDocument) }
+  const initialRun = run(plan, '3'), bestRun = run(next, '4')
+  for (const output of [initialRun.output, bestRun.output]) output.population = { total: 16500, admitted: 16500, unfinished: 0 }
+  const responses = [plan, { ...comparison, evaluations: Array.from({ length: 12 }, (_, index) => ({ lanes: index + 1, status: 'completed', score: [0, 0, 0] })) }, initialRun, next, bestRun]
+  mock.method(globalThis, 'fetch', async () => Response.json(responses.shift()))
+  const response = await optimize.fetch(request(JSON.stringify({ plan: full })))
+  assert.equal(response.status, 200)
+  const result = await response.json()
+  assert.equal(result.best.output.population.total, 16500)
+  assert.equal(result.best.output.scan.lanes, 12)
+  assert.equal(result.optimization.evaluations.length, 12)
 })
 
 test('hosted route rejects substituted snapshots and suppresses upstream error contents', async ({ mock }) => {

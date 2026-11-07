@@ -8,7 +8,7 @@ const UPSTREAM_TIMEOUT_MS = 20_000
 const decoder = new TextDecoder('utf-8', { fatal: true })
 
 const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value)
-const inRange = (value, min, max) => Number.isSafeInteger(value) && value >= min && value <= max
+const inRange = (value, min, max = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(value) && value >= min && value <= max
 const hasId = (value, prefix) => typeof value === 'string' && value.length === 36
   && value.startsWith(prefix) && /^[0-9a-f]{32}$/.test(value.slice(4))
 const laneLimit = scan => Math.min(scan.physical_slots, scan.available_staff, scan.available_scanners)
@@ -79,9 +79,9 @@ async function readJson(message, maxBytes) {
 function validDocument(plan) {
   if (!isObject(plan) || plan.schema_version !== 'corridor-1') return false
   const { scan, arrivals, route, horizon_seconds: horizon } = plan
-  return isObject(scan) && ['lanes', 'physical_slots', 'available_staff', 'available_scanners'].every(field => inRange(scan[field], 1, 8))
+  return isObject(scan) && ['lanes', 'physical_slots', 'available_staff', 'available_scanners'].every(field => inRange(scan[field], 1))
     && scan.lanes <= laneLimit(scan)
-    && isObject(arrivals) && inRange(arrivals.count, 1, 500)
+    && isObject(arrivals) && inRange(arrivals.count, 1)
     && isObject(route) && Array.isArray(route.nodes) && inRange(route.nodes.length, 3, 32)
     && Number.isFinite(horizon) && horizon > 0 && horizon <= 86400
 }
@@ -109,12 +109,12 @@ function checkPlan(plan, id, parentId, document) {
   }
 }
 
-function checkOptimization(result, planId) {
+function checkOptimization(result, plan) {
   const { id, plan_id, baseline_run_id: baseline, best_run_id: best, candidate_plan_id: candidate, improved, stop_reason, evaluations } = result
-  if (!hasId(id, 'opt_') || plan_id !== planId || !hasId(baseline, 'run_') || !hasId(best, 'run_')
+  if (!hasId(id, 'opt_') || plan_id !== plan.id || !hasId(baseline, 'run_') || !hasId(best, 'run_')
     || typeof improved !== 'boolean' || !['completed', 'time_limit'].includes(stop_reason)
-    || !Array.isArray(evaluations) || evaluations.length > 8
-    || (improved ? !hasId(candidate, 'pln_') || candidate === planId || best === baseline : candidate !== null || best !== baseline)) {
+    || !Array.isArray(evaluations) || evaluations.length > laneLimit(plan.document.scan) - plan.document.scan.lanes + 1
+    || (improved ? !hasId(candidate, 'pln_') || candidate === plan.id || best === baseline : candidate !== null || best !== baseline)) {
     throw invalidResponse()
   }
 }
@@ -172,7 +172,7 @@ async function compare(document, key) {
   checkPlan(plan, null, null, document)
 
   const optimization = await upstream(`/v3/plans/${plan.id}/optimize`, {}, `opsidio-corridor-opt-v1-${plan.id}`)
-  checkOptimization(optimization, plan.id)
+  checkOptimization(optimization, plan)
 
   const baseline = await upstream(`/v3/runs/${optimization.baseline_run_id}`)
   checkRun(baseline, optimization.baseline_run_id, plan)
@@ -206,7 +206,7 @@ export async function optimizeCorridor(request) {
   catch { return error(400, 'invalid_json', 'The request body must contain valid JSON.') }
   if (body === undefined) return error(413, 'body_too_large', 'The corridor request exceeds 32 KiB.')
   if (!validDocument(body?.plan)) {
-    return error(422, 'validation_failed', 'Provide a corridor plan with up to 500 arrivals, 32 route nodes, eight lanes, and a 24-hour horizon.')
+    return error(422, 'validation_failed', 'Provide positive integer arrival and lane counts, enough staff, scanners and slots, 3–32 route nodes, and a horizon up to 24 hours.')
   }
 
   try {

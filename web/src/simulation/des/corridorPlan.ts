@@ -123,8 +123,7 @@ export function projectCorridorPlan({ authoredPlan, activePlan, gateId, journeys
   const activeGates = editableGates(active)
   const activeGate = activeGates.find(gate => gate.id === gateId)
   if (!authoredGate || !activeGate) throw new Error('Choose an entrance with authored security and ticket scan lanes.')
-  const authoredLanes = Math.min(8, authoredGate.maxLanes)
-  if (activeGate.lanes > authoredLanes) throw new Error('Doni’s corridor supports at most eight authored lanes.')
+  const authoredLanes = authoredGate.maxLanes
   const revisionDelta = compiled.layoutRevision - authored.layoutRevision
   if (compiled.layoutId !== authored.layoutId || revisionDelta < 0) throw new Error('The active draft must come from the authored layout.')
   const sourceSpatial = object(source.spatial_context, 'Authored spatial layout')
@@ -183,14 +182,8 @@ export function projectCorridorPlan({ authoredPlan, activePlan, gateId, journeys
   }
   if (arrivals.length !== gateAttendees) throw new Error('Regenerate the active simulation before using its entrance arrivals.')
   arrivals.sort((a, b) => a.seconds - b.seconds || a.journey.id.localeCompare(b.journey.id))
-  const sampleCount = Math.min(500, arrivals.length)
-  let sampleIndex = 0
-  for (let i = 1; i + sampleCount <= arrivals.length; i++) {
-    const span = arrivals[i + sampleCount - 1].seconds - arrivals[i].seconds
-    const bestSpan = arrivals[sampleIndex + sampleCount - 1].seconds - arrivals[sampleIndex].seconds
-    if (span < bestSpan) sampleIndex = i
-  }
-  const wave = arrivals.slice(sampleIndex, sampleIndex + sampleCount)
+  const wave = arrivals
+  const sampleCount = wave.length
   const sampleStartSeconds = wave[0].seconds, sampleEndSeconds = wave[wave.length - 1].seconds
   const widthSeconds = sampleEndSeconds - sampleStartSeconds
   const walkingSpeed = wave.reduce((sum, item) => sum + item.speed, 0) / sampleCount
@@ -211,11 +204,12 @@ export function projectCorridorPlan({ authoredPlan, activePlan, gateId, journeys
     scan_node_id: routeIds.find(id => scanIds.has(id))!,
   }
   const { staffCost, equipmentCost } = laneCosts(source, gateId)
-  const horizon = Math.ceil(widthSeconds + pathLength(routePoints) / walkingSpeed + sampleCount * serviceSeconds / activeGate.lanes + 1)
+  const horizon = Math.ceil(Math.max(widthSeconds, sampleCount * serviceSeconds / activeGate.lanes)
+    + pathLength(routePoints) / walkingSpeed + serviceSeconds + 1)
   if (!Number.isFinite(horizon) || horizon > 86400) throw new Error('The representative corridor exceeds Doni’s 24-hour horizon.')
   const document: CorridorPlanDocument = {
     schema_version: 'corridor-1',
-    name: `${activeGate.label} · Representative V1 arrival wave`,
+    name: `${activeGate.label} · Full entrance arrival window`,
     geometry_revision: `${compiled.layoutId}:r${compiled.layoutRevision}:${gateId}`,
     route,
     arrivals: { count: sampleCount, start_seconds: 0, end_seconds: widthSeconds },

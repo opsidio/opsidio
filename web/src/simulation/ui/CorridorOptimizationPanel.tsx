@@ -115,7 +115,7 @@ export default function CorridorOptimizationPanel({ gates, gateId, onGateChange,
   const comparisonRequest = useRef<{ key: string; controller: AbortController } | null>(null)
   const key = `${planKey}:${gateId}`
   const selected = gates.find(gate => gate.id === gateId)
-  const laneLimit = selected ? Math.min(8, selected.maxLanes) : 0
+  const laneLimit = selected?.maxLanes ?? 0
   const hasSpareLane = !!selected && selected.lanes < laneLimit
   const liveRequest = comparisonRequest.current?.key === key && !comparisonRequest.current.controller.signal.aborted
   const visibleResult = result?.key === key && (result.status !== 'pending' || liveRequest) ? result : null
@@ -186,14 +186,14 @@ export default function CorridorOptimizationPanel({ gates, gateId, onGateChange,
     .map(seconds => sampleClock.format(new Date(Date.parse(comparison.projection.timeOrigin) + seconds * 1000))).join('–') : null
 
   return <section className="sim-corridor" aria-label="Doni corridor comparison">
-    <p className="sim-corridor-scope"><strong>Up to 500 visitors · one scan checkpoint</strong><span>Compare scan lanes on one entrance corridor. The full admission simulation stays in Control Panel.</span></p>
+    <p className="sim-corridor-scope"><strong>All entrance visitors · one scan checkpoint</strong><span>Compare scan lanes on one entrance corridor. The full admission simulation stays in Control Panel.</span></p>
     <label className="sim-corridor-field">Entrance
       <select value={gateId} onChange={event => onGateChange(event.currentTarget.value)} disabled={!gates.length}>
         {!gates.some(gate => gate.id === gateId) && <option value="">Select an entrance</option>}
         {gates.map(gate => <option key={gate.id} value={gate.id}>{gate.label}</option>)}
       </select>
     </label>
-    {selected && <p className="sim-corridor-note">{selected.lanes} active / {selected.maxLanes} authored lanes{selected.maxLanes > 8 ? ' · Doni compares up to 8' : ''}</p>}
+    {selected && <p className="sim-corridor-note">{selected.lanes} active / {selected.maxLanes} authored lanes</p>}
     {!gates.length && <p className="sim-corridor-note">This version has no supported entrance corridor.</p>}
     {selected && !hasSpareLane && <p className="sim-corridor-note">There’s no spare lane in this scope. In Editor → Staffing &amp; hours, reduce the active lanes, then choose the editor draft to compare against an authored spare lane.</p>}
     <div className="sim-corridor-connection"><span role="status" data-configured={connection === 'configured'}>{connectionLabel}</span><button type="button" onClick={() => void refreshConnection()} disabled={connection === 'checking'}>Refresh</button></div>
@@ -201,7 +201,7 @@ export default function CorridorOptimizationPanel({ gates, gateId, onGateChange,
     {visibleResult?.status === 'error' && <p role="alert">{visibleResult.message}</p>}
     {comparison && <div className="sim-corridor-results" aria-live="polite">
       <h3>{comparison.projection.gateLabel} comparison</h3>
-      <p className="sim-corridor-note">{count.format(comparison.baseline.total)} sampled visitors of {count.format(comparison.projection.gateAttendees)} at this entrance · {sampleWindow} WIB</p>
+      <p className="sim-corridor-note">{count.format(comparison.baseline.total)} visitors at this entrance · {sampleWindow} WIB</p>
       <table><thead><tr><th scope="col">Metric</th><th scope="col">Baseline</th><th scope="col">Best tested</th></tr></thead><tbody>
         <tr><th scope="row">Scan lanes</th><td>{comparison.baseline.lanes}</td><td>{comparison.best.lanes}</td></tr>
         <tr><th scope="row">Admitted</th><td>{count.format(comparison.baseline.admitted)}</td><td>{count.format(comparison.best.admitted)}</td></tr>
