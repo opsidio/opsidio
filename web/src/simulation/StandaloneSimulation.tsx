@@ -9,7 +9,7 @@ import GateInputsPanel from './plan/GateInputsPanel'
 import { applyGateInputs, editableGates, type GateInputs } from './plan/operatingInputs'
 import { createPlanEditorLayout, planEditorOptions, projectPlanEditorLayout } from './layout/planAdapter'
 import type { EditorArea } from './layout/core'
-import { useSimulationVersions } from './ui/useSimulationVersions'
+import { readEventBaseline, useSimulationVersions } from './ui/useSimulationVersions'
 import SimulationVersions from './ui/SimulationVersions'
 import CorridorOptimizationPanel from './ui/CorridorOptimizationPanel'
 import { applyCorridorCandidate, projectCorridorPlan } from './des/corridorPlan'
@@ -62,11 +62,34 @@ function editorUrl(id: string) {
 }
 
 export default function StandaloneSimulation() {
-  const catalog = useSimulationVersions(demoPlan)
-  return <SimulationWorkspace key={catalog.selected.id} catalog={catalog} />
+  const [{ eventId, baseline, error }] = useState(() => {
+    const id = new URLSearchParams(location.search).get('event')
+    if (!id) return { eventId: undefined, baseline: demoPlan, error: null }
+    try {
+      const plan = readEventBaseline(id)
+      if (!plan) throw new Error('Open this event’s simulation from its plan in this browser.')
+      compileSimulationPlan(plan)
+      return { eventId: id, baseline: plan, error: null }
+    } catch {
+      return { eventId: id, baseline: null, error: 'Open this event’s simulation from its plan in this browser.' }
+    }
+  })
+  if (error) return <main className="standalone-scene simulation-theme"><div className="scene-loading">
+    <p>{error}</p><a href="/">Open dashboard</a>
+  </div></main>
+  return <VersionedWorkspace baseline={baseline} eventId={eventId} />
 }
 
-function SimulationWorkspace({ catalog }: { catalog: VersionCatalog }) {
+function VersionedWorkspace({ baseline, eventId }: { baseline: unknown; eventId?: string }) {
+  const catalog = useSimulationVersions(baseline, eventId)
+  const requested = new URLSearchParams(location.search).get('version')
+  if (eventId && requested && requested !== catalog.selected.id) return <main className="standalone-scene simulation-theme"><div className="scene-loading">
+    <p>This event version is unavailable in this browser.</p><a href={`/events/${encodeURIComponent(eventId)}/review`}>Back to plan</a>
+  </div></main>
+  return <SimulationWorkspace key={catalog.selected.id} catalog={catalog} eventId={eventId} />
+}
+
+function SimulationWorkspace({ catalog, eventId }: { catalog: VersionCatalog; eventId?: string }) {
   const version = catalog.selected
   const source = version.plan
   const base = useMemo(() => compileSimulationPlan(source), [source])
@@ -343,6 +366,8 @@ function SimulationWorkspace({ catalog }: { catalog: VersionCatalog }) {
     </Suspense>
     {!canvasOnly && <>
       <SimulationToolbar active={activeTool} revision={activeTool === 'editor' ? editor.layout.revision : compiled.layoutRevision} onSelect={selectTool}
+        eventName={eventId ? (source as { event?: { name?: string } }).event?.name : undefined}
+        backToPlan={eventId ? `/events/${encodeURIComponent(eventId)}/review` : undefined}
         versionPicker={<SimulationVersions versions={catalog.versions} selectedId={version.id} onSelect={catalog.selectVersion} />} />
       {(!editorOpen || view !== 'layout') && <SimulationMapControls view={view} cameraViews={cameraViews} onViewChange={changeView}
         autoRotate={autoRotate} onToggleAutoRotate={() => setAutoRotate(!autoRotate)}
@@ -386,14 +411,11 @@ function SimulationWorkspace({ catalog }: { catalog: VersionCatalog }) {
           shownOriginId={traceOrigin} onShownOriginChange={setTraceOrigin} />}
         <label className="sim-seed-field">Simulation seed <input type="number" value={useDraft ? seed : base.config.seed} onChange={event => { const value = Number(event.target.value); if (Number.isSafeInteger(value)) { setSeed(value); setUseDraft(true); setPlaying(false) } }} /></label>
       </SimulationDrawer>
-      <SimulationDrawer tool="report" active={activeTool === 'report'} description="Review the current playback snapshot and save the plan." onClose={() => selectTool(null)}>
-        {oneWayAdmission && <p className="sim-drawer-note">Help desk for ticket issues → Security → Ticket scan → Entry. No re-entry.</p>}
-        {draftSelector}
-        <SimulationReport versionLabel={version.label} showHeading={false} plannedCount={total} entryAreaCount={compiled.entryAreas.length} staffCount={compiled.operators.length}
-          revision={compiled.layoutRevision} clockLabel={clockLabel} status={abm.status} result={abm.result} stats={crowdStats}
-          error={abm.error ?? planError} onRun={runLocal} runDisabled={!config} onExport={exportPlan} exportDisabled={!!planError}
-          onClear={() => { setPlaying(false); abm.cancel() }} onImport={importPlan} importError={importError} />
-      </SimulationDrawer>
+      {activeTool === 'report' && <SimulationReport plan={resolved.plan} version={version} versions={catalog.versions} seed={compiled.config.seed}
+        draftControls={draftSelector} plannedCount={total} entryAreaCount={compiled.entryAreas.length} staffCount={compiled.operators.length}
+        revision={compiled.layoutRevision} clockLabel={clockLabel} status={abm.status} result={abm.result} stats={crowdStats}
+        error={abm.error ?? planError} onRun={runLocal} runDisabled={!config} onExport={exportPlan} exportDisabled={!!planError}
+        onClear={() => { setPlaying(false); abm.cancel() }} onImport={importPlan} importError={importError} onClose={() => selectTool(null)} />}
       <SimulationDrawer tool="optimize" active={activeTool === 'optimize'} description="Compare staffed lane counts on one entrance with Doni’s API." onClose={() => selectTool(null)}>
         {planError && <p className="sim-drawer-note" role="alert">{planError}</p>}
         {draftSelector}
@@ -401,7 +423,10 @@ function SimulationWorkspace({ catalog }: { catalog: VersionCatalog }) {
           gateId={corridorGates.some(gate => gate.id === corridorGate) ? corridorGate : corridorGates[0]?.id ?? ''}
           onGateChange={setCorridorGate} planKey={corridorKey} disabled={!config}
           project={gateId => projectCorridorPlan({ authoredPlan: resolved.authoredPlan, activePlan: resolved.plan, gateId })}
-          onApply={(projection, candidate) => catalog.addVersion(applyCorridorCandidate(projection, candidate), 'optimized')} />
+          onApply={(projection, candidate) => {
+            catalog.addVersion(applyCorridorCandidate(projection, candidate), 'optimized', resolved.plan)
+            selectTool('report')
+          }} />
       </SimulationDrawer>
       {attendee && attendeeIndex !== null && <div className="sim-first-person-dock"><FirstPersonPanel
         attendeeLabel={`Attendee ${attendeeIndex + 1}${attendeeCategory?.name ? ` · ${attendeeCategory.name}` : ''}`} originLabel={attendeeOrigin?.label ?? 'On-site arrival'}

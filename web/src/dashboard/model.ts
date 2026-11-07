@@ -168,6 +168,11 @@ export function planShape(value: unknown): value is Plan {
       p.constraints?.timing,
   );
 }
+export function availableEquipment(item: Plan): number | null {
+  if (!Number.isSafeInteger(item.available) || item.available < 0) return null;
+  const rented = item.extra_rented;
+  return item.available + (Number.isSafeInteger(rented) && rented > 0 && rented <= item.extra_rentable ? rented : 0);
+}
 export function totals(p: Plan) {
   const roles = p.staff.roles as Plan[],
     gates = p.venue.layout.gates as Plan[],
@@ -877,14 +882,12 @@ export function validate(p: Plan): Issue[] {
         `constraints.equipment.items.${i}.${key}`,
         `${e.name} ${key.replaceAll("_", " ")}`,
       );
-    if (
-      typeof e.available === "number" &&
-      (t.required[e.id] ?? 0) > e.available
-    )
+    const available = availableEquipment(e);
+    if (available !== null && (t.required[e.id] ?? 0) > available)
       add(
         "resources",
         `constraints.equipment.items.${i}.available`,
-        `${e.name}: ${t.required[e.id]} required, ${e.available} available.`,
+        `${e.name}: ${t.required[e.id]} required, ${available} available.`,
       );
   });
   for (const key of ["staff_cap_idr", "equipment_cap_idr"])

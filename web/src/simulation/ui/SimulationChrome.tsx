@@ -10,16 +10,20 @@ const tools: readonly { id: SimulationTool; label: string }[] = [
   { id: 'optimize', label: 'Optimize' },
 ]
 
-export function SimulationToolbar({ active, revision, versionPicker, onSelect }: {
+export function SimulationToolbar({ active, revision, versionPicker, eventName, backToPlan, onSelect }: {
   active: SimulationTool | null
   revision: number
   versionPicker?: ReactNode
+  eventName?: string
+  backToPlan?: string
   onSelect: (tool: SimulationTool) => void
 }) {
   return <header className="sim-toolbar">
     <div className="sim-toolbar-identity">
       <span className="sim-wordmark">opsidio<span>.</span></span>
-      <div className="sim-toolbar-context"><strong>GBK Simulation</strong><small>Coldplay demo · Revision {revision}</small></div>
+      <div className="sim-toolbar-context"><strong>{eventName || 'GBK Simulation'}</strong>
+        <small>{backToPlan ? <a href={backToPlan}>Back to plan</a> : 'Coldplay demo'} · Revision {revision}</small>
+      </div>
     </div>
     {versionPicker && <div className="sim-toolbar-version">{versionPicker}</div>}
     <nav className="sim-toolbar-actions" aria-label="Simulation tools">
