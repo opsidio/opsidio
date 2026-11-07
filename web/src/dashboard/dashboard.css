@@ -231,6 +231,27 @@ small {
 .op-demo-link {
   text-decoration: none;
 }
+.op-workspace-versions {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+}
+.op-workspace-versions ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.op-workspace-versions li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.op-workspace-versions a {
+  font-weight: 600;
+}
 .op-card {
   background: #fff;
   border: 1px solid var(--border);
@@ -508,6 +529,7 @@ summary {
 }
 .op-form-actions > div {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
 }
 .op-form-actions .primary {

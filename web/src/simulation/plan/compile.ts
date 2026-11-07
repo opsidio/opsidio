@@ -161,12 +161,18 @@ export function compileSimulationPlan(input: unknown): CompiledSimulationPlan {
   unique(categories.map(category => ({ ...category, id: name(category.id, 'category.id') })), 'categories')
   const routes = unique<JsonObject & { id: string }>(list(spatial.cohort_routes, 'cohort_routes').map(route => ({ ...route, id: name(route.category_id, 'category_id') })), 'cohort_routes')
   if (routes.size !== categories.length) throw new Error('Every category needs one authored route.')
-  const demand = object(object(plan.demand, 'demand').arrival_windows_percent, 'arrival_windows_percent')
+  const demandInput = object(plan.demand, 'demand')
+  const demand = object(demandInput.arrival_windows_percent, 'arrival_windows_percent')
   const playback = object(spatial.playback, 'playback')
   const timeOrigin = name(playback.time_origin, 'time_origin')
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00\+07:00$/.test(timeOrigin) || !Number.isFinite(Date.parse(timeOrigin))) throw new Error('Use a WIB time_origin with +07:00 offset.')
   const originSeconds = seconds(timeOrigin.slice(11, 16))
   const expected = categories.map(category => {
+    if (demandInput.attendance_basis === 'category_expected_arrivals') {
+      const forecast = number(category.expected_attendees_estimate, `${String(category.id)} expected arrivals`)
+      if (!Number.isSafeInteger(forecast)) throw new Error('Expected arrivals must be safe whole numbers.')
+      return forecast
+    }
     const tickets = number(category.complimentary === true ? category.issued : category.sold, `${String(category.id)} ticket count`)
     if (!Number.isSafeInteger(tickets)) throw new Error('Ticket counts must be safe whole numbers.')
     return tickets * (1 - noShow / 100)

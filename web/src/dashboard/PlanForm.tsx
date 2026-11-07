@@ -28,6 +28,9 @@ type Props = {
   onStep: (s: Step) => void;
   onHome: () => void;
   onSimulation: () => void;
+  onOptimize: () => void;
+  onLegacySimulation: () => void;
+  openingWorkspace: boolean;
 };
 const scheduleGroups = [
   {
@@ -75,6 +78,9 @@ export default function PlanForm({
   onStep,
   onHome,
   onSimulation,
+  onOptimize,
+  onLegacySimulation,
+  openingWorkspace,
 }: Props) {
   const p = draft.plan,
     t = totals(p),
@@ -1098,6 +1104,11 @@ export default function PlanForm({
               changes are not included.
             </p>
           </Card>
+          <p className="op-muted">
+            The full 3D workspace saves this form as an event version. It uses the entered arrival forecast,
+            group sizes, gate hours, staffing and typical check times on the mapped GBK routes.
+            Transport and help desk assumptions are included in the saved JSON.
+          </p>
         </>
       )}
       <footer className="op-form-actions">
@@ -1115,8 +1126,10 @@ export default function PlanForm({
               <Button onClick={() => exportJSON(p, "opsidio-plan.json")}>
                 Export plan
               </Button>
-              <Button primary onClick={onSimulation}>
-                Open 3D simulation <Forward />
+              <Button onClick={onLegacySimulation}>Open arrival preview</Button>
+              <Button disabled={openingWorkspace} onClick={onOptimize}>Optimize in 3D</Button>
+              <Button primary disabled={openingWorkspace} onClick={onSimulation}>
+                {openingWorkspace ? "Opening 3D…" : "Open 3D simulation"} <Forward />
               </Button>
             </>
           ) : (
