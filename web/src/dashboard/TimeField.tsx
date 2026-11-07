@@ -1,6 +1,7 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, Clock3 } from "lucide-react";
 import { displayTime, normalizeTime } from "./model";
+import FormField from "./FormField";
 const choices = Array.from(
   { length: 96 },
   (_, i) =>
@@ -14,6 +15,8 @@ type Props = {
   hint?: string;
   error?: string;
   compact?: boolean;
+  path?: string;
+  required?: boolean;
 };
 export default function TimeField({
   label,
@@ -23,97 +26,91 @@ export default function TimeField({
   hint,
   error,
   compact = false,
+  path,
+  required,
 }: Props) {
-  const id = useId(),
-    [text, setText] = useState(value),
+  const safeValue = typeof value === "string" ? value : "",
+    [text, setText] = useState(safeValue),
     [invalid, setInvalid] = useState(false);
   useEffect(() => {
-    setText(value);
-    setInvalid(Boolean(value && normalizeTime(value) === null));
-  }, [value]);
-  function commit() {
-    const normalized = normalizeTime(text);
-    setInvalid(normalized === null);
-    if (normalized !== null) setText(normalized);
-    onChange(normalized ?? text);
-    onBlur?.();
-  }
-  const message = invalid
-    ? "Enter a time like 17:30 or 5:30 pm, or leave it blank."
-    : error;
+    setText(safeValue);
+    setInvalid(Boolean(safeValue && normalizeTime(safeValue) === null));
+  }, [safeValue]);
   const detail =
-    value && normalizeTime(value) ? `${displayTime(value)} · WIB` : undefined;
+    safeValue && normalizeTime(safeValue)
+      ? `${displayTime(safeValue)} · WIB`
+      : "24-hour time · WIB";
   return (
-    <div className={`op-field op-time-field ${message ? "invalid" : ""}`}>
-      <label htmlFor={id}>{label}</label>
-      <div className="op-time-control">
-        <Clock3 size={17} aria-hidden="true" />
-        <input
-          id={id}
-          type="text"
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="HH:MM or 5:30 pm"
-          value={text}
-          aria-invalid={Boolean(message)}
-          aria-describedby={
-            message || hint || !compact ? `${id}-help` : undefined
-          }
-          onChange={(e) => {
-            setText(e.target.value);
-            setInvalid(false);
-          }}
-          onBlur={commit}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              commit();
-            }
-          }}
-        />
-        <span className="op-time-picker">
-          <span aria-hidden="true">
-            Choose
-            <ChevronDown size={13} />
-          </span>
-          <select
-            aria-label={`Choose ${label.toLowerCase()}`}
-            value=""
-            onChange={(e) => {
-              if (e.target.value) {
+    <FormField
+      label={label}
+      path={path}
+      value={text}
+      required={required}
+      error={invalid ? "Enter a time such as 17:30 or 5:30 pm." : error}
+      hint={!compact ? `${detail}${hint ? " — " + hint : ""}` : hint}
+    >
+      {(attrs) => {
+        const commit = () => {
+          const normalized = normalizeTime(text);
+          setInvalid(normalized === null);
+          if (normalized !== null) setText(normalized);
+          onChange(normalized ?? text);
+          attrs.onBlur();
+          onBlur?.();
+        };
+        return (
+          <div className="op-time-control">
+            <Clock3 size={17} aria-hidden="true" />
+            <input
+              {...attrs}
+              type="text"
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="HH:MM or 5:30 pm"
+              value={text}
+              onChange={(e) => {
                 setText(e.target.value);
                 setInvalid(false);
-                onChange(e.target.value);
-                onBlur?.();
-              }
-            }}
-          >
-            <option value="" disabled>
-              Choose a time · 24-hour
-            </option>
-            {choices.map((time) => (
-              <option key={time} value={time}>
-                {time} · {displayTime(time)}
-              </option>
-            ))}
-          </select>
-        </span>
-      </div>
-      {(message || hint || !compact) && (
-        <small id={`${id}-help`} className={message ? "op-error" : ""}>
-          {message ?? (
-            <>
-              {!compact && (
-                <span>
-                  {detail ?? "24-hour time · WIB"}
-                  {hint ? " — " : ""}
-                </span>
-              )}
-              {hint}
-            </>
-          )}
-        </small>
-      )}
-    </div>
+              }}
+              onBlur={commit}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commit();
+                }
+              }}
+            />
+            <span className="op-time-picker">
+              <span aria-hidden="true">
+                Choose
+                <ChevronDown size={13} />
+              </span>
+              <select
+                aria-label={`Choose ${label.toLowerCase()}`}
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setText(e.target.value);
+                    setInvalid(false);
+                    onChange(e.target.value);
+                    attrs.onBlur();
+                    onBlur?.();
+                  }
+                }}
+              >
+                <option value="" disabled>
+                  Choose a time · 24-hour
+                </option>
+                {choices.map((time) => (
+                  <option key={time} value={time}>
+                    {time} · {displayTime(time)}
+                  </option>
+                ))}
+              </select>
+            </span>
+          </div>
+        );
+      }}
+    </FormField>
   );
 }

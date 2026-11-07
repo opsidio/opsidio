@@ -2244,3 +2244,227 @@ summary {
   min-height: 32px;
   padding: 6px 10px;
 }
+/* Shared form controls and validation across every planning section. */
+:root {
+  --op-control-height: 44px;
+  --op-control-radius: 6px;
+  --op-field-error: #b42318;
+}
+.op-field {
+  gap: 8px;
+  min-width: 0;
+  align-self: start;
+  font-size: 13px;
+}
+.op-field > label {
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+  color: #30333a;
+  display: block;
+}
+.op-required {
+  color: var(--op-field-error);
+  font-weight: 600;
+  margin-left: 4px;
+}
+.op-field .op-input,
+.op-field > select,
+.op-field > input,
+.op-table td .op-input {
+  height: var(--op-control-height);
+  min-height: var(--op-control-height);
+  width: 100%;
+  max-width: none;
+  border: 1px solid #dfe2e7;
+  border-radius: var(--op-control-radius);
+  background: #fff;
+  color: #262a31;
+  padding: 11px 12px;
+  font-size: 14px;
+  line-height: 20px;
+  box-shadow: none;
+}
+.op-field select.op-input {
+  padding-right: 28px;
+}
+.op-field .op-input::placeholder {
+  color: #9297a0;
+}
+.op-field .op-input:focus-visible {
+  outline: 2px solid #3f7ddd;
+  outline-offset: 2px;
+}
+.op-field .op-input:disabled {
+  background: #f5f6f8;
+  color: #828894;
+}
+.op-field.invalid .op-input {
+  border-color: var(--op-field-error);
+  background: #fff;
+}
+.op-field-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12px !important;
+  line-height: 18px !important;
+  font-weight: 400;
+  color: #6b7280;
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.op-field-message > svg {
+  flex: 0 0 14px;
+  margin-top: 2px;
+}
+.op-field-message > span {
+  min-width: 0;
+}
+.op-field-error {
+  color: var(--op-field-error);
+}
+.op-field-message + .op-field-message {
+  margin-top: 8px;
+}
+.op-time-control {
+  height: var(--op-control-height);
+  min-height: var(--op-control-height);
+  border-radius: var(--op-control-radius);
+  border-color: #dfe2e7;
+}
+.op-field .op-time-control > .op-input {
+  height: 42px;
+  min-height: 42px;
+  border: 0 !important;
+  background: none;
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  padding: 10px 9px;
+  box-shadow: none;
+  outline: 0;
+}
+.op-time-picker {
+  font-size: 12px;
+  border-color: #dfe2e7;
+  border-radius: 0 6px 6px 0;
+}
+.op-time-picker > select {
+  min-width: 0 !important;
+  max-width: none !important;
+  padding: 0 !important;
+}
+.op-field.invalid .op-time-control {
+  border-color: var(--op-field-error);
+}
+.op-table .op-field {
+  gap: 8px;
+  min-width: 130px;
+}
+.op-table .op-field > label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.op-table .op-time-control {
+  min-width: 185px;
+}
+.op-table .op-field .op-time-control > .op-input {
+  min-width: 60px;
+  max-width: none;
+  width: 100%;
+}
+.op-table td,
+.op-table th {
+  vertical-align: top;
+}
+.op-table .op-field-message {
+  white-space: normal;
+  min-width: 130px;
+  max-width: 260px;
+}
+.op-assignment-add > .op-button {
+  min-height: 44px;
+}
+.op-assignment-grid select {
+  height: 44px;
+}
+.op-field input[type="checkbox"] {
+  height: 16px;
+  min-height: 16px;
+  width: 16px;
+}
+.op-card[data-field-path]:focus {
+  outline: 0;
+}
+.op-validation-summary {
+  border: 1px solid #f0b8b4;
+  border-left: 3px solid #b42318;
+  border-radius: 8px;
+  background: #fff8f7;
+  padding: 18px 20px;
+  margin: 24px 0;
+  color: #7e2720;
+  font-size: 13px;
+  line-height: 20px;
+}
+.op-validation-summary > strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+.op-validation-summary > p {
+  margin: 6px 0 12px;
+  color: #80544f;
+  font-size: 12px;
+}
+.op-validation-summary ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.op-validation-summary li + li {
+  margin-top: 7px;
+}
+.op-validation-summary button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  line-height: 20px;
+  color: #9c3127;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: normal;
+}
+.op-validation-summary > small {
+  display: block;
+  margin-top: 12px;
+}
+.op-arrival-totals .op-field-message {
+  font-size: 12px !important;
+}
+.op-assignment-rows .op-field-message {
+  line-height: 18px !important;
+}
+@media (max-width: 640px) {
+  .op-field .op-input,
+  .op-table td .op-input {
+    font-size: 14px;
+  }
+  .op-validation-summary {
+    padding: 16px;
+  }
+  .op-table .op-field {
+    min-width: 130px;
+  }
+  .op-time-control .op-input {
+    font-size: 14px;
+  }
+  .op-assignment-grid {
+    gap: 20px;
+  }
+}

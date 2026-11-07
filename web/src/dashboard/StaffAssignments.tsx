@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import { Badge, Button, Card } from "./ui";
+import FormField, { FieldMessage, useFormValidation } from "./FormField";
 import {
   addStaffAssignment,
   changeStaffAssignment,
@@ -9,7 +10,6 @@ import {
   moveStaffAssignment,
   removeStaffAssignment,
   set,
-  validate,
   type Plan,
 } from "./model";
 const names: Record<string, string> = {
@@ -31,7 +31,8 @@ export default function StaffAssignments({
   plan: Plan;
   onChange: (plan: Plan) => void;
 }) {
-  const roles = plan.staff.roles as Plan[],
+  const context = useFormValidation(),
+    roles = plan.staff.roles as Plan[],
     points = [
       ...plan.venue.layout.gates,
       ...(plan.venue.layout.service_points ?? []),
@@ -41,6 +42,16 @@ export default function StaffAssignments({
     [expanded, setExpanded] = useState<Set<string>>(
       () => new Set(roles[0] ? [roles[0].id + ":0"] : []),
     );
+  useEffect(() => {
+    const match = context?.focusPath.match(
+      /^staff\.roles\.(\d+)\.assignment\.(\d+)/,
+    );
+    if (match && roles[Number(match[1])])
+      setExpanded(
+        (current) =>
+          new Set([...current, roles[Number(match[1])].id + ":" + match[2]]),
+      );
+  }, [context?.focusPath, context?.attempt]);
   const roleForNew = roles.some((r) => r.id === addRole)
     ? addRole
     : (roles[0]?.id ?? "");
@@ -67,8 +78,7 @@ export default function StaffAssignments({
         ),
       0,
     );
-  const issues = validate(plan).filter((i) => i.step === "resources"),
-    unknownCount = roles.some((r) => typeof r.count !== "number"),
+  const unknownCount = roles.some((r) => typeof r.count !== "number"),
     unknownAssigned = rows.some((r) => typeof r.assignment.count !== "number");
   const over = roles.filter(
     (r) =>
@@ -80,9 +90,9 @@ export default function StaffAssignments({
   return (
     <Card title="Staff assignments" tag={<Badge>Editable</Badge>}>
       <p className="op-muted">
-        Choose who works at each entrance or help point. You can change any
-        assignment below, add another, or remove it. Planned team sizes and
-        costs are set in “Staff by entry area” above.
+        Choose who works at each entrance or help point. Every assignment needs
+        a role, location, shift and headcount. Complete the fields marked *
+        before continuing.
       </p>
       <div className="op-assignment-summary">
         <div>
@@ -99,22 +109,24 @@ export default function StaffAssignments({
         </div>
       </div>
       <div className="op-assignment-add">
-        <label className="op-field">
-          <span>Add an assignment for</span>
-          <select
-            value={roleForNew}
-            onChange={(e) => setAddRole(e.target.value)}
-          >
-            <option value="" disabled>
-              Choose a role
-            </option>
-            {roles.map((role) => (
-              <option key={role.id} value={role.id}>
-                {role.name}
+        <FormField label="Add an assignment for">
+          {(attrs) => (
+            <select
+              {...attrs}
+              value={roleForNew}
+              onChange={(e) => setAddRole(e.target.value)}
+            >
+              <option value="" disabled>
+                Choose a role
               </option>
-            ))}
-          </select>
-        </label>
+              {roles.map((role) => (
+                <option key={role.id} value={role.id}>
+                  {role.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </FormField>
         <Button
           onClick={() => {
             setExpanded(
@@ -146,30 +158,24 @@ export default function StaffAssignments({
         </p>
       )}
       {over.map((role) => (
-        <p className="op-error" key={role.id}>
-          {role.name}: more people are assigned than the {role.count ?? 0}{" "}
-          planned for this role. Reduce the assignments or update the team size
-          above.
-        </p>
+        <FieldMessage
+          key={role.id}
+          error={`${role.name}: more people are assigned than the ${role.count ?? 0} planned. Reduce assignments or update the team size above.`}
+        />
       ))}
       <div className="op-assignment-rows">
         {rows.map(({ role, roleIndex, assignment: a, index }, i) => {
           const point = points.find((p) => p.id === a.point),
             lanes = point?.lanes ?? [],
             prefix = `Assignment ${i + 1}`,
-            path = `staff.roles.${roleIndex}.assignment.${index}`;
-          const error = (field: string) =>
-            issues.find((issue) => issue.path === path + "." + field)?.message;
-          const rowKey = role.id + ":" + index,
+            path = `staff.roles.${roleIndex}.assignment.${index}`,
+            rowKey = role.id + ":" + index,
             isExpanded = expanded.has(rowKey);
-          const shiftError = issues.find(
-            (issue) => issue.path === `staff.roles.${roleIndex}.shift`,
-          )?.message;
           return (
             <section
               className={`op-assignment-row ${isExpanded ? "is-expanded" : ""}`}
               aria-label={prefix}
-              key={role.id + ":" + index}
+              key={rowKey}
             >
               <header>
                 <button
@@ -216,167 +222,178 @@ export default function StaffAssignments({
                       .join(" · ") || "Duties not set"}
                   </p>
                   <div className="op-assignment-grid">
-                    <label className="op-field">
-                      <span>Role</span>
-                      <select
-                        aria-label={`${prefix} role`}
-                        value={role.id}
-                        onChange={(e) => {
-                          const target = e.target.value;
-                          setExpanded(
-                            (current) =>
-                              new Set([
-                                ...current,
-                                target +
-                                  ":" +
-                                  (roles.find((r) => r.id === target)
-                                    ?.assignment?.length ?? 0),
-                              ]),
-                          );
-                          onChange(
-                            moveStaffAssignment(plan, role.id, index, target),
-                          );
-                        }}
-                      >
-                        {roles.map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label
-                      className={`op-field ${error("point") ? "invalid" : ""}`}
-                    >
-                      <span>Entrance / help point</span>
-                      <select
-                        aria-label={`${prefix} entrance`}
-                        value={a.point ?? ""}
-                        aria-invalid={Boolean(error("point"))}
-                        onChange={(e) =>
-                          onChange(
-                            changeStaffAssignment(plan, role.id, index, {
-                              point: e.target.value,
-                            }),
-                          )
-                        }
-                      >
-                        <option value="">Choose a location</option>
-                        {points.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name}
-                          </option>
-                        ))}
-                      </select>
-                      {error("point") && (
-                        <small className="op-error">{error("point")}</small>
-                      )}
-                    </label>
-                    {a.duty && !lanes.length ? (
-                      <label className="op-field">
-                        <span>Duty</span>
-                        <input
-                          aria-label={`${prefix} duty`}
-                          value={a.duty ?? ""}
-                          onChange={(e) =>
-                            onChange(
-                              changeStaffAssignment(plan, role.id, index, {
-                                duty: e.target.value,
-                              }),
-                            )
-                          }
-                        />
-                      </label>
-                    ) : (
-                      <label
-                        className={`op-field ${error("lane_group") ? "invalid" : ""}`}
-                      >
-                        <span>Lane group</span>
+                    <FormField label="Role" value={role.id} required>
+                      {(attrs) => (
                         <select
-                          aria-label={`${prefix} lane group`}
-                          value={a.lane_group ?? ""}
-                          disabled={!point || !lanes.length}
-                          aria-invalid={Boolean(error("lane_group"))}
+                          {...attrs}
+                          aria-label={`${prefix} role`}
+                          value={role.id}
+                          onChange={(e) => {
+                            const target = e.target.value;
+                            setExpanded(
+                              (current) =>
+                                new Set([
+                                  ...current,
+                                  target +
+                                    ":" +
+                                    (roles.find((r) => r.id === target)
+                                      ?.assignment?.length ?? 0),
+                                ]),
+                            );
+                            onChange(
+                              moveStaffAssignment(plan, role.id, index, target),
+                            );
+                          }}
+                        >
+                          {roles.map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </FormField>
+                    <FormField
+                      label="Entrance / help point"
+                      path={path + ".point"}
+                      value={a.point}
+                      required
+                    >
+                      {(attrs) => (
+                        <select
+                          {...attrs}
+                          aria-label={`${prefix} entrance`}
+                          value={a.point ?? ""}
                           onChange={(e) =>
                             onChange(
                               changeStaffAssignment(plan, role.id, index, {
-                                lane_group: e.target.value,
+                                point: e.target.value,
                               }),
                             )
                           }
                         >
-                          <option value="">Choose lanes</option>
-                          {lanes.map((l: Plan) => (
-                            <option key={l.group} value={l.group}>
-                              {laneName(l.group)} · {l.count ?? "—"} lanes
+                          <option value="">Choose a location</option>
+                          {points.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
                             </option>
                           ))}
                         </select>
-                        {error("lane_group") && (
-                          <small className="op-error">
-                            {error("lane_group")}
-                          </small>
-                        )}
-                      </label>
-                    )}
-                    <label
-                      className={`op-field ${shiftError ? "invalid" : ""}`}
-                    >
-                      <span>Shift for this role</span>
-                      <select
-                        aria-label={`${prefix} shift`}
-                        value={role.shift ?? ""}
-                        aria-invalid={Boolean(shiftError)}
-                        onChange={(e) =>
-                          onChange(
-                            set(
-                              plan,
-                              `staff.roles.${roleIndex}.shift`,
-                              e.target.value,
-                            ),
-                          )
-                        }
-                      >
-                        <option value="">Choose a shift</option>
-                        {shifts.map((s, j) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name ?? `Shift ${j + 1}`} ·{" "}
-                            {s.start ? displayTime(s.start) : "Start not set"}–
-                            {s.end ? displayTime(s.end) : "End not set"}
-                          </option>
-                        ))}
-                      </select>
-                      {shiftError && (
-                        <small className="op-error">{shiftError}</small>
                       )}
-                    </label>
-                    <label
-                      className={`op-field ${error("count") ? "invalid" : ""}`}
+                    </FormField>
+                    {a.duty && !lanes.length ? (
+                      <FormField
+                        label="Duty"
+                        path={path + ".duty"}
+                        value={a.duty}
+                        required
+                      >
+                        {(attrs) => (
+                          <input
+                            {...attrs}
+                            aria-label={`${prefix} duty`}
+                            value={a.duty ?? ""}
+                            onChange={(e) =>
+                              onChange(
+                                changeStaffAssignment(plan, role.id, index, {
+                                  duty: e.target.value,
+                                }),
+                              )
+                            }
+                          />
+                        )}
+                      </FormField>
+                    ) : (
+                      <FormField
+                        label="Lane group"
+                        path={path + ".lane_group"}
+                        value={a.lane_group}
+                        required
+                      >
+                        {(attrs) => (
+                          <select
+                            {...attrs}
+                            aria-label={`${prefix} lane group`}
+                            value={a.lane_group ?? ""}
+                            disabled={!point || !lanes.length}
+                            onChange={(e) =>
+                              onChange(
+                                changeStaffAssignment(plan, role.id, index, {
+                                  lane_group: e.target.value,
+                                }),
+                              )
+                            }
+                          >
+                            <option value="">Choose lanes</option>
+                            {lanes.map((l: Plan) => (
+                              <option key={l.group} value={l.group}>
+                                {laneName(l.group)} · {l.count ?? "—"} lanes
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </FormField>
+                    )}
+                    <FormField
+                      label="Shift for this role"
+                      path={`staff.roles.${roleIndex}.shift`}
+                      value={role.shift}
+                      required
                     >
-                      <span>People assigned</span>
-                      <input
-                        type="number"
-                        aria-label={`${prefix} people assigned`}
-                        value={a.count ?? ""}
-                        min="0"
-                        step="1"
-                        aria-invalid={Boolean(error("count"))}
-                        onChange={(e) =>
-                          onChange(
-                            changeStaffAssignment(plan, role.id, index, {
-                              count:
-                                e.target.value === ""
-                                  ? null
-                                  : Number(e.target.value),
-                            }),
-                          )
-                        }
-                      />
-                      <small className={error("count") ? "op-error" : ""}>
-                        {error("count") ??
-                          `${role.count ?? "—"} planned for this role`}
-                      </small>
-                    </label>
+                      {(attrs) => (
+                        <select
+                          {...attrs}
+                          aria-label={`${prefix} shift`}
+                          value={role.shift ?? ""}
+                          onChange={(e) =>
+                            onChange(
+                              set(
+                                plan,
+                                `staff.roles.${roleIndex}.shift`,
+                                e.target.value,
+                              ),
+                            )
+                          }
+                        >
+                          <option value="">Choose a shift</option>
+                          {shifts.map((s, j) => (
+                            <option key={s.id} value={s.id}>
+                              {s.name ?? `Shift ${j + 1}`} ·{" "}
+                              {s.start ? displayTime(s.start) : "Start not set"}
+                              –{s.end ? displayTime(s.end) : "End not set"}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </FormField>
+                    <FormField
+                      label="People assigned"
+                      path={path + ".count"}
+                      value={a.count}
+                      required
+                      hint={`${role.count ?? "—"} planned for this role`}
+                    >
+                      {(attrs) => (
+                        <input
+                          {...attrs}
+                          type="number"
+                          aria-label={`${prefix} people assigned`}
+                          value={a.count ?? ""}
+                          min="0"
+                          step="1"
+                          onChange={(e) =>
+                            onChange(
+                              changeStaffAssignment(plan, role.id, index, {
+                                count:
+                                  e.target.value === ""
+                                    ? null
+                                    : Number(e.target.value),
+                              }),
+                            )
+                          }
+                        />
+                      )}
+                    </FormField>
                   </div>
                 </>
               )}
@@ -385,10 +402,9 @@ export default function StaffAssignments({
         })}
       </div>
       <p className="op-muted">
-        A role uses one shift across its assignments. Changing its shift here
-        updates all assignments for that role. The shift must cover the
-        entrance’s opening hours; total assignments must fit the planned team
-        size.
+        Changing a role’s shift updates all of its assignments. The shift must
+        cover the entrance’s opening hours, and the assignments must fit the
+        planned team size.
       </p>
     </Card>
   );
