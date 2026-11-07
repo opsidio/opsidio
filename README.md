@@ -11,15 +11,16 @@ npm ci --prefix web
 npm run dev --prefix web -- --port 5173
 ```
 
-Open [the scene](http://127.0.0.1:5173/simulation). Add `?debug=1` to view renderer measurements and the provisional route guides.
+Open [the scene](http://127.0.0.1:5173/simulation). Use `?view=map&entries=1` for the proposed category-entry map. Add `?debug=1` to view renderer measurements and the provisional route guides.
 
 ```sh
 npm run build --prefix web
-node --test web/src/simulation/route.test.mjs
+node --test web/src/simulation/route.test.mjs tests/scenarios/coldplay.test.mjs
 ```
 
 ## Handoffs
 
+- [Coldplay-inspired admission scenario](docs/coldplay-admission-scenario.md)
 - [Spatial and layout contract proposal](docs/spatial-layout-contract.md)
 - [Simulation handoff](docs/simulation-handoff.md)
 - [GBK demo plan and equipment references](docs/gbk-demo-implementation.md)
