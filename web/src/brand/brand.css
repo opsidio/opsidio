@@ -1,0 +1,24 @@
+.op-brand {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 12px;
+  font-family: "Jost", "Futura", sans-serif;
+  font-size: 25px;
+  font-weight: 600;
+  letter-spacing: -0.7px;
+  line-height: 1;
+}
+.op-mark {
+  display: block;
+  flex: none;
+  width: 32px;
+  height: 32px;
+}
+.op-wordmark {
+  display: block;
+  white-space: nowrap;
+}
+.op-brand-dot {
+  color: #ff5a5f;
+}

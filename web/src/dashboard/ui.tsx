@@ -1,5 +1,6 @@
 import type { ReactNode, ButtonHTMLAttributes } from "react";
 import { ArrowRight, ArrowUpRight, Info } from "lucide-react";
+export { Brand, BrandMark } from "../brand/Brand";
 export function Button({
   children,
   primary = false,
@@ -82,13 +83,6 @@ export function Notice({
         <div className="op-notice-content">{children}</div>
       </div>
     </div>
-  );
-}
-export function Brand({ mark = false }: { mark?: boolean }) {
-  return (
-    <span className="op-brand">
-      {mark && <span className="op-mark" />}opsidio.
-    </span>
   );
 }
 export function Heading({

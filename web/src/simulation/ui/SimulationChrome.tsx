@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Brand } from '../../brand/Brand'
 import './SimulationChrome.css'
 
 export type SimulationTool = 'editor' | 'controls' | 'report' | 'optimize'
@@ -20,7 +21,7 @@ export function SimulationToolbar({ active, revision, versionPicker, eventName, 
 }) {
   return <header className="sim-toolbar">
     <div className="sim-toolbar-identity">
-      <span className="sim-wordmark">opsidio<span>.</span></span>
+      <Brand />
       <div className="sim-toolbar-context"><strong>{eventName || 'GBK Simulation'}</strong>
         <small>{backToPlan ? <a href={backToPlan}>Back to plan</a> : 'Coldplay demo'} · Revision {revision}</small>
       </div>
