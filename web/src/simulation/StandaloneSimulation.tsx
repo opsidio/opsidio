@@ -11,7 +11,9 @@ import { createPlanEditorLayout, planEditorOptions, projectPlanEditorLayout } fr
 import type { EditorArea } from './layout/core'
 import { useSimulationVersions } from './ui/useSimulationVersions'
 import SimulationVersions from './ui/SimulationVersions'
-import OptimizationPanel from './des/OptimizationPanel'
+import CorridorOptimizationPanel from './ui/CorridorOptimizationPanel'
+import { applyCorridorCandidate, projectCorridorPlan } from './des/corridorPlan'
+import { createConfigHash } from './abm/worker-protocol'
 import SimulationControls, { SimulationMapControls } from './ui/SimulationControls'
 import SimulationReport from './ui/SimulationReport'
 import WaypointTrace, { waypointLabel } from './ui/WaypointTrace'
@@ -83,7 +85,7 @@ function SimulationWorkspace({ catalog }: { catalog: VersionCatalog }) {
     try { window.localStorage.setItem(draftKey, JSON.stringify({ gates: gateDraft, seed })) } catch { /* Snapshots can still be exported. */ }
   }, [draftKey, gateDraft, seed])
   const oneWayAdmission = (source as { spatial_context?: { one_way_admission?: boolean } }).spatial_context?.one_way_admission === true
-  const saved = useMemo(() => ({ plan: source, compiled: base, error: null }), [source, base])
+  const saved = useMemo(() => ({ plan: source, authoredPlan: source, compiled: base, error: null }), [source, base])
   const draft = useMemo(() => {
     if (!hasDraft) return saved
     try {
@@ -94,13 +96,22 @@ function SimulationWorkspace({ catalog }: { catalog: VersionCatalog }) {
         seeded.spatial_context.playback.seed = seed
         plan = seeded
       }
-      return { plan, compiled: compileSimulationPlan(plan), error: null }
+      return { plan, authoredPlan: layoutPlan, compiled: compileSimulationPlan(plan), error: null }
     } catch (error) {
       return { ...saved, error: error instanceof Error ? error.message : 'The draft cannot be compiled.' }
     }
   }, [hasDraft, saved, source, editor.layout, initialLayout, base.config.seed, gateDraft, seed])
   const resolved = useDraft ? draft : saved
   const compiled = resolved.compiled
+  const [corridorGate, setCorridorGate] = useState('proposed_gate_plaza_timur')
+  const corridorGates = useMemo(() => {
+    const capacity = new Map(editableGates(resolved.authoredPlan).map(gate => [gate.id, Math.min(gate.maxLanes, 8)]))
+    return editableGates(resolved.plan).flatMap(gate => {
+      const maxLanes = capacity.get(gate.id)
+      return maxLanes && gate.lanes <= maxLanes ? [{ ...gate, maxLanes }] : []
+    })
+  }, [resolved.plan, resolved.authoredPlan])
+  const corridorKey = useMemo(() => `${version.id}:${createConfigHash(resolved.plan)}:${createConfigHash(resolved.authoredPlan)}`, [version.id, resolved.plan, resolved.authoredPlan])
   const footprints = useMemo(() => admissionFootprints(resolved.plan), [resolved.plan])
   const params = new URLSearchParams(location.search)
   const requestedView = params.get('view')
@@ -367,10 +378,14 @@ function SimulationWorkspace({ catalog }: { catalog: VersionCatalog }) {
           error={abm.error ?? planError} onRun={runLocal} runDisabled={!config} onExport={exportPlan} exportDisabled={!!planError}
           onClear={() => { setPlaying(false); abm.cancel() }} onImport={importPlan} importError={importError} />
       </SimulationDrawer>
-      <SimulationDrawer tool="optimize" active={activeTool === 'optimize'} description="Submit the current plan for optimization when you’re ready." onClose={() => selectTool(null)}>
+      <SimulationDrawer tool="optimize" active={activeTool === 'optimize'} description="Compare staffed lane counts on one entrance with Doni’s API." onClose={() => selectTool(null)}>
         {planError && <p className="sim-drawer-note" role="alert">{planError}</p>}
         {draftSelector}
-        <OptimizationPanel plan={resolved.plan} baseSeed={compiled.config.seed} disabled={!config} onLoad={next => catalog.addVersion(next, 'optimized')} />
+        <CorridorOptimizationPanel active={activeTool === 'optimize'} gates={corridorGates}
+          gateId={corridorGates.some(gate => gate.id === corridorGate) ? corridorGate : corridorGates[0]?.id ?? ''}
+          onGateChange={setCorridorGate} planKey={corridorKey} disabled={!config}
+          project={gateId => projectCorridorPlan({ authoredPlan: resolved.authoredPlan, activePlan: resolved.plan, gateId })}
+          onApply={(projection, candidate) => catalog.addVersion(applyCorridorCandidate(projection, candidate), 'optimized')} />
       </SimulationDrawer>
       {followed && followIndex !== null && <div className="sim-first-person-dock"><FirstPersonPanel
         attendeeLabel={`Attendee ${followIndex + 1}${followedCategory?.name ? ` · ${followedCategory.name}` : ''}`} originLabel={followedOrigin?.label ?? 'On-site arrival'}
