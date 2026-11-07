@@ -73,6 +73,26 @@
 .sim-report__kpi strong { font-size: clamp(18px, 2vw, 26px); line-height: 1.1; font-variant-numeric: tabular-nums; }
 .sim-report__kpi :is(p, small) { color: var(--sim-muted); }
 .sim-report__kpi small { overflow-wrap: anywhere; }
+.sim-report__kpi-reference { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.sim-report__kpi .sim-report__delta {
+  border-radius: 4px;
+  padding: 1px 5px;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  font-size: 11px;
+}
+
+.sim-report__delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--sim-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sim-report__delta svg { flex-shrink: 0; }
+.sim-report__delta[data-tone="favorable"] { color: var(--sim-success); }
+.sim-report__delta[data-tone="unfavorable"] { color: var(--sim-danger); }
+.sim-report__delta[data-tone="informational"] { color: var(--sim-link, #295d94); }
 
 .sim-report__layout { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr); gap: 12px; }
 .sim-report__main, .sim-report__side { display: grid; align-content: start; gap: 12px; min-width: 0; }
