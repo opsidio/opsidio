@@ -11,7 +11,7 @@ export type NavigationNode = {
 export type NavigationEdge = { id: string; from: string; to: string }
 
 export type LayoutRevision = {
-  schemaVersion: 'opsidio-layout/0.1'
+  schemaVersion: 'opsidio-editor/0.1'
   id: string
   revision: number
   placements: Placement[]
